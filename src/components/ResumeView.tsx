@@ -8,6 +8,7 @@ import { RESUME_STORAGE_KEY, isResumeData, loadRewriteState, saveRewriteState } 
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { RewriteEditor } from "./RewriteEditor";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
+import type { AiDetection } from "@/lib/analysis/types";
 
 interface ResumeViewProps {
   /** The analyzed resume text — the starting point ("original"). */
@@ -17,6 +18,8 @@ interface ResumeViewProps {
   jobTitle: string;
   /** Skills the job wants that the analyzer didn't find — fed to the rewrite. */
   missingSkills: string[];
+  /** AI-authorship tells detected, so the rewrite can target and remove them. */
+  aiDetection: AiDetection | null;
   materials: ContextMaterial[];
   onMaterialsChange: (materials: ContextMaterial[]) => void;
 }
@@ -29,6 +32,7 @@ export function ResumeView({
   jobText,
   jobTitle,
   missingSkills,
+  aiDetection,
   materials,
   onMaterialsChange,
 }: ResumeViewProps) {
@@ -72,6 +76,9 @@ export function ResumeView({
           company,
           context: combinedContextText(materials),
           missingSkills,
+          aiTells: (aiDetection?.patterns ?? [])
+            .filter((p) => p.signal >= 25)
+            .map((p) => ({ label: p.label, examples: p.examples.slice(0, 6) })),
         }),
       });
       const data: { resume?: string; error?: string } = await res.json();
@@ -158,7 +165,8 @@ export function ResumeView({
         <h3 className="text-sm font-semibold text-slate-700">Tailor to this posting</h3>
         <p className="mb-3 mt-1 text-xs text-slate-500">
           Rewrites your resume to match the job, grounded in your real experience — never fabricated.
-          Add context materials to ground it in more of your work.
+          It also fixes the AI-authorship tells flagged in the report. Add context materials to ground
+          it in more of your work.
         </p>
         <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
         <button

@@ -402,6 +402,7 @@ export function App() {
               jobText={analyzed.jobText}
               jobTitle={analyzed.report.meta.jobTitle}
               missingSkills={analyzed.report.highlights.missing}
+              aiDetection={aiDetection.data}
               materials={materials}
               onMaterialsChange={setMaterials}
             />
