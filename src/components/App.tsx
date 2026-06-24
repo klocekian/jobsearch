@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { analyze } from "@/lib/analysis/analyze";
 import { extractFileText, isSupportedFile, SUPPORTED_FORMATS } from "@/lib/extract";
 import type { MatchReport } from "@/lib/analysis/types";
@@ -113,6 +113,66 @@ export function App() {
   const [fetchStatus, setFetchStatus] = useState<{ kind: "idle" | "loading" | "error" | "done"; message?: string }>({
     kind: "idle",
   });
+
+  // Job tracker (Google Sheet) state.
+  interface TrackerJob { row: number; company: string; position: string; date: string; status: string; url: string; jobText: string }
+  const [trackerJobs, setTrackerJobs] = useState<TrackerJob[]>([]);
+  const [trackerStatus, setTrackerStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
+  const [trackerOpen, setTrackerOpen] = useState(false);
+  const trackerRef = useRef<HTMLDivElement>(null);
+
+  const loadTracker = useCallback(async () => {
+    setTrackerStatus("loading");
+    try {
+      const res = await fetch("/api/jobs");
+      const data: { jobs?: TrackerJob[]; error?: string } = await res.json();
+      if (!res.ok || !data.jobs) throw new Error(data.error ?? "Failed to load.");
+      setTrackerJobs(data.jobs);
+      setTrackerStatus("done");
+      setTrackerOpen(true);
+    } catch {
+      setTrackerStatus("error");
+    }
+  }, []);
+
+  const [activeTrackerJob, setActiveTrackerJob] = useState<TrackerJob | null>(null);
+  const [applyStatus, setApplyStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  const pickJob = (job: TrackerJob) => {
+    setCompany(job.company);
+    setJobTitle(job.position);
+    if (job.url) setJobUrl(job.url);
+    if (job.jobText) setJobText(job.jobText);
+    setActiveTrackerJob(job);
+    setApplyStatus("idle");
+    setTrackerOpen(false);
+  };
+
+  const markApplied = async () => {
+    if (!activeTrackerJob) return;
+    setApplyStatus("loading");
+    const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    try {
+      const res = await fetch("/api/jobs/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ row: activeTrackerJob.row, date: today }),
+      });
+      const data: { ok?: boolean; error?: string } = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Failed.");
+      setApplyStatus("done");
+    } catch {
+      setApplyStatus("error");
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (trackerRef.current && !trackerRef.current.contains(e.target as Node)) setTrackerOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const fetchFromUrl = async () => {
     if (!jobUrl.trim()) return;
@@ -250,6 +310,63 @@ export function App() {
       {/* Input form */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
+          {/* Job tracker picker */}
+          <div className="relative flex items-center gap-2" ref={trackerRef}>
+            <button
+              type="button"
+              onClick={() => (trackerStatus === "done" ? setTrackerOpen(!trackerOpen) : loadTracker())}
+              className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+            >
+              {trackerStatus === "loading" ? "Loading tracker…" : "Load from job tracker"}
+            </button>
+            {activeTrackerJob && (
+              <button
+                type="button"
+                onClick={markApplied}
+                disabled={applyStatus === "loading" || applyStatus === "done"}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  applyStatus === "done"
+                    ? "border border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border border-brand bg-white text-brand hover:bg-brand hover:text-white disabled:opacity-50"
+                }`}
+              >
+                {applyStatus === "loading" ? "Updating…" : applyStatus === "done" ? "Marked as applied" : `Mark as applied — ${activeTrackerJob.company}`}
+              </button>
+            )}
+            {applyStatus === "error" && (
+              <span className="text-xs text-rose-500">Failed to update sheet</span>
+            )}
+            {trackerStatus === "error" && (
+              <span className="text-xs text-rose-500">
+                Couldn&apos;t load the sheet. Is it shared with &quot;anyone with the link&quot;?
+              </span>
+            )}
+            {trackerOpen && trackerJobs.length > 0 && (
+              <div className="absolute left-0 top-full z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                {trackerJobs
+                  .filter((j) => j.status !== "Closed" && j.status !== "Not proceeding")
+                  .map((job, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => pickJob(job)}
+                    className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span className="font-medium text-slate-800">{job.company}</span>
+                    <span className="text-slate-500">{job.position}</span>
+                    {job.date && <span className="ml-auto shrink-0 text-xs text-slate-400">{job.date}</span>}
+                    {job.status && (
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                        job.status === "Interview" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {job.status}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Company">
               <input
@@ -286,6 +403,15 @@ export function App() {
               >
                 {fetchStatus.kind === "loading" ? "Fetching…" : "Fetch"}
               </button>
+              <a
+                href={jobUrl.trim() || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => { if (!jobUrl.trim()) e.preventDefault(); }}
+                className={`shrink-0 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 ${!jobUrl.trim() ? "pointer-events-none opacity-50" : ""}`}
+              >
+                Open ↗
+              </a>
             </div>
             {fetchStatus.kind === "done" && (
               <span className="mt-1 block text-xs text-emerald-600">{fetchStatus.message}</span>

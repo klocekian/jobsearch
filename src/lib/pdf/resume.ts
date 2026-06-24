@@ -4,7 +4,9 @@
 
 import type { jsPDF } from "jspdf";
 import type { ResumeData } from "../resume/types";
-import { PdfBuilder, sanitizeFileName } from "./shared";
+import { PdfBuilder, sanitizeFileName, stripMarkdown } from "./shared";
+
+const md = stripMarkdown;
 
 /** Build the resume PDF document (no download — testable in any runtime). */
 export async function buildResumeDoc(data: ResumeData): Promise<jsPDF> {
@@ -13,15 +15,15 @@ export async function buildResumeDoc(data: ResumeData): Promise<jsPDF> {
   const b = new PdfBuilder(doc);
 
   b.header({
-    name: data.name || "Your Name",
-    headline: data.headline,
-    details: [data.location, data.phone, data.email],
-    links: [data.website, data.linkedin],
+    name: md(data.name) || "Your Name",
+    headline: md(data.headline),
+    details: [data.location, data.phone, data.email].map(md),
+    links: [data.website, data.linkedin, data.github, data.substack].filter(Boolean) as string[],
   });
 
   if (data.summary.trim()) {
     b.sectionHeading("Summary");
-    b.paragraph(data.summary.trim(), { size: 10.5 });
+    b.paragraph(md(data.summary.trim()), { size: 10.5 });
   }
 
   const experience = data.experience.filter(
@@ -31,20 +33,18 @@ export async function buildResumeDoc(data: ResumeData): Promise<jsPDF> {
     b.sectionHeading("Experience");
     experience.forEach((e, i) => {
       if (i > 0) b.space(10);
-      const title = [e.role, e.company].filter(Boolean).join(", ");
-      b.entryHeader(title || "Role", e.dates);
-      for (const bullet of e.bullets.map((x) => x.trim()).filter(Boolean)) {
+      const title = [md(e.role), md(e.company)].filter(Boolean).join(", ");
+      b.entryHeader(title || "Role", md(e.dates));
+      for (const bullet of e.bullets.map((x) => md(x.trim())).filter(Boolean)) {
         b.bullet(bullet);
       }
     });
   }
 
-  // Any non-standard sections (Writing, Publications, Awards, etc.), preserved
-  // so export never silently drops content.
   for (const section of data.additionalSections ?? []) {
-    const items = section.items.map((s) => s.trim()).filter(Boolean);
+    const items = section.items.map((s) => md(s.trim())).filter(Boolean);
     if (!section.heading.trim() && items.length === 0) continue;
-    b.sectionHeading(section.heading || "Additional");
+    b.sectionHeading(md(section.heading) || "Additional");
     for (const item of items) b.bullet(item);
   }
 
@@ -53,14 +53,14 @@ export async function buildResumeDoc(data: ResumeData): Promise<jsPDF> {
     b.sectionHeading("Education");
     education.forEach((e, i) => {
       if (i > 0) b.space(8);
-      const title = [e.degree, e.school].filter(Boolean).join(", ");
-      b.entryHeader(title || "Education", e.dates);
+      const title = [md(e.degree), md(e.school)].filter(Boolean).join(", ");
+      b.entryHeader(title || "Education", md(e.dates));
     });
   }
 
   if (data.skills.trim()) {
     b.sectionHeading("Skills");
-    b.paragraph(data.skills.trim(), { size: 10.5 });
+    b.paragraph(md(data.skills.trim()), { size: 10.5 });
   }
 
   return doc;

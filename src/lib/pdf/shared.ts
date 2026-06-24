@@ -5,6 +5,17 @@
 
 import type { jsPDF } from "jspdf";
 
+/** Strip markdown syntax that the AI rewrite may leave in the text. */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, "")       // heading prefixes
+    .replace(/^---+\s*$/gm, "")         // horizontal rules
+    .replace(/\*\*([^*]+)\*\*/g, "$1")  // **bold**
+    .replace(/\*([^*]+)\*/g, "$1")      // *italic*
+    .replace(/\s+$/gm, "")             // trailing whitespace per line
+    .trim();
+}
+
 type RGB = readonly [number, number, number];
 
 export const THEME = {
@@ -106,7 +117,29 @@ export class PdfBuilder {
       renderWrapped(items.join("   •   "), 9.5);
     };
     renderContactLine(info.details);
-    if (info.links) renderContactLine(info.links);
+    if (info.links) {
+      const linkItems = info.links.filter((d) => d && d.trim());
+      if (linkItems.length) {
+        const size = 9.5;
+        const sep = "   •   ";
+        this.doc.setFont(THEME.font, "normal");
+        this.doc.setFontSize(size);
+        this.color(THEME.muted);
+        let x = this.margin;
+        linkItems.forEach((link, i) => {
+          if (i > 0) {
+            this.doc.text(sep, x, this.y);
+            x += this.doc.getTextWidth(sep);
+          }
+          const label = link.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+          const url = /^https?:\/\//i.test(link) ? link : `https://${link}`;
+          const w = this.doc.getTextWidth(label);
+          this.doc.textWithLink(label, x, this.y, { url });
+          x += w;
+        });
+        this.y += size * 1.4;
+      }
+    }
     this.y += 6;
     this.rule();
     this.y += 10;

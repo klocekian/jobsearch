@@ -3,9 +3,17 @@
 // is to save typing, not to be perfect.
 
 import { extractContact } from "../contact";
-import type { ResumeData, ResumeExperience, ResumeEducation } from "./types";
+import type { ResumeData, ResumeExperience, ResumeEducation, ResumeSection } from "./types";
 
 type SectionKey = "summary" | "experience" | "education" | "skills";
+
+function stripMd(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/^---+\s*$/gm, "")
+    .trim();
+}
 
 const SECTION_PATTERNS: { key: SectionKey; re: RegExp }[] = [
   { key: "summary", re: /^(summary|professional summary|profile|objective|about(?: me)?)\b/i },
@@ -23,10 +31,16 @@ const DATE_RANGE_RE = new RegExp(
 const YEAR_RE = /\b(?:19|20)\d{2}\b/;
 
 function classifyHeading(line: string): SectionKey | null {
-  const t = line.trim();
+  const t = line.trim().replace(/^#+\s*/, "");
   if (t.length > 40) return null; // headings are short
   for (const s of SECTION_PATTERNS) if (s.re.test(t)) return s.key;
   return null;
+}
+
+function isMarkdownHeading(line: string): string | null {
+  const m = line.trim().match(/^(#{1,6})\s+(.+)/);
+  if (!m) return null;
+  return m[2].trim();
 }
 
 /** Pull a date range / year out of a header line, returning it plus the remainder. */
@@ -65,7 +79,7 @@ function isExperienceHeader(line: string): boolean {
 function parseExperience(lines: string[]): ResumeExperience[] {
   const entries: ResumeExperience[] = [];
   for (const raw of lines) {
-    const line = raw.replace(/^[\s•·\-*–—>]+/, "").trim();
+    const line = raw.replace(/^#{1,6}\s+/, "").replace(/^[\s•·\-*–—>]+/, "").trim();
     if (!line) continue;
     if (isExperienceHeader(line)) {
       const { dates, rest } = splitDates(line);
@@ -93,8 +107,9 @@ function parseEducation(lines: string[]): ResumeEducation[] {
 }
 
 export function parseResume(resumeText: string): ResumeData {
-  const contact = extractContact(resumeText);
-  const lines = resumeText.split(/\n+/).map((l) => l.trim());
+  const cleaned = stripMd(resumeText);
+  const contact = extractContact(cleaned);
+  const lines = cleaned.split(/\n+/).map((l) => l.trim());
 
   const sections: Record<SectionKey, string[]> = {
     summary: [],
@@ -102,29 +117,47 @@ export function parseResume(resumeText: string): ResumeData {
     education: [],
     skills: [],
   };
+  const additionalSections: ResumeSection[] = [];
 
   let current: SectionKey | null = null;
+  let currentAdditional: ResumeSection | null = null;
+
   for (const line of lines) {
     if (!line) continue;
     const heading = classifyHeading(line);
     if (heading) {
       current = heading;
+      currentAdditional = null;
       continue;
     }
-    if (current) sections[current].push(line);
+    const mdHeading = isMarkdownHeading(line);
+    if (mdHeading && !classifyHeading(mdHeading)) {
+      currentAdditional = { heading: mdHeading, items: [] };
+      additionalSections.push(currentAdditional);
+      current = null;
+      continue;
+    }
+    if (currentAdditional) {
+      currentAdditional.items.push(line.replace(/^[\s•·\-*–—>]+/, "").trim());
+    } else if (current) {
+      sections[current].push(line);
+    }
   }
 
-  const summary = sections.summary.join(" ").replace(/\s+/g, " ").trim();
-  const skills = sections.skills
-    .join(", ")
-    .split(/[,•·|\n]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join(", ");
+  const summary = stripMd(sections.summary.join(" ").replace(/\s+/g, " ").trim());
+  const skills = stripMd(
+    sections.skills
+      .join(", ")
+      .split(/[,•·|\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(", ")
+  );
 
-  // Separate the LinkedIn profile URL from a personal/portfolio site.
   const linkedin = resumeText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[A-Za-z0-9_%-]+/i)?.[0] ?? "";
-  const website = /linkedin\.com/i.test(contact.website) ? "" : contact.website;
+  const github = resumeText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[A-Za-z0-9_-]+/i)?.[0] ?? "";
+  const substack = resumeText.match(/(?:https?:\/\/)?[A-Za-z0-9_-]+\.substack\.com/i)?.[0] ?? "";
+  const website = /linkedin\.com|github\.com|substack\.com/i.test(contact.website) ? "" : contact.website;
 
   return {
     name: contact.name,
@@ -134,9 +167,14 @@ export function parseResume(resumeText: string): ResumeData {
     email: contact.email,
     website,
     linkedin,
+    github: github || undefined,
+    substack: substack || undefined,
     summary,
     experience: parseExperience(sections.experience),
     education: parseEducation(sections.education),
     skills,
+    additionalSections: additionalSections.filter(
+      (s) => s.heading.trim() || s.items.some((i) => i.trim())
+    ),
   };
 }
