@@ -30,6 +30,8 @@ export interface ResumeData {
   email: string;
   website: string;
   linkedin: string;
+  github?: string;
+  substack?: string;
   summary: string;
   experience: ResumeExperience[];
   education: ResumeEducation[];

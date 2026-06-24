@@ -66,14 +66,6 @@ function buildUserPrompt(input: z.infer<typeof RequestSchema>): string {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not configured on the server." },
-      { status: 500 }
-    );
-  }
-
   let parsed: z.infer<typeof RequestSchema>;
   try {
     const body: unknown = await request.json();
@@ -84,7 +76,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic();
     const response = await client.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 2048,
@@ -111,7 +103,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ letter });
   } catch (err: unknown) {
     if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Anthropic authentication failed — check ANTHROPIC_API_KEY." }, { status: 502 });
+      return NextResponse.json({ error: "Anthropic authentication failed — check ANTHROPIC_API_KEY or run `ant auth login`." }, { status: 502 });
     }
     if (err instanceof Anthropic.RateLimitError) {
       return NextResponse.json({ error: "Rate limited by the Anthropic API. Try again shortly." }, { status: 429 });

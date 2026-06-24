@@ -10,7 +10,7 @@ export function resumeToText(data: ResumeData): string {
 
   if (data.name) push(data.name);
   if (data.headline) push(data.headline);
-  const contact = [data.location, data.email, data.phone, data.linkedin, data.website]
+  const contact = [data.location, data.email, data.phone, data.linkedin, data.github, data.substack, data.website]
     .filter(Boolean)
     .join(" | ");
   if (contact) push(contact);

@@ -40,6 +40,8 @@ const ResumeSchema = z.object({
   email: z.string(),
   website: z.string(),
   linkedin: z.string(),
+  github: z.string(),
+  substack: z.string(),
   summary: z.string(),
   experience: z.array(ExperienceSchema),
   education: z.array(EducationSchema),
@@ -53,7 +55,9 @@ const SYSTEM = [
   "Rules:",
   "- name, headline (the tagline under the name, if any), location, phone, email: from the contact/header area. Strip trailing parenthetical labels from contact fields, e.g. '(Mobile)', '(LinkedIn)', '(Portfolio)'.",
   "- linkedin: the LinkedIn profile URL (e.g. 'linkedin.com/in/...'), if present; empty string otherwise.",
-  "- website: a personal site or portfolio URL that is NOT the LinkedIn URL, if present; empty string otherwise.",
+  "- github: the GitHub profile URL (e.g. 'github.com/username'), if present; empty string otherwise.",
+  "- substack: the Substack URL (e.g. 'name.substack.com'), if present; empty string otherwise.",
+  "- website: a personal site or portfolio URL that is NOT LinkedIn, GitHub, or Substack; empty string otherwise.",
   "- summary: the full professional summary paragraph(s), verbatim.",
   "- experience: one entry per ROLE, newest first. role = job title; company = employer; dates = the date range exactly as written (e.g. 'June 2023 - Present'), without the parenthetical duration. For grouped companies (one company header with multiple roles beneath it), attach each role to that company.",
   "- bullets: each accomplishment paragraph as one string, in order. Do NOT include the location line or the 'X years Y months' tenure line as a bullet.",
@@ -64,11 +68,6 @@ const SYSTEM = [
 ].join("\n");
 
 export async function POST(request: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY is not configured." }, { status: 500 });
-  }
-
   let resumeText: string;
   try {
     const body: unknown = await request.json();
@@ -79,7 +78,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic();
     const message = await client.messages.parse({
       model: "claude-opus-4-8",
       max_tokens: 8000,
@@ -95,7 +94,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ resume });
   } catch (err: unknown) {
     if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Anthropic authentication failed." }, { status: 502 });
+      return NextResponse.json({ error: "Anthropic authentication failed — check ANTHROPIC_API_KEY or run `ant auth login`." }, { status: 502 });
     }
     const message = err instanceof Error ? err.message : "Failed to parse the resume.";
     return NextResponse.json({ error: message }, { status: 502 });
