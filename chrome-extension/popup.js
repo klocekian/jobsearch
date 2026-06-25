@@ -260,6 +260,42 @@ function trimSalary(text) {
   return text.slice(0, 100);
 }
 
+async function fillApplication() {
+  const fillBtn = $("fillBtn");
+  if (!fillBtn) return;
+  fillBtn.disabled = true;
+  fillBtn.textContent = "Filling…";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/profile/autofill`, { credentials: "include" });
+    if (!res.ok) throw new Error("No profile data — add a resume on the Profile page first.");
+    const profileData = await res.json();
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error("No active tab");
+
+    const autofillCode = await fetch(chrome.runtime.getURL("autofill.js")).then(r => r.text());
+    const script = autofillCode.replace("__PROFILE_DATA__", JSON.stringify(profileData));
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: new Function("return " + `(function() { ${script} })()`)
+    });
+
+    const count = results?.[0]?.result ?? 0;
+    showStatus("success", `Filled ${count} field${count !== 1 ? "s" : ""}. Review before submitting.`);
+  } catch (err) {
+    showStatus("error", err.message || "Failed to fill form.");
+  } finally {
+    fillBtn.disabled = false;
+    fillBtn.textContent = "Fill application";
+  }
+}
+
+if ($("fillBtn")) {
+  $("fillBtn").addEventListener("click", fillApplication);
+}
+
 function showStatus(type, msg) {
   const el = $("statusMsg");
   el.className = `status ${type}`;
