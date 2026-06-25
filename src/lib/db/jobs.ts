@@ -1,7 +1,9 @@
 import { getDb } from "./index";
+import type { Row, InValue } from "@libsql/client";
 
 export interface JobRow {
   id: number;
+  user_id: number | null;
   company: string;
   title: string;
   url: string;
@@ -22,29 +24,19 @@ export interface JobRow {
 }
 
 export type JobInsert = Partial<Omit<JobRow, "id" | "created_at" | "updated_at">>;
-export type JobUpdate = Partial<Omit<JobRow, "id" | "created_at">>;
+export type JobUpdate = Partial<Omit<JobRow, "id" | "created_at" | "user_id">>;
 
-export const JOB_STATUSES = [
-  "saved",
-  "applying",
-  "applied",
-  "interview",
-  "offer",
-  "accepted",
-  "rejected",
-  "withdrawn",
-  "closed",
-] as const;
+function rowToJob(row: Row): JobRow {
+  return row as unknown as JobRow;
+}
 
-export type JobStatus = (typeof JOB_STATUSES)[number];
-
-export function listJobs(opts?: {
+export async function listJobs(userId: number | null, opts?: {
   sort?: string;
   order?: "asc" | "desc";
   status?: string;
   search?: string;
-}): JobRow[] {
-  const db = getDb();
+}): Promise<JobRow[]> {
+  const db = await getDb();
   const allowedSorts: Record<string, string> = {
     company: "company COLLATE NOCASE",
     title: "title COLLATE NOCASE",
@@ -61,7 +53,14 @@ export function listJobs(opts?: {
   const order = opts?.order === "asc" ? "ASC" : "DESC";
 
   const conditions: string[] = [];
-  const params: unknown[] = [];
+  const params: InValue[] = [];
+
+  if (userId != null) {
+    conditions.push("user_id = ?");
+    params.push(userId);
+  } else {
+    conditions.push("user_id IS NULL");
+  }
 
   if (opts?.status) {
     conditions.push("status = ?");
@@ -73,57 +72,75 @@ export function listJobs(opts?: {
     params.push(like, like, like);
   }
 
-  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  return db.prepare(`SELECT * FROM jobs ${where} ORDER BY ${sortCol} ${order}`).all(...params) as JobRow[];
+  const where = `WHERE ${conditions.join(" AND ")}`;
+  const result = await db.execute({ sql: `SELECT * FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });
+  return result.rows.map(rowToJob);
 }
 
-export function getJob(id: number): JobRow | undefined {
-  return getDb().prepare("SELECT * FROM jobs WHERE id = ?").get(id) as JobRow | undefined;
+export async function getJob(id: number, userId?: number | null): Promise<JobRow | undefined> {
+  const db = await getDb();
+  if (userId !== undefined) {
+    const result = await db.execute({
+      sql: userId != null ? "SELECT * FROM jobs WHERE id = ? AND user_id = ?" : "SELECT * FROM jobs WHERE id = ? AND user_id IS NULL",
+      args: userId != null ? [id, userId] : [id],
+    });
+    return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
+  }
+  const result = await db.execute({ sql: "SELECT * FROM jobs WHERE id = ?", args: [id] });
+  return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
-export function createJob(data: JobInsert): JobRow {
-  const db = getDb();
+export async function createJob(data: JobInsert): Promise<JobRow> {
+  const db = await getDb();
   const fields = Object.keys(data).filter((k) => (data as Record<string, unknown>)[k] !== undefined);
-  const cols = fields.join(", ");
-  const placeholders = fields.map(() => "?").join(", ");
-  const values = fields.map((k) => (data as Record<string, unknown>)[k]);
+  const values = fields.map((k) => (data as Record<string, unknown>)[k] as InValue);
 
   if (fields.length === 0) {
-    const info = db.prepare("INSERT INTO jobs DEFAULT VALUES").run();
-    return getJob(Number(info.lastInsertRowid))!;
+    const result = await db.execute("INSERT INTO jobs DEFAULT VALUES RETURNING *");
+    return rowToJob(result.rows[0]);
   }
 
-  const info = db.prepare(`INSERT INTO jobs (${cols}) VALUES (${placeholders})`).run(...values);
-  return getJob(Number(info.lastInsertRowid))!;
+  const cols = fields.join(", ");
+  const placeholders = fields.map(() => "?").join(", ");
+  const result = await db.execute({ sql: `INSERT INTO jobs (${cols}) VALUES (${placeholders}) RETURNING *`, args: values });
+  return rowToJob(result.rows[0]);
 }
 
-export function updateJob(id: number, data: JobUpdate): JobRow | undefined {
-  const db = getDb();
+export async function updateJob(id: number, data: JobUpdate): Promise<JobRow | undefined> {
+  const db = await getDb();
   const fields = Object.keys(data).filter((k) => (data as Record<string, unknown>)[k] !== undefined);
   if (fields.length === 0) return getJob(id);
 
   const sets = fields.map((k) => `${k} = ?`).join(", ");
-  const values = fields.map((k) => (data as Record<string, unknown>)[k]);
+  const values = fields.map((k) => (data as Record<string, unknown>)[k] as InValue);
 
-  db.prepare(`UPDATE jobs SET ${sets}, updated_at = datetime('now') WHERE id = ?`).run(...values, id);
-  return getJob(id);
+  const result = await db.execute({ sql: `UPDATE jobs SET ${sets}, updated_at = datetime('now') WHERE id = ? RETURNING *`, args: [...values, id] });
+  return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
-export function findMatchingJob(data: { company?: string; title?: string; url?: string }): JobRow | undefined {
-  const db = getDb();
+export async function findMatchingJob(userId: number | null, data: { company?: string; title?: string; url?: string }): Promise<JobRow | undefined> {
+  const db = await getDb();
+  const userClause = userId != null ? "user_id = ?" : "user_id IS NULL";
+  const userArg = userId != null ? [userId] : [];
+
   if (data.url) {
-    const byUrl = db.prepare("SELECT * FROM jobs WHERE url != '' AND url = ?").get(data.url) as JobRow | undefined;
-    if (byUrl) return byUrl;
+    const result = await db.execute({
+      sql: `SELECT * FROM jobs WHERE url != '' AND url = ? AND ${userClause}`,
+      args: [data.url, ...userArg] as InValue[],
+    });
+    if (result.rows[0]) return rowToJob(result.rows[0]);
   }
   if (data.company && data.title) {
-    return db.prepare(
-      "SELECT * FROM jobs WHERE LOWER(company) = LOWER(?) AND LOWER(title) = LOWER(?)"
-    ).get(data.company, data.title) as JobRow | undefined;
+    const result = await db.execute({
+      sql: `SELECT * FROM jobs WHERE LOWER(company) = LOWER(?) AND LOWER(title) = LOWER(?) AND ${userClause}`,
+      args: [data.company, data.title, ...userArg] as InValue[],
+    });
+    if (result.rows[0]) return rowToJob(result.rows[0]);
   }
   return undefined;
 }
 
-export function mergeJob(existing: JobRow, incoming: JobInsert): JobRow {
+export async function mergeJob(existing: JobRow, incoming: JobInsert): Promise<JobRow> {
   const updates: Record<string, unknown> = {};
   const mergeable: (keyof JobInsert)[] = [
     "location", "remote_type", "salary_text", "salary_min", "salary_max",
@@ -138,22 +155,18 @@ export function mergeJob(existing: JobRow, incoming: JobInsert): JobRow {
     }
   }
   if (Object.keys(updates).length === 0) return existing;
-  return updateJob(existing.id, updates)!;
+  return (await updateJob(existing.id, updates))!;
 }
 
-export function deleteJob(id: number): boolean {
-  const result = getDb().prepare("DELETE FROM jobs WHERE id = ?").run(id);
-  return result.changes > 0;
+export async function deleteJob(id: number): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.execute({ sql: "DELETE FROM jobs WHERE id = ?", args: [id] });
+  return result.rowsAffected > 0;
 }
 
-export function jobStats(): { total: number; byStatus: Record<string, number> } {
-  const db = getDb();
-  const total = (db.prepare("SELECT COUNT(*) as cnt FROM jobs").get() as { cnt: number }).cnt;
-  const rows = db.prepare("SELECT status, COUNT(*) as cnt FROM jobs GROUP BY status").all() as {
-    status: string;
-    cnt: number;
-  }[];
-  const byStatus: Record<string, number> = {};
-  for (const r of rows) byStatus[r.status] = r.cnt;
-  return { total, byStatus };
+export async function claimUnownedJobs(userId: number): Promise<number> {
+  const db = await getDb();
+  const jobs = await db.execute({ sql: "UPDATE jobs SET user_id = ? WHERE user_id IS NULL", args: [userId] });
+  await db.execute({ sql: "UPDATE resumes SET user_id = ? WHERE user_id IS NULL", args: [userId] });
+  return jobs.rowsAffected;
 }

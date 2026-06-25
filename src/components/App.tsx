@@ -131,6 +131,19 @@ export function App() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  interface SavedResume { id: number; name: string; content: string; is_default: number }
+  const [savedResumes, setSavedResumes] = useState<SavedResume[]>([]);
+  useEffect(() => {
+    fetch("/api/resumes").then(r => r.json()).then((d: { resumes?: SavedResume[] }) => {
+      const list = d.resumes ?? [];
+      setSavedResumes(list);
+      if (!resumeText && list.length > 0) {
+        const def = list.find(r => r.is_default) ?? list[0];
+        setResumeText(def.content);
+      }
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [fetchStatus, setFetchStatus] = useState<{ kind: "idle" | "loading" | "error" | "done"; message?: string }>({
     kind: "idle",
   });
@@ -415,7 +428,26 @@ export function App() {
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Field label="Resume (upload PDF / DOCX / text, or paste)">
+          <Field label="Resume">
+            {savedResumes.length > 0 && (
+              <div className="mb-2">
+                <select
+                  className="input text-sm"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const r = savedResumes.find(r => r.id === Number(e.target.value));
+                    if (r) { setResumeText(r.content); setPdfStatus({ kind: "done", message: `Loaded "${r.name}"` }); }
+                  }}
+                >
+                  <option value="" disabled>Load a saved resume…</option>
+                  {savedResumes.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}{r.is_default ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {

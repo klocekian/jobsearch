@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { z } from "zod";
 
 // Full-resume tailored rewrite. Returns the rewritten resume as PLAIN TEXT (a
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = new Anthropic();
+    const client = await getAnthropicClient();
     const response = await client.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 8000,

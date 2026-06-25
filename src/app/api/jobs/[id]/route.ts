@@ -26,9 +26,9 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, ctx: Params) {
   const { id } = await ctx.params;
-  const job = getJob(Number(id));
+  const job = await getJob(Number(id));
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const submissions = listSubmissions(job.id);
+  const submissions = await listSubmissions(job.id);
   return NextResponse.json({ job, submissions });
 }
 
@@ -44,7 +44,7 @@ export async function PATCH(request: Request, ctx: Params) {
     if (data.status === "applied" && !data.applied_at) {
       updates.applied_at = new Date().toISOString().slice(0, 10);
     }
-    const job = updateJob(Number(id), updates);
+    const job = await updateJob(Number(id), updates);
     if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ job });
   } catch (err: unknown) {
@@ -55,7 +55,7 @@ export async function PATCH(request: Request, ctx: Params) {
 
 export async function DELETE(_request: Request, ctx: Params) {
   const { id } = await ctx.params;
-  const deleted = deleteJob(Number(id));
+  const deleted = await deleteJob(Number(id));
   if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

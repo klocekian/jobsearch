@@ -1,21 +1,34 @@
-import Database from "better-sqlite3";
-import path from "node:path";
-import fs from "node:fs";
+import { createClient, type Client } from "@libsql/client";
 
-const DB_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DB_DIR, "jobsearch.db");
+let _client: Client | null = null;
+let _initialized = false;
 
-let _db: Database.Database | null = null;
+export function getClient(): Client {
+  if (_client) return _client;
+  _client = createClient({
+    url: process.env.TURSO_DATABASE_URL || "file:data/jobsearch.db",
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+  return _client;
+}
 
-export function getDb(): Database.Database {
-  if (_db) return _db;
+export async function getDb(): Promise<Client> {
+  const client = getClient();
+  if (_initialized) return client;
 
-  fs.mkdirSync(DB_DIR, { recursive: true });
-  _db = new Database(DB_PATH);
-  _db.pragma("journal_mode = WAL");
-  _db.pragma("foreign_keys = ON");
+  // Core tables (IF NOT EXISTS is safe for new + existing DBs)
+  await client.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS users (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      email           TEXT NOT NULL UNIQUE,
+      name            TEXT NOT NULL DEFAULT '',
+      anthropic_token TEXT,
+      refresh_token   TEXT,
+      token_expires   INTEGER,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  _db.exec(`
     CREATE TABLE IF NOT EXISTS jobs (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       company       TEXT NOT NULL DEFAULT '',
@@ -48,10 +61,39 @@ export function getDb(): Database.Database {
       created_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
-    CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
-    CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id);
+    CREATE TABLE IF NOT EXISTS resumes (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL DEFAULT 'Untitled Resume',
+      content     TEXT NOT NULL DEFAULT '',
+      file_name   TEXT NOT NULL DEFAULT '',
+      is_default  INTEGER NOT NULL DEFAULT 0,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
-  return _db;
+  // Migrations — add columns to existing tables (safe to retry)
+  const addColumns = [
+    "ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
+    "ALTER TABLE resumes ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
+  ];
+  for (const sql of addColumns) {
+    try { await client.execute(sql); } catch { /* already exists */ }
+  }
+
+  // Indexes (safe after columns exist)
+  const indexes = [
+    "CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company)",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id)",
+    "CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+  ];
+  for (const sql of indexes) {
+    try { await client.execute(sql); } catch { /* already exists */ }
+  }
+
+  _initialized = true;
+  return client;
 }

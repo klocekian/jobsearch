@@ -179,9 +179,29 @@ export function JobsList() {
                     </Link>
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${STATUS_COLORS[job.status] ?? STATUS_COLORS.saved}`}>
-                      {job.status}
-                    </span>
+                    <select
+                      value={job.status}
+                      onChange={async (e) => {
+                        const newStatus = e.target.value;
+                        await fetch(`/api/jobs/${job.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ status: newStatus }),
+                        });
+                        fetchJobs();
+                      }}
+                      className={`rounded-full border-0 px-2 py-0.5 text-[10px] font-semibold capitalize cursor-pointer ${STATUS_COLORS[job.status] ?? STATUS_COLORS.saved}`}
+                    >
+                      <option value="saved">Saved</option>
+                      <option value="applying">Applying</option>
+                      <option value="applied">Applied</option>
+                      <option value="interview">Interview</option>
+                      <option value="offer">Offer</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="withdrawn">Withdrawn</option>
+                      <option value="closed">Closed</option>
+                    </select>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-slate-500">{formatSalary(job)}</td>
                   <td className="px-3 py-2.5 text-xs text-slate-500">{job.location || "—"}</td>

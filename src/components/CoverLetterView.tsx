@@ -39,6 +39,24 @@ export function CoverLetterView({
   const [letter, setLetter] = useState(saved?.letter ?? "");
   const [contact, setContact] = useState<Contact>(saved?.contact ?? initialContact);
   const [date, setDate] = useState(saved?.date ?? todayDisplay());
+
+  // Pull contact info from the saved default resume if the header fields are empty
+  useEffect(() => {
+    if (contact.name && contact.email) return;
+    fetch("/api/resumes").then(r => r.json()).then((d: { resumes?: { content: string; is_default: number }[] }) => {
+      const resumes = d.resumes ?? [];
+      const def = resumes.find(r => r.is_default) ?? resumes[0];
+      if (!def) return;
+      const parsed = extractContact(def.content);
+      setContact(prev => ({
+        name: prev.name || parsed.name,
+        address: prev.address || parsed.address,
+        email: prev.email || parsed.email,
+        phone: prev.phone || parsed.phone,
+        website: prev.website || parsed.website,
+      }));
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);

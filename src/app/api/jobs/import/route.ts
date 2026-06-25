@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createJob, listJobs } from "@/lib/db/jobs";
+import { getCurrentUserId } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -14,33 +15,17 @@ function parseCSV(text: string): string[][] {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (inQuotes) {
-      if (ch === '"' && text[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else if (ch === '"') {
-        inQuotes = false;
-      } else {
-        current += ch;
-      }
-    } else if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === ",") {
-      fields.push(current);
-      current = "";
-    } else if (ch === "\n" || (ch === "\r" && text[i + 1] === "\n")) {
+      if (ch === '"' && text[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else if (ch === '"') { inQuotes = true; }
+    else if (ch === ",") { fields.push(current); current = ""; }
+    else if (ch === "\n" || (ch === "\r" && text[i + 1] === "\n")) {
       if (ch === "\r") i++;
-      fields.push(current);
-      rows.push(fields);
-      fields = [];
-      current = "";
-    } else {
-      current += ch;
-    }
+      fields.push(current); rows.push(fields); fields = []; current = "";
+    } else { current += ch; }
   }
-  if (current || fields.length) {
-    fields.push(current);
-    rows.push(fields);
-  }
+  if (current || fields.length) { fields.push(current); rows.push(fields); }
   return rows;
 }
 
@@ -66,13 +51,11 @@ const MONTHS: Record<string, string> = {
 function parseDate(raw: string): string | null {
   const d = raw.replace(/,/g, "").trim();
   if (!d) return null;
-  // "Jun-24", "Jun 24", "June 24", "June-24"
   const m = d.match(/^(\w+)[\s-]+(\d{1,2})$/);
   if (m) {
     const month = MONTHS[m[1].toLowerCase()];
     if (month) return `2026-${month}-${m[2].padStart(2, "0")}`;
   }
-  // "6/24", "06/24"
   const m2 = d.match(/^(\d{1,2})\/(\d{1,2})$/);
   if (m2) return `2026-${m2[1].padStart(2, "0")}-${m2[2].padStart(2, "0")}`;
   return null;
@@ -83,17 +66,16 @@ export async function POST() {
     const res = await fetch(CSV_URL);
     if (!res.ok) {
       return NextResponse.json(
-        { error: "Could not fetch the spreadsheet. Make sure it's shared with 'anyone with the link'." },
+        { error: "Could not fetch the spreadsheet." },
         { status: 502 },
       );
     }
     const text = await res.text();
     const rows = parseCSV(text);
-    if (rows.length < 2) {
-      return NextResponse.json({ imported: 0, skipped: 0 });
-    }
+    if (rows.length < 2) return NextResponse.json({ imported: 0, skipped: 0 });
 
-    const existing = listJobs();
+    const userId = await getCurrentUserId();
+    const existing = await listJobs(userId);
     const existingKeys = new Set(existing.map((j) => `${j.company.toLowerCase()}|${j.title.toLowerCase()}`));
 
     let imported = 0;
@@ -107,20 +89,14 @@ export async function POST() {
       const status = (cols[5] ?? "").trim();
       const url = (cols[7] ?? "").trim();
       const jobText = (cols[8] ?? "").trim();
-
       if (!company && !title) continue;
-
       const key = `${company.toLowerCase()}|${title.toLowerCase()}`;
-      if (existingKeys.has(key)) {
-        skipped++;
-        continue;
-      }
+      if (existingKeys.has(key)) { skipped++; continue; }
 
       const parsedDate = parseDate(date);
-      createJob({
-        company,
-        title,
-        url,
+      await createJob({
+        user_id: userId,
+        company, title, url,
         status: statusFromSheet(status, !!parsedDate),
         posting_text: jobText,
         source: "sheet",

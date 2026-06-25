@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/api/jobs")) {
+  const { pathname } = request.nextUrl;
+
+  // CORS for API routes (Chrome extension)
+  if (pathname.startsWith("/api/jobs") || pathname.startsWith("/api/resumes")) {
     const origin = request.headers.get("origin") ?? "";
     const isExtension = origin.startsWith("chrome-extension://");
     const isLocal = origin.startsWith("http://localhost");
@@ -26,9 +29,22 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  // Auth gate — redirect to login if no session cookie
+  const publicPaths = ["/login", "/api/auth/", "/chrome-extension.zip"];
+  if (publicPaths.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  const session = request.cookies.get("jbs_session")?.value;
+  if (!session && !pathname.startsWith("/api/")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: "/api/jobs/:path*",
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon\\.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|zip)$).*)",
+  ],
 };

@@ -4,7 +4,7 @@
   "version": "1.1.0",
   "description": "Capture job postings from any page and save them to your local job tracker.",
   "permissions": ["activeTab", "scripting", "sidePanel"],
-  "host_permissions": ["http://localhost:3000/*"],
+  "host_permissions": ["https://jobs.fieldlines.org/*", "http://localhost:3000/*", "https://*/*", "http://*/*"],
   "action": {
     "default_title": "Clip this job posting"
   },
