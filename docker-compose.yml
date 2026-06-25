@@ -1,6 +1,6 @@
 services:
   jobsearch:
-    build: .
+    image: ghcr.io/klocekian/jobsearch:latest
     container_name: jobsearch
     restart: unless-stopped
     volumes:
