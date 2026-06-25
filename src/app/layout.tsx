@@ -3,12 +3,13 @@ import type { Metadata } from "next";
 // build time. GeistSans/GeistMono already expose --font-geist-sans/-mono.
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Nav } from "@/components/Nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Match Report — Resume Match Engine",
+  title: "Job Search — Resume Match Engine",
   description:
-    "Analyze how well a resume positions a candidate for a specific role against ATS criteria.",
+    "Track job applications, analyze resume match, generate tailored materials.",
 };
 
 export default function RootLayout({
@@ -22,6 +23,7 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
+        <Nav />
         {children}
       </body>
     </html>
