@@ -23,6 +23,9 @@
     .btn-secondary:disabled { opacity: 0.5; cursor: default; }
     .btn-clip { background: #0f172a; color: white; }
     .btn-clip:hover { background: #1e293b; }
+    .btn-fill { background: #059669; color: white; }
+    .btn-fill:hover { background: #047857; }
+    .btn-fill:disabled { opacity: 0.5; cursor: default; }
     .status { margin-top: 12px; font-size: 12px; padding: 8px 10px; border-radius: 6px; line-height: 1.4; }
     .status.info { background: #eff6ff; color: #1d4ed8; }
     .status.success { background: #f0fdf4; color: #15803d; }
@@ -36,7 +39,10 @@
 <body>
   <h1>Job Search Clipper</h1>
 
-  <button class="btn-clip" id="clipBtn" style="width:100%">Clip this page</button>
+  <div style="display:flex; gap:8px; margin-bottom:8px;">
+    <button class="btn-clip" id="clipBtn" style="flex:1">Clip this page</button>
+    <button class="btn-fill" id="fillBtn" style="flex:1">Fill application</button>
+  </div>
 
   <div id="loading" class="status info" style="display:none">Extracting page content…</div>
 
