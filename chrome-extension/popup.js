@@ -274,12 +274,10 @@ async function fillApplication() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error("No active tab");
 
-    const autofillCode = await fetch(chrome.runtime.getURL("autofill.js")).then(r => r.text());
-    const script = autofillCode.replace("__PROFILE_DATA__", JSON.stringify(profileData));
-
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: new Function("return " + `(function() { ${script} })()`)
+      args: [profileData],
+      func: autofillPage,
     });
 
     const count = results?.[0]?.result ?? 0;
@@ -290,6 +288,96 @@ async function fillApplication() {
     fillBtn.disabled = false;
     fillBtn.textContent = "Fill application";
   }
+}
+
+function autofillPage(data) {
+  let filled = 0;
+
+  const matchers = [
+    { keys: ["first_name", "first name", "firstname", "given name", "fname"], value: data.first_name },
+    { keys: ["last_name", "last name", "lastname", "family name", "surname", "lname"], value: data.last_name },
+    { keys: ["full_name", "full name", "your name", "candidate name", "applicant name"], value: data.full_name },
+    { keys: ["email", "e-mail", "email address"], value: data.email },
+    { keys: ["phone", "phone number", "mobile", "telephone", "cell", "contact number"], value: data.phone },
+    { keys: ["linkedin", "linkedin profile", "linkedin url"], value: data.linkedin },
+    { keys: ["github", "github profile", "github url"], value: data.github },
+    { keys: ["website", "portfolio", "personal website", "portfolio url", "personal site", "blog"], value: data.website || data.substack },
+    { keys: ["city", "current city"], value: data.city },
+    { keys: ["state", "province"], value: data.state },
+    { keys: ["location", "current location", "address"], value: data.location },
+    { keys: ["current title", "job title", "current role", "current position"], value: data.current_title },
+    { keys: ["current company", "company", "current employer", "employer", "organization"], value: data.current_company },
+  ];
+
+  function normalize(str) {
+    return (str || "").toLowerCase().replace(/[^a-z0-9]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function getFieldLabel(el) {
+    const texts = [];
+    if (el.id) {
+      const label = document.querySelector("label[for='" + CSS.escape(el.id) + "']");
+      if (label) texts.push(label.textContent);
+    }
+    const parentLabel = el.closest("label");
+    if (parentLabel) texts.push(parentLabel.textContent);
+    if (el.getAttribute("aria-label")) texts.push(el.getAttribute("aria-label"));
+    const prev = el.closest("[class*='field'], [class*='form-group'], [class*='question']");
+    if (prev) {
+      const labelEl = prev.querySelector("label, [class*='label'], legend, h3, h4, p");
+      if (labelEl && labelEl !== el) texts.push(labelEl.textContent);
+    }
+    texts.push(el.name, el.placeholder, el.id);
+    return texts.filter(Boolean).map(normalize).join(" ");
+  }
+
+  function setVal(el, value) {
+    if (!value || !el || el.disabled || el.readOnly) return false;
+    if (el.value && el.value.trim()) return false;
+    const proto = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value");
+    if (setter && setter.set) { setter.set.call(el, value); } else { el.value = value; }
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  const fields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input:not([type]), textarea');
+  for (const el of fields) {
+    const label = getFieldLabel(el);
+    if (!label) continue;
+    // "name" alone is too generic — only match if it's the only word or clearly a name field
+    for (const matcher of matchers) {
+      if (matcher.value && matcher.keys.some((k) => label.includes(k))) {
+        if (setVal(el, matcher.value)) {
+          filled++;
+          el.style.outline = "2px solid #34d399";
+          setTimeout(() => { el.style.outline = ""; }, 2000);
+        }
+        break;
+      }
+    }
+  }
+
+  // Yes/No buttons for work authorization
+  function clickYesNo(questionWords, answer) {
+    const buttons = document.querySelectorAll('button, [role="button"], [role="option"], label, input[type="radio"]');
+    for (const btn of buttons) {
+      const text = (btn.textContent || btn.value || "").trim().toLowerCase();
+      const container = btn.closest("[class*='question'], [class*='field'], fieldset, [data-qa], [class*='group']");
+      const question = (container?.textContent || "").toLowerCase();
+      if (questionWords.some((w) => question.includes(w)) && text === answer) {
+        btn.click();
+        filled++;
+        return;
+      }
+    }
+  }
+
+  clickYesNo(["eligible to work", "authorized to work", "legally authorized"], "yes");
+  clickYesNo(["sponsorship", "visa sponsorship"], "no");
+
+  return filled;
 }
 
 if ($("fillBtn")) {
