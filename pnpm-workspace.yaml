@@ -1,6 +1,7 @@
 allowBuilds:
   better-sqlite3: true
-ignoredBuiltDependencies:
-  - core-js
-  - sharp
-  - unrs-resolver
+  core-js: false
+  sharp: false
+  unrs-resolver: false
+onlyBuiltDependencies:
+  - better-sqlite3
