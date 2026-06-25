@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { analyze } from "@/lib/analysis/analyze";
 import { extractFileText, isSupportedFile, SUPPORTED_FORMATS } from "@/lib/extract";
 import type { MatchReport } from "@/lib/analysis/types";
@@ -32,6 +33,9 @@ interface AnalyzedState {
 }
 
 export function App() {
+  const searchParams = useSearchParams();
+  const linkedJobId = searchParams.get("jobId");
+
   const [resumeText, setResumeText] = useState("");
   const [jobText, setJobText] = useState("");
   const [company, setCompany] = useState("");
@@ -39,6 +43,7 @@ export function App() {
   const [jobUrl, setJobUrl] = useState("");
   // Set only when a PDF is uploaded; drives the File Type ATS check.
   const [fileName, setFileName] = useState("");
+  const [activeJobId, setActiveJobId] = useState<number | null>(null);
 
   const [analyzed, setAnalyzed] = useState<AnalyzedState | null>(null);
   const [tab, setTab] = useState<Tab>("report");
@@ -52,12 +57,28 @@ export function App() {
     saveContextMaterials(materials);
   }, [materials]);
 
-  // Restore the whole input session (form fields + last analysis + active tab)
-  // after mount, so a refresh/crash/close loses nothing. Done in an effect (not
-  // a lazy initializer) because these fields are server-rendered empty; setting
-  // them during render would mismatch hydration.
+  // Load from a linked job (via ?jobId=N) or restore the session from
+  // localStorage. Done in an effect to avoid SSR hydration mismatch.
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
+    if (linkedJobId) {
+      fetch(`/api/jobs/${linkedJobId}`)
+        .then((r) => r.json())
+        .then((data: { job?: { id: number; company: string; title: string; url: string; posting_text: string } }) => {
+          if (data.job) {
+            /* eslint-disable react-hooks/set-state-in-effect */
+            setCompany(data.job.company);
+            setJobTitle(data.job.title);
+            setJobUrl(data.job.url);
+            setJobText(data.job.posting_text);
+            setActiveJobId(data.job.id);
+            /* eslint-enable react-hooks/set-state-in-effect */
+          }
+          setHydrated(true);
+        })
+        .catch(() => setHydrated(true));
+      return;
+    }
     const s = loadSession();
     /* eslint-disable react-hooks/set-state-in-effect -- one-time hydration from localStorage */
     if (s) {
@@ -78,7 +99,7 @@ export function App() {
     }
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist the session on every change (after hydration, so we never overwrite
   // the saved session with the initial empty state before it is restored).
@@ -114,8 +135,8 @@ export function App() {
     kind: "idle",
   });
 
-  // Job tracker (Google Sheet) state.
-  interface TrackerJob { row: number; company: string; position: string; date: string; status: string; url: string; jobText: string }
+  // Job picker dropdown — loads from the local SQLite database.
+  interface TrackerJob { id: number; company: string; title: string; status: string; url: string; posting_text: string }
   const [trackerJobs, setTrackerJobs] = useState<TrackerJob[]>([]);
   const [trackerStatus, setTrackerStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
   const [trackerOpen, setTrackerOpen] = useState(false);
@@ -124,9 +145,9 @@ export function App() {
   const loadTracker = useCallback(async () => {
     setTrackerStatus("loading");
     try {
-      const res = await fetch("/api/jobs");
-      const data: { jobs?: TrackerJob[]; error?: string } = await res.json();
-      if (!res.ok || !data.jobs) throw new Error(data.error ?? "Failed to load.");
+      const res = await fetch("/api/jobs?sort=created_at&order=desc");
+      const data: { jobs?: TrackerJob[] } = await res.json();
+      if (!res.ok || !data.jobs) throw new Error("Failed to load.");
       setTrackerJobs(data.jobs);
       setTrackerStatus("done");
       setTrackerOpen(true);
@@ -135,35 +156,13 @@ export function App() {
     }
   }, []);
 
-  const [activeTrackerJob, setActiveTrackerJob] = useState<TrackerJob | null>(null);
-  const [applyStatus, setApplyStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-
   const pickJob = (job: TrackerJob) => {
     setCompany(job.company);
-    setJobTitle(job.position);
+    setJobTitle(job.title);
     if (job.url) setJobUrl(job.url);
-    if (job.jobText) setJobText(job.jobText);
-    setActiveTrackerJob(job);
-    setApplyStatus("idle");
+    if (job.posting_text) setJobText(job.posting_text);
+    setActiveJobId(job.id);
     setTrackerOpen(false);
-  };
-
-  const markApplied = async () => {
-    if (!activeTrackerJob) return;
-    setApplyStatus("loading");
-    const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    try {
-      const res = await fetch("/api/jobs/apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ row: activeTrackerJob.row, date: today }),
-      });
-      const data: { ok?: boolean; error?: string } = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? "Failed.");
-      setApplyStatus("done");
-    } catch {
-      setApplyStatus("error");
-    }
   };
 
   useEffect(() => {
@@ -266,9 +265,6 @@ export function App() {
 
   const runAnalysis = () => {
     if (!resumeText.trim() || !jobText.trim()) return;
-    // A generated cover letter and resume rewrite belong to a specific job; drop
-    // them when the job changes (and on the first analysis, in case stale ones
-    // were persisted). Context materials describe the candidate and persist.
     if (!analyzed || analyzed.jobText !== jobText) {
       clearCoverLetter();
       clearRewrite();
@@ -277,6 +273,16 @@ export function App() {
     setAnalyzed({ report, resumeText, jobText });
     setTab("report");
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    if (activeJobId) {
+      fetch(`/api/jobs/${activeJobId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          match_score: report.score,
+          match_report: JSON.stringify(report),
+        }),
+      }).catch(() => {});
+    }
   };
 
   const downloadPackage = () => {
@@ -305,59 +311,45 @@ export function App() {
           Analyze how well a resume positions a candidate for a specific role, calibrated to the
           criteria Applicant Tracking Systems use.
         </p>
+        {activeJobId && (
+          <p className="mt-2 text-xs text-brand">
+            Linked to saved job — results will be saved automatically.{" "}
+            <a href={`/jobs/${activeJobId}`} className="underline hover:no-underline">View job →</a>
+          </p>
+        )}
       </header>
 
       {/* Input form */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-4">
-          {/* Job tracker picker */}
+          {/* Job picker */}
           <div className="relative flex items-center gap-2" ref={trackerRef}>
             <button
               type="button"
               onClick={() => (trackerStatus === "done" ? setTrackerOpen(!trackerOpen) : loadTracker())}
               className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
             >
-              {trackerStatus === "loading" ? "Loading tracker…" : "Load from job tracker"}
+              {trackerStatus === "loading" ? "Loading…" : "Load from saved jobs"}
             </button>
-            {activeTrackerJob && (
-              <button
-                type="button"
-                onClick={markApplied}
-                disabled={applyStatus === "loading" || applyStatus === "done"}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  applyStatus === "done"
-                    ? "border border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border border-brand bg-white text-brand hover:bg-brand hover:text-white disabled:opacity-50"
-                }`}
-              >
-                {applyStatus === "loading" ? "Updating…" : applyStatus === "done" ? "Marked as applied" : `Mark as applied — ${activeTrackerJob.company}`}
-              </button>
-            )}
-            {applyStatus === "error" && (
-              <span className="text-xs text-rose-500">Failed to update sheet</span>
-            )}
             {trackerStatus === "error" && (
-              <span className="text-xs text-rose-500">
-                Couldn&apos;t load the sheet. Is it shared with &quot;anyone with the link&quot;?
-              </span>
+              <span className="text-xs text-rose-500">Failed to load jobs.</span>
             )}
             {trackerOpen && trackerJobs.length > 0 && (
               <div className="absolute left-0 top-full z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
                 {trackerJobs
-                  .filter((j) => j.status !== "Closed" && j.status !== "Not proceeding")
-                  .map((job, i) => (
+                  .filter((j) => j.status !== "closed")
+                  .map((job) => (
                   <button
-                    key={i}
+                    key={job.id}
                     type="button"
                     onClick={() => pickJob(job)}
                     className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
                   >
                     <span className="font-medium text-slate-800">{job.company}</span>
-                    <span className="text-slate-500">{job.position}</span>
-                    {job.date && <span className="ml-auto shrink-0 text-xs text-slate-400">{job.date}</span>}
+                    <span className="text-slate-500">{job.title}</span>
                     {job.status && (
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                        job.status === "Interview" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                      <span className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+                        job.status === "interview" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
                       }`}>
                         {job.status}
                       </span>
@@ -503,13 +495,46 @@ export function App() {
                 Cover Letter
               </TabButton>
             </div>
-            <button
-              onClick={downloadPackage}
-              title="Download date, posting link, resume, job posting, and cover letter as one Markdown file"
-              className="mb-1.5 rounded-md border border-brand px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white"
-            >
-              Download .md
-            </button>
+            <div className="flex gap-2">
+              {activeJobId && (
+                <button
+                  onClick={async () => {
+                    const resume = loadSavedResume();
+                    const md = buildPackageMarkdown({
+                      company: analyzed.report.meta.company,
+                      jobTitle: analyzed.report.meta.jobTitle,
+                      jobUrl: analyzed.report.meta.jobUrl,
+                      jobText: analyzed.jobText,
+                      resume,
+                      resumeFallbackText: analyzed.resumeText,
+                      coverLetter: coverLetterText(),
+                      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+                    });
+                    await fetch(`/api/jobs/${activeJobId}/submissions`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        type: "package",
+                        label: `Application Package — ${new Date().toLocaleDateString()}`,
+                        format: "md",
+                        content: md,
+                      }),
+                    });
+                    alert("Saved to job submissions.");
+                  }}
+                  className="mb-1.5 rounded-md border border-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-500 hover:text-white"
+                >
+                  Save to job
+                </button>
+              )}
+              <button
+                onClick={downloadPackage}
+                title="Download date, posting link, resume, job posting, and cover letter as one Markdown file"
+                className="mb-1.5 rounded-md border border-brand px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white"
+              >
+                Download .md
+              </button>
+            </div>
           </div>
 
           {tab === "report" && <MatchReportView report={analyzed.report} aiDetection={aiDetection} />}
