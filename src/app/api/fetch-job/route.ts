@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import net from "node:net";
 import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = new Anthropic();
+    const client = await getAnthropicClient();
     const userContent = [
       jsonLd ? `=== JSON-LD JobPosting ===\n${jsonLd}\n` : "",
       `=== PAGE TEXT ===\n${text}`,

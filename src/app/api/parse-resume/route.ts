@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = new Anthropic();
+    const client = await getAnthropicClient();
     const message = await client.messages.parse({
       model: "claude-opus-4-8",
       max_tokens: 8000,

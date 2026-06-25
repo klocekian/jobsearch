@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { listJobs, createJob, findMatchingJob, mergeJob, type JobInsert } from "@/lib/db/jobs";
+import { getCurrentUserId } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
   const status = url.searchParams.get("status") ?? undefined;
   const search = url.searchParams.get("search") ?? undefined;
 
-  const jobs = listJobs({ sort, order, status, search });
+  const userId = await getCurrentUserId();
+  const jobs = await listJobs(userId, { sort, order, status, search });
   return NextResponse.json({ jobs });
 }
 
@@ -39,18 +41,20 @@ export async function POST(request: Request) {
       if (v !== undefined) (insert as Record<string, unknown>)[k] = v;
     }
 
-    const existing = findMatchingJob({
+    const userId = await getCurrentUserId();
+    insert.user_id = userId;
+    const existing = await findMatchingJob(userId, {
       company: data.company,
       title: data.title,
       url: data.url,
     });
 
     if (existing) {
-      const job = mergeJob(existing, insert);
+      const job = await mergeJob(existing, insert);
       return NextResponse.json({ job, merged: true }, { status: 200 });
     }
 
-    const job = createJob(insert);
+    const job = await createJob(insert);
     return NextResponse.json({ job, merged: false }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Invalid request.";
