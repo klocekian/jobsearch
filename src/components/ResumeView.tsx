@@ -145,13 +145,22 @@ export function ResumeView({
           </p>
           {restored && <p className="mt-1 text-xs text-emerald-600">Restored your saved draft.</p>}
         </div>
-        <button
-          onClick={downloadPdf}
-          disabled={exporting.kind === "loading"}
-          className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-        >
-          {exporting.kind === "loading" ? "Preparing…" : "Download PDF"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={generate}
+            disabled={gen.kind === "loading"}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {gen.kind === "loading" ? "Rewriting…" : hasRewrite ? "Regenerate" : "Generate rewrite"}
+          </button>
+          <button
+            onClick={downloadPdf}
+            disabled={exporting.kind === "loading"}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+          >
+            {exporting.kind === "loading" ? "Preparing…" : "Download PDF"}
+          </button>
+        </div>
       </div>
 
       {exporting.kind === "error" && (
@@ -169,13 +178,6 @@ export function ResumeView({
           it in more of your work.
         </p>
         <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
-        <button
-          onClick={generate}
-          disabled={gen.kind === "loading"}
-          className="mt-3 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {gen.kind === "loading" ? "Rewriting…" : hasRewrite ? "Regenerate rewrite" : "Generate tailored rewrite"}
-        </button>
         {gen.kind === "error" && (
           <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
             {gen.message}

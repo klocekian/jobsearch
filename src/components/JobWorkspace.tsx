@@ -20,7 +20,7 @@ import {
   loadAiDetection,
   saveAiDetection,
 } from "@/lib/storage";
-import { buildPackageMarkdown, packageFileName, downloadTextFile } from "@/lib/package";
+import { buildPackageMarkdown } from "@/lib/package";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 
@@ -35,7 +35,9 @@ const STATUS_OPTIONS = [
   { value: "offer", label: "Offer" },
   { value: "accepted", label: "Accepted" },
   { value: "rejected", label: "Rejected" },
+  { value: "declined", label: "Declined" },
   { value: "withdrawn", label: "Withdrawn" },
+  { value: "abandoned", label: "Abandoned" },
   { value: "closed", label: "Closed" },
 ];
 
@@ -47,7 +49,9 @@ const STATUS_COLORS: Record<string, string> = {
   offer: "bg-purple-50 text-purple-700",
   accepted: "bg-green-100 text-green-800",
   rejected: "bg-rose-50 text-rose-600",
+  declined: "bg-orange-50 text-orange-600",
   withdrawn: "bg-slate-100 text-slate-500",
+  abandoned: "bg-stone-100 text-stone-500",
   closed: "bg-slate-100 text-slate-400",
 };
 
@@ -157,12 +161,26 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }).catch(() => {});
   };
 
-  const updateStatus = async (status: string) => {
+  const updateStatus = async (newStatus: string) => {
     await fetch(`/api/jobs/${jobId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: newStatus }),
     });
+    if (newStatus === "applied" && analyzed && job) {
+      const resume = loadSavedResume();
+      const md = buildPackageMarkdown({
+        company: job.company, jobTitle: job.title, jobUrl: job.url,
+        jobText: job.posting_text, resume, resumeFallbackText: analyzed.resumeText,
+        coverLetter: coverLetterText(),
+        date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+      });
+      await fetch(`/api/jobs/${jobId}/submissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "package", label: `Application Package — ${new Date().toLocaleDateString()}`, format: "md", content: md }),
+      });
+    }
     fetchJob();
   };
 
@@ -208,27 +226,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     fetchJob();
   };
 
-  const downloadPackage = () => {
-    if (!analyzed || !job) return;
-    const resume = loadSavedResume();
-    const md = buildPackageMarkdown({
-      company: job.company, jobTitle: job.title, jobUrl: job.url,
-      jobText: job.posting_text, resume, resumeFallbackText: analyzed.resumeText,
-      coverLetter: coverLetterText(),
-      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-    });
-    downloadTextFile(packageFileName({ company: job.company, resume }), md);
-  };
-
   if (loading) return <p className="py-12 text-center text-sm text-slate-400">Loading…</p>;
   if (!job) return <p className="py-12 text-center text-sm text-slate-500">Job not found.</p>;
 
   return (
-    <div className="flex h-[calc(100vh-57px)] overflow-hidden">
-      {/* LEFT COLUMN */}
-      <div className="flex w-1/2 flex-col border-r border-slate-200">
+    <div className="grid h-[calc(100vh-57px)] grid-cols-2 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
         {/* Header */}
-        <div className="border-b border-slate-200 bg-white px-4 py-3">
+        <div className="col-start-1 row-start-1 border-b border-r border-slate-200 bg-white px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <Link href="/jobs" className="text-xs text-slate-400 hover:text-slate-600">← All jobs</Link>
@@ -253,7 +257,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         </div>
 
         {/* Left tabs */}
-        <div className="flex border-b border-slate-200 bg-white px-4">
+        <div className="col-start-1 row-start-2 flex border-b border-r border-slate-200 bg-white px-4">
           {([
             ["posting", "Job Posting"],
             ["apply", "Apply"],
@@ -273,7 +277,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         </div>
 
         {/* Left content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-slate-200 p-4">
           {leftTab === "posting" && (
             <div className="space-y-3">
               {!pasting && (
@@ -367,7 +371,10 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                         <p className="text-xs font-medium text-slate-700">{s.label}</p>
                         <p className="text-[10px] text-slate-400">{s.type} · {s.format}</p>
                       </div>
-                      <button onClick={() => deleteSubmission(s.id)} className="text-[10px] text-rose-400 hover:text-rose-600">Remove</button>
+                      <div className="flex gap-2">
+                        <a href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} className="text-[10px] font-medium text-brand hover:underline">Download</a>
+                        <button onClick={() => deleteSubmission(s.id)} className="text-[10px] text-rose-400 hover:text-rose-600">Remove</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -400,12 +407,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             </div>
           )}
         </div>
-      </div>
 
-      {/* RIGHT COLUMN */}
-      <div className="flex w-1/2 flex-col">
-        {/* Analysis controls — height matched to left header */}
-        <div className="border-b border-slate-200 bg-white px-4 py-3">
+        {/* Analysis controls */}
+        <div className="col-start-2 row-start-1 border-b border-slate-200 bg-white px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs text-slate-400">Resume</p>
@@ -440,17 +444,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               >
                 {analyzed ? "Re-run analysis" : "Run analysis"}
               </button>
-              {analyzed && (
-                <button onClick={downloadPackage} className="text-[11px] text-brand hover:underline">
-                  Download .md
-                </button>
-              )}
             </div>
           </div>
         </div>
 
         {/* Right tabs */}
-        <div className="flex border-b border-slate-200 bg-white px-4">
+        <div className="col-start-2 row-start-2 flex border-b border-slate-200 bg-white px-4">
           {([
             ["report", "Report"],
             ["resume", "Resume"],
@@ -469,7 +468,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         </div>
 
         {/* Right content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-4">
           {!analyzed && !job.posting_text && (
             <p className="py-12 text-center text-sm text-slate-400">Add a job posting and run analysis to see results here.</p>
           )}
@@ -503,7 +502,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             />
           )}
         </div>
-      </div>
     </div>
   );
 }

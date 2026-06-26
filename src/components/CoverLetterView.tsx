@@ -33,30 +33,38 @@ export function CoverLetterView({
   // Restore the full draft (letter, interests, header, date) so it survives tab
   // switches and the session. Read once on mount (client-only — no SSR here).
   const saved = useMemo(() => (typeof window === "undefined" ? null : loadCoverLetter()), []);
-  const initialContact = useMemo(() => extractContact(resumeText), [resumeText]);
 
   const [interests, setInterests] = useState(saved?.interests ?? "");
   const [letter, setLetter] = useState(saved?.letter ?? "");
-  const [contact, setContact] = useState<Contact>(saved?.contact ?? initialContact);
+  const [contact, setContact] = useState<Contact>(saved?.contact ?? { name: "", address: "", email: "", phone: "", website: "" });
   const [date, setDate] = useState(saved?.date ?? todayDisplay());
 
-  // Pull contact info from the saved default resume if the header fields are empty
+  // Load contact info from the profile autofill API
+  const [profileContact, setProfileContact] = useState<Contact | null>(null);
   useEffect(() => {
-    if (contact.name && contact.email) return;
-    fetch("/api/resumes").then(r => r.json()).then((d: { resumes?: { content: string; is_default: number }[] }) => {
-      const resumes = d.resumes ?? [];
-      const def = resumes.find(r => r.is_default) ?? resumes[0];
-      if (!def) return;
-      const parsed = extractContact(def.content);
-      setContact(prev => ({
-        name: prev.name || parsed.name,
-        address: prev.address || parsed.address,
-        email: prev.email || parsed.email,
-        phone: prev.phone || parsed.phone,
-        website: prev.website || parsed.website,
-      }));
+    fetch("/api/profile/autofill").then(r => r.json()).then((d: {
+      full_name?: string; email?: string; phone?: string; location?: string; website?: string;
+    }) => {
+      if (!d.full_name) return;
+      const profile: Contact = {
+        name: d.full_name || "",
+        address: d.location || "",
+        email: d.email || "",
+        phone: d.phone || "",
+        website: d.website || "",
+      };
+      setProfileContact(profile);
+      // Set contact if fields are empty or have placeholder/wrong data
+      setContact(prev => {
+        if (prev.name && prev.email && prev.name !== "Alex Morgan") return prev;
+        return profile;
+      });
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const resetFromProfile = () => {
+    if (profileContact) setContact(profileContact);
+  };
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -109,16 +117,34 @@ export function CoverLetterView({
 
   return (
     <div>
-      <div className="mb-5">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Cover Letter</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Generated from your resume and this job posting — grounded in your real experience, never
-          fabricated. Add a note below about what draws you to the role, then edit the draft and save
-          it as a PDF. Your draft is saved and restored as you work.
-        </p>
-        {restored && (
-          <p className="mt-1 text-xs text-emerald-600">Restored your saved draft.</p>
-        )}
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Cover Letter</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Generated from your resume and this job posting — grounded in your real experience, never
+            fabricated. Add a note below about what draws you to the role, then edit the draft and save
+            it as a PDF. Your draft is saved and restored as you work.
+          </p>
+          {restored && (
+            <p className="mt-1 text-xs text-emerald-600">Restored your saved draft.</p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={generate}
+            disabled={status === "loading"}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {status === "loading" ? "Writing…" : letter ? "Regenerate" : "Generate"}
+          </button>
+          <button
+            onClick={downloadPdf}
+            disabled={!letter.trim()}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+          >
+            Download PDF
+          </button>
+        </div>
       </div>
 
       <div className="mb-4">
@@ -136,14 +162,6 @@ export function CoverLetterView({
           placeholder="e.g. I've wanted to work on consumer subscription products at scale, and the AI-first pivot is exactly the kind of ambiguity I like leading through."
         />
       </label>
-
-      <button
-        onClick={generate}
-        disabled={status === "loading"}
-        className="mt-4 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {status === "loading" ? "Writing…" : letter ? "Regenerate" : "Write cover letter"}
-      </button>
 
       {status === "error" && (
         <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
@@ -167,7 +185,7 @@ export function CoverLetterView({
               <h3 className="text-sm font-semibold text-slate-700">Letter header</h3>
               <button
                 type="button"
-                onClick={() => setContact(extractContact(resumeText))}
+                onClick={resetFromProfile}
                 title="Re-detect name, location, phone, etc. from your résumé"
                 className="rounded-md px-2 py-1 text-xs font-medium text-brand transition hover:bg-slate-100"
               >
@@ -176,7 +194,7 @@ export function CoverLetterView({
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Full name">
-                <input className="input" value={contact.name} onChange={(e) => setField("name", e.target.value)} placeholder="Alex Morgan" />
+                <input className="input" value={contact.name} onChange={(e) => setField("name", e.target.value)} placeholder="Your name" />
               </Field>
               <Field label="Address / location">
                 <input className="input" value={contact.address} onChange={(e) => setField("address", e.target.value)} placeholder="San Francisco, CA" />
