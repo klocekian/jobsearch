@@ -37,18 +37,10 @@ export function CoverLetterView({
   const [interests, setInterests] = useState(saved?.interests ?? "");
   const [letter, setLetter] = useState(saved?.letter ?? "");
   const resumeContact = useMemo(() => extractContact(resumeText), [resumeText]);
-  const [contact, setContact] = useState<Contact>(() => {
-    if (saved?.contact?.name && saved.contact.email) return saved.contact;
-    return resumeContact;
-  });
+  const [contact, setContact] = useState<Contact>(() => resumeContact);
   const [date, setDate] = useState(saved?.date ?? todayDisplay());
 
-  useEffect(() => {
-    setContact(prev => {
-      if (prev.name && prev.email) return prev;
-      return resumeContact;
-    });
-  }, [resumeContact]);
+  useEffect(() => { setContact(resumeContact); }, [resumeContact]);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
