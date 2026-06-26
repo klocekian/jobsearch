@@ -36,35 +36,19 @@ export function CoverLetterView({
 
   const [interests, setInterests] = useState(saved?.interests ?? "");
   const [letter, setLetter] = useState(saved?.letter ?? "");
-  const [contact, setContact] = useState<Contact>(saved?.contact ?? { name: "", address: "", email: "", phone: "", website: "" });
+  const resumeContact = useMemo(() => extractContact(resumeText), [resumeText]);
+  const [contact, setContact] = useState<Contact>(() => {
+    if (saved?.contact?.name && saved.contact.email) return saved.contact;
+    return resumeContact;
+  });
   const [date, setDate] = useState(saved?.date ?? todayDisplay());
 
-  // Load contact info from the profile autofill API
-  const [profileContact, setProfileContact] = useState<Contact | null>(null);
   useEffect(() => {
-    fetch("/api/profile/autofill").then(r => r.json()).then((d: {
-      full_name?: string; email?: string; phone?: string; location?: string; website?: string;
-    }) => {
-      if (!d.full_name) return;
-      const profile: Contact = {
-        name: d.full_name || "",
-        address: d.location || "",
-        email: d.email || "",
-        phone: d.phone || "",
-        website: d.website || "",
-      };
-      setProfileContact(profile);
-      // Set contact if fields are empty or have placeholder/wrong data
-      setContact(prev => {
-        if (prev.name && prev.email && prev.name !== "Alex Morgan") return prev;
-        return profile;
-      });
-    }).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const resetFromProfile = () => {
-    if (profileContact) setContact(profileContact);
-  };
+    setContact(prev => {
+      if (prev.name && prev.email) return prev;
+      return resumeContact;
+    });
+  }, [resumeContact]);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -185,7 +169,7 @@ export function CoverLetterView({
               <h3 className="text-sm font-semibold text-slate-700">Letter header</h3>
               <button
                 type="button"
-                onClick={resetFromProfile}
+                onClick={() => setContact(resumeContact)}
                 title="Re-detect name, location, phone, etc. from your résumé"
                 className="rounded-md px-2 py-1 text-xs font-medium text-brand transition hover:bg-slate-100"
               >
