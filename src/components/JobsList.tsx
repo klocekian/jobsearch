@@ -14,7 +14,9 @@ const STATUS_COLORS: Record<string, string> = {
   offer: "bg-purple-50 text-purple-700",
   accepted: "bg-green-100 text-green-800",
   rejected: "bg-rose-50 text-rose-600",
+  declined: "bg-orange-50 text-orange-600",
   withdrawn: "bg-slate-100 text-slate-500",
+  abandoned: "bg-stone-100 text-stone-500",
   closed: "bg-slate-100 text-slate-400",
 };
 
@@ -117,7 +119,9 @@ export function JobsList() {
           <option value="offer">Offer</option>
           <option value="accepted">Accepted</option>
           <option value="rejected">Rejected</option>
+          <option value="declined">Declined</option>
           <option value="withdrawn">Withdrawn</option>
+          <option value="abandoned">Abandoned</option>
           <option value="closed">Closed</option>
         </select>
         <div className="ml-auto flex items-center gap-2">
@@ -199,7 +203,9 @@ export function JobsList() {
                       <option value="offer">Offer</option>
                       <option value="accepted">Accepted</option>
                       <option value="rejected">Rejected</option>
+                      <option value="declined">Declined</option>
                       <option value="withdrawn">Withdrawn</option>
+                      <option value="abandoned">Abandoned</option>
                       <option value="closed">Closed</option>
                     </select>
                   </td>
