@@ -1,0 +1,27 @@
+export const STATUS_OPTIONS = [
+  { value: "saved", label: "Saved" },
+  { value: "applying", label: "Applying" },
+  { value: "applied", label: "Applied" },
+  { value: "interview", label: "Interview" },
+  { value: "offer", label: "Offer" },
+  { value: "accepted", label: "Accepted" },
+  { value: "rejected", label: "Rejected" },
+  { value: "declined", label: "Declined" },
+  { value: "withdrawn", label: "Withdrawn" },
+  { value: "abandoned", label: "Abandoned" },
+  { value: "closed", label: "Closed" },
+] as const;
+
+export const STATUS_COLORS: Record<string, string> = {
+  saved: "bg-slate-100 text-slate-600",
+  applying: "bg-amber-50 text-amber-700",
+  applied: "bg-blue-50 text-blue-700",
+  interview: "bg-emerald-50 text-emerald-700",
+  offer: "bg-purple-50 text-purple-700",
+  accepted: "bg-green-100 text-green-800",
+  rejected: "bg-rose-50 text-rose-600",
+  declined: "bg-orange-50 text-orange-600",
+  withdrawn: "bg-slate-100 text-slate-500",
+  abandoned: "bg-stone-100 text-stone-500",
+  closed: "bg-slate-100 text-slate-400",
+};
