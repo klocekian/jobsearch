@@ -306,24 +306,18 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Connected
           </span>
-          <a href="/api/auth/anthropic" className="text-xs text-slate-400 hover:text-slate-600">
-            Reconnect
-          </a>
           <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600">
-            Paste key instead
+            Update
           </button>
           {msg && <span className="text-xs text-emerald-600">{msg}</span>}
         </div>
       ) : !editing ? (
-        <div className="flex items-center gap-3">
-          <a
-            href="/api/auth/anthropic"
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+        <div>
+          <button
+            onClick={() => setEditing(true)}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Connect with Claude
-          </a>
-          <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600">
-            Or paste an API key
+            Connect Claude
           </button>
           {msg && <span className="ml-3 text-xs text-emerald-600">{msg}</span>}
         </div>
@@ -337,18 +331,16 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
             placeholder="sk-ant-oat01-... or sk-ant-api03-..."
             autoFocus
           />
-          <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 space-y-1.5">
-            <p className="font-medium text-slate-600">Two options:</p>
+          <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 space-y-1">
             <p>
-              <strong>Max/Pro subscribers</strong> — use your OAuth token (bills against your subscription).
-              Run <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px]">ant auth print-credentials --access-token</code> in
-              a terminal, or copy <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px]">access_token</code> from <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px]">~/.config/anthropic/credentials/default.json</code>.
+              <strong>API key</strong> — create at{" "}
+              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+                console.anthropic.com/settings/keys
+              </a>
             </p>
             <p>
-              <strong>API users</strong> — create a key at{" "}
-              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-                console.anthropic.com
-              </a>.
+              <strong>Max/Pro token</strong> — run in terminal:{" "}
+              <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth print-credentials --access-token</code>
             </p>
           </div>
           <div className="flex gap-2">

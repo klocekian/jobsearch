@@ -5,10 +5,24 @@ export const runtime = "nodejs";
 
 type Params = { params: Promise<{ id: string; sid: string }> };
 
-export async function GET(_request: Request, ctx: Params) {
+export async function GET(request: Request, ctx: Params) {
   const { sid } = await ctx.params;
   const submission = await getSubmission(Number(sid));
   if (!submission) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const url = new URL(request.url);
+  if (url.searchParams.get("download") === "1" && submission.content) {
+    const mimeTypes: Record<string, string> = {
+      md: "text/markdown", txt: "text/plain", pdf: "application/pdf",
+    };
+    const mime = mimeTypes[submission.format] ?? "text/plain";
+    return new NextResponse(submission.content, {
+      headers: {
+        "Content-Type": mime,
+        "Content-Disposition": `attachment; filename="${submission.label}.${submission.format}"`,
+      },
+    });
+  }
 
   if (submission.content) {
     return NextResponse.json({ submission });
