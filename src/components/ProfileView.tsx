@@ -296,8 +296,8 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="mb-3 text-sm font-semibold text-slate-700">Claude AI</h2>
       <p className="mb-3 text-xs text-slate-500">
-        Connect your Anthropic API key to enable AI features: cover letter generation,
-        resume rewriting, and smart field extraction when adding jobs.
+        Connect your Anthropic account to enable AI features: cover letter generation,
+        resume rewriting, and smart field extraction. Uses your Max/Pro subscription credits.
       </p>
 
       {connected && !editing ? (
@@ -306,18 +306,24 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             Connected
           </span>
+          <a href="/api/auth/anthropic" className="text-xs text-slate-400 hover:text-slate-600">
+            Reconnect
+          </a>
           <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600">
-            Update key
+            Paste key instead
           </button>
           {msg && <span className="text-xs text-emerald-600">{msg}</span>}
         </div>
       ) : !editing ? (
-        <div>
-          <button
-            onClick={() => setEditing(true)}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+        <div className="flex items-center gap-3">
+          <a
+            href="/api/auth/anthropic"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Add API Key
+            Connect with Claude
+          </a>
+          <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600">
+            Or paste an API key
           </button>
           {msg && <span className="ml-3 text-xs text-emerald-600">{msg}</span>}
         </div>
