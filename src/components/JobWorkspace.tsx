@@ -107,16 +107,19 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load existing match report if available
+  // Load existing match report if available (wait for resumeText to load)
   useEffect(() => {
-    if (!job) return;
+    if (!job || !resumeText) return;
     if (job.match_report && job.posting_text) {
-      try {
-        const report = JSON.parse(job.match_report) as MatchReport;
-        setAnalyzed({ report, resumeText, jobText: job.posting_text });
-      } catch { /* invalid stored report */ }
+      setAnalyzed(prev => {
+        if (prev) return prev;
+        try {
+          const report = JSON.parse(job.match_report!) as MatchReport;
+          return { report, resumeText, jobText: job.posting_text! };
+        } catch { return prev; }
+      });
     }
-  }, [job?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [job?.id, resumeText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI detection
   useEffect(() => {
