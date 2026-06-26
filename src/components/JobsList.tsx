@@ -1,24 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
+import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "created_at" | "applied_at";
-
-const STATUS_COLORS: Record<string, string> = {
-  saved: "bg-slate-100 text-slate-600",
-  applying: "bg-amber-50 text-amber-700",
-  applied: "bg-blue-50 text-blue-700",
-  interview: "bg-emerald-50 text-emerald-700",
-  offer: "bg-purple-50 text-purple-700",
-  accepted: "bg-green-100 text-green-800",
-  rejected: "bg-rose-50 text-rose-600",
-  declined: "bg-orange-50 text-orange-600",
-  withdrawn: "bg-slate-100 text-slate-500",
-  abandoned: "bg-stone-100 text-stone-500",
-  closed: "bg-slate-100 text-slate-400",
-};
 
 function formatSalary(job: JobRow): string {
   if (job.salary_text) return job.salary_text;
@@ -36,11 +24,13 @@ function formatDate(iso: string | null): string {
 }
 
 export function JobsList() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
   const [search, setSearch] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
@@ -58,6 +48,14 @@ export function JobsList() {
   }, [sortKey, sortOrder, statusFilter, search]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  const updateStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) params.set("status", value);
+    else params.delete("status");
+    router.replace(`/jobs?${params}`, { scroll: false });
+  };
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -108,21 +106,11 @@ export function JobsList() {
         />
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => updateStatusFilter(e.target.value)}
           className="input max-w-[160px]"
         >
           <option value="">All statuses</option>
-          <option value="saved">Saved</option>
-          <option value="applying">Applying</option>
-          <option value="applied">Applied</option>
-          <option value="interview">Interview</option>
-          <option value="offer">Offer</option>
-          <option value="accepted">Accepted</option>
-          <option value="rejected">Rejected</option>
-          <option value="declined">Declined</option>
-          <option value="withdrawn">Withdrawn</option>
-          <option value="abandoned">Abandoned</option>
-          <option value="closed">Closed</option>
+          {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -196,17 +184,7 @@ export function JobsList() {
                       }}
                       className={`rounded-full border-0 px-2 py-0.5 text-[10px] font-semibold capitalize cursor-pointer ${STATUS_COLORS[job.status] ?? STATUS_COLORS.saved}`}
                     >
-                      <option value="saved">Saved</option>
-                      <option value="applying">Applying</option>
-                      <option value="applied">Applied</option>
-                      <option value="interview">Interview</option>
-                      <option value="offer">Offer</option>
-                      <option value="accepted">Accepted</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="declined">Declined</option>
-                      <option value="withdrawn">Withdrawn</option>
-                      <option value="abandoned">Abandoned</option>
-                      <option value="closed">Closed</option>
+                      {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                     </select>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-slate-500">{formatSalary(job)}</td>
