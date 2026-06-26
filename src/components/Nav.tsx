@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 const links = [
   { href: "/jobs", label: "Jobs" },
-  { href: "/", label: "Analyze" },
   { href: "/profile", label: "Profile" },
 ] as const;
 
@@ -31,7 +30,7 @@ export function Nav() {
         </Link>
         <div className="flex gap-1">
           {links.map((l) => {
-            const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
+            const active = pathname.startsWith(l.href);
             return (
               <Link
                 key={l.href}
