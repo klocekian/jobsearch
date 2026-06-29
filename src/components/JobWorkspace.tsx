@@ -414,15 +414,17 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 }
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                onClick={runAnalysis}
-                disabled={!resumeText.trim() || !job.posting_text.trim()}
-                className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-              >
-                {analyzed ? "Re-run analysis" : "Run analysis"}
-              </button>
-            </div>
+            {!analyzed && (
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={runAnalysis}
+                  disabled={!resumeText.trim() || !job.posting_text.trim()}
+                  className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+                >
+                  Run analysis
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -455,7 +457,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           )}
 
           {analyzed && rightTab === "report" && (
-            <MatchReportView report={analyzed.report} aiDetection={aiDetection} />
+            <MatchReportView
+              report={analyzed.report}
+              aiDetection={aiDetection}
+              onRunAnalysis={runAnalysis}
+              analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
+              hasAnalysis={!!analyzed}
+            />
           )}
           {analyzed && rightTab === "resume" && (
             <ResumeView
