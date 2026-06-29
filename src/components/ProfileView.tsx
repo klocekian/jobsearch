@@ -328,21 +328,15 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
             className="input font-mono text-xs"
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            placeholder="sk-ant-oat01-... or sk-ant-api03-..."
+            placeholder="sk-ant-api03-..."
             autoFocus
           />
-          <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 space-y-1">
-            <p>
-              <strong>API key</strong> — create at{" "}
-              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-                console.anthropic.com/settings/keys
-              </a>
-            </p>
-            <p>
-              <strong>Max/Pro token</strong> — run in terminal:{" "}
-              <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth print-credentials --access-token</code>
-            </p>
-          </div>
+          <p className="text-[11px] text-slate-500">
+            Create an API key at{" "}
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+              console.anthropic.com/settings/keys
+            </a>
+          </p>
           <div className="flex gap-2">
             <button onClick={save} disabled={!key.trim() || saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
