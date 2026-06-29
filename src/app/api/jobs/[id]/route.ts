@@ -20,6 +20,7 @@ const UpdateSchema = z.object({
   match_score: z.number().int().nullable().optional(),
   match_report: z.string().nullable().optional(),
   applied_at: z.string().nullable().optional(),
+  previous_status: z.string().max(50).nullable().optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
