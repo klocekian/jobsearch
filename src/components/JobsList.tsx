@@ -39,6 +39,7 @@ export function JobsList() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [importing, setImporting] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
   // Restore filter from sessionStorage before first fetch
@@ -129,6 +130,26 @@ export function JobsList() {
     }
   };
 
+  const checkClosed = async () => {
+    setChecking(true);
+    setImportMsg("");
+    try {
+      const res = await fetch("/api/jobs/check-status", { method: "POST" });
+      const data: { checked?: number; closed?: number; closedJobs?: { company: string }[] } = await res.json();
+      if (data.closed && data.closed > 0) {
+        const names = data.closedJobs?.map((j) => j.company).join(", ") ?? "";
+        setImportMsg(`Checked ${data.checked} jobs — ${data.closed} now closed${names ? `: ${names}` : ""}.`);
+        fetchJobs();
+      } else {
+        setImportMsg(`Checked ${data.checked ?? 0} jobs — all still open.`);
+      }
+    } catch {
+      setImportMsg("Failed to check job URLs.");
+    } finally {
+      setChecking(false);
+    }
+  };
+
   const SortHeader = ({ label, field }: { label: string; field: SortKey }) => (
     <th
       className="cursor-pointer px-3 py-2 text-left text-xs font-medium text-slate-500 transition hover:text-slate-800 select-none"
@@ -160,6 +181,13 @@ export function JobsList() {
           {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={checkClosed}
+            disabled={checking}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            {checking ? "Checking…" : "Check closed"}
+          </button>
           <button
             onClick={importFromSheet}
             disabled={importing}
