@@ -16,10 +16,11 @@ export async function GET(request: Request, ctx: Params) {
       md: "text/markdown", txt: "text/plain", pdf: "application/pdf",
     };
     const mime = mimeTypes[submission.format] ?? "text/plain";
+    const safeName = submission.label.replace(/[/\\:"*?<>|]/g, "-");
     return new NextResponse(submission.content, {
       headers: {
         "Content-Type": mime,
-        "Content-Disposition": `attachment; filename="${submission.label}.${submission.format}"`,
+        "Content-Disposition": `attachment; filename="${safeName}.${submission.format}"`,
       },
     });
   }
