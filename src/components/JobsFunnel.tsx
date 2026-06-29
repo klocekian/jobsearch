@@ -6,13 +6,13 @@ import { STATUS_OPTIONS } from "@/lib/status";
 
 const FUNNEL_ORDER = ["saved", "applying", "applied", "interview", "offer", "accepted"];
 
-const FUNNEL_COLORS: Record<string, string> = {
-  saved: "bg-slate-300",
-  applying: "bg-amber-400",
-  applied: "bg-blue-400",
-  interview: "bg-emerald-400",
-  offer: "bg-purple-400",
-  accepted: "bg-green-500",
+const STAGE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  saved: { bg: "bg-slate-50", border: "border-slate-300", text: "text-slate-700" },
+  applying: { bg: "bg-amber-50", border: "border-amber-300", text: "text-amber-700" },
+  applied: { bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-700" },
+  interview: { bg: "bg-emerald-50", border: "border-emerald-300", text: "text-emerald-700" },
+  offer: { bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-700" },
+  accepted: { bg: "bg-green-50", border: "border-green-400", text: "text-green-700" },
 };
 
 const TERMINAL = ["rejected", "declined", "withdrawn", "abandoned", "closed"];
@@ -39,39 +39,37 @@ export function JobsFunnel() {
     count: counts[status] ?? 0,
   }));
 
-  const terminalCount = TERMINAL.reduce((sum, s) => sum + (counts[s] ?? 0), 0);
-  const max = Math.max(...funnelStages.map((s) => s.count), 1);
-
   return (
     <div>
       <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-1 text-lg font-bold text-slate-900">Application Funnel</h2>
-        <p className="mb-6 text-xs text-slate-400">{jobs.length} total jobs tracked</p>
+        <h2 className="mb-1 text-lg font-bold text-slate-900">Application Pipeline</h2>
+        <p className="mb-8 text-xs text-slate-400">{jobs.length} total jobs tracked</p>
 
-        <div className="space-y-3">
-          {funnelStages.map((stage) => (
-            <div key={stage.status} className="flex items-center gap-3">
-              <div className="w-24 shrink-0 text-right text-xs font-medium text-slate-600">
-                {stage.label}
-              </div>
-              <div className="relative h-8 flex-1 rounded-lg bg-slate-50">
-                {stage.count > 0 && (
-                  <div
-                    className={`h-full rounded-lg ${FUNNEL_COLORS[stage.status] ?? "bg-slate-300"} transition-all duration-500`}
-                    style={{ width: `${Math.max((stage.count / max) * 100, 4)}%` }}
-                  />
+        {/* Pipeline flow */}
+        <div className="flex items-center gap-0 overflow-x-auto pb-2">
+          {funnelStages.map((stage, i) => {
+            const colors = STAGE_COLORS[stage.status] ?? STAGE_COLORS.saved;
+            return (
+              <div key={stage.status} className="flex items-center">
+                <div className={`flex flex-col items-center rounded-xl border-2 ${colors.border} ${colors.bg} px-5 py-4 min-w-[90px]`}>
+                  <div className={`text-2xl font-bold ${colors.text}`}>{stage.count}</div>
+                  <div className="mt-1 text-[11px] font-medium text-slate-500">{stage.label}</div>
+                </div>
+                {i < funnelStages.length - 1 && (
+                  <div className="flex items-center px-1">
+                    <div className="h-0.5 w-6 bg-slate-200" />
+                    <div className="h-0 w-0 border-y-[5px] border-l-[6px] border-y-transparent border-l-slate-300" />
+                  </div>
                 )}
-                <span className="absolute inset-0 flex items-center px-3 text-xs font-semibold text-slate-700">
-                  {stage.count}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {terminalCount > 0 && (
-          <div className="mt-6 border-t border-slate-100 pt-4">
-            <div className="mb-2 text-xs font-medium text-slate-400">Ended</div>
+        {/* Terminal statuses */}
+        {TERMINAL.some((s) => (counts[s] ?? 0) > 0) && (
+          <div className="mt-8 border-t border-slate-100 pt-4">
+            <div className="mb-3 text-xs font-medium text-slate-400">Ended</div>
             <div className="flex flex-wrap gap-3">
               {TERMINAL.map((s) => {
                 const c = counts[s] ?? 0;
