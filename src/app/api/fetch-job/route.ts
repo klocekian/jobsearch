@@ -221,7 +221,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (err: unknown) {
     if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Anthropic authentication failed — check ANTHROPIC_API_KEY or run `ant auth login`." }, { status: 502 });
+      return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });
     }
     if (err instanceof Anthropic.RateLimitError) {
       return NextResponse.json({ error: "Rate limited by the Anthropic API. Try again shortly." }, { status: 429 });
