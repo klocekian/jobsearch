@@ -35,15 +35,28 @@ async function clipPage() {
   }
 }
 
+async function loadRecentJobs() {
+  const list = $("recentJobs");
+  if (!list) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/jobs?sort=created_at&order=desc`, { credentials: "include" });
+    if (!res.ok) return;
+    const data = await res.json();
+    const jobs = (data.jobs ?? []).slice(0, 5);
+    if (jobs.length === 0) { list.style.display = "none"; return; }
+    list.innerHTML = `<div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px">Recent clips</div>` +
+      jobs.map((j) => `<a href="${API_BASE}/jobs/${j.id}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${j.company || "—"}</strong> · ${j.title || "—"}</a>`).join("");
+  } catch { /* ignore */ }
+}
+
 async function init() {
   const clipBtn = $("clipBtn");
   if (clipBtn) {
-    // Side panel mode — wait for user to click "Clip this page"
     clipBtn.addEventListener("click", clipPage);
   } else {
-    // Popup mode — clip immediately
     clipPage();
   }
+  loadRecentJobs();
 }
 
 function extractLocally(data) {
