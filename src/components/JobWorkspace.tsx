@@ -140,6 +140,14 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ match_score: report.score, match_report: JSON.stringify(report) }),
     }).catch(() => {});
+    const selectedResume = savedResumes.find(r => r.content === resumeText);
+    if (selectedResume && job.company) {
+      fetch(`/api/resumes/${selectedResume.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ add_tag: job.company }),
+      }).catch(() => {});
+    }
   };
 
   const updateStatus = async (newStatus: string) => {

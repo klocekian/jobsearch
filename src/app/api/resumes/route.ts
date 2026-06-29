@@ -10,6 +10,7 @@ const CreateSchema = z.object({
   content: z.string(),
   file_name: z.string().max(500).optional(),
   is_default: z.boolean().optional(),
+  tags: z.array(z.string().max(100)).optional(),
 });
 
 export async function GET() {

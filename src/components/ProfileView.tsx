@@ -9,6 +9,7 @@ interface Resume {
   content: string;
   file_name: string;
   is_default: number;
+  tags: string;
   created_at: string;
   updated_at: string;
 }
@@ -244,6 +245,16 @@ export function ProfileView() {
                         {" · Updated "}
                         {new Date(r.updated_at.replace(" ", "T")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </p>
+                      {(() => {
+                        const tags: string[] = (() => { try { return JSON.parse(r.tags || "[]"); } catch { return []; } })();
+                        return tags.length > 0 ? (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {tags.map((t) => (
+                              <span key={t} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">{t}</span>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                       <p className="mt-2 line-clamp-2 text-xs text-slate-500">{r.content.slice(0, 200)}</p>
                     </div>
                     <div className="ml-4 flex shrink-0 gap-1">
