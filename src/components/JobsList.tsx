@@ -30,9 +30,7 @@ export function JobsList() {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [statusFilter, setStatusFilter] = useState(
-    searchParams.get("status") ?? (typeof window !== "undefined" ? sessionStorage.getItem("jobsStatusFilter") : null) ?? ""
-  );
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
   const [search, setSearch] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
@@ -52,10 +50,14 @@ export function JobsList() {
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   useEffect(() => {
-    if (statusFilter && !searchParams.get("status")) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("status", statusFilter);
-      router.replace(`/jobs?${params}`, { scroll: false });
+    if (!searchParams.get("status")) {
+      const stored = sessionStorage.getItem("jobsStatusFilter");
+      if (stored) {
+        setStatusFilter(stored);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("status", stored);
+        router.replace(`/jobs?${params}`, { scroll: false });
+      }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
