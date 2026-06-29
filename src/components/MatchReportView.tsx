@@ -257,17 +257,13 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
       {subTab === "match" && (
         <>
           {report.meta.jobTitle && (
-            <div className="mb-1 text-sm text-slate-500">{report.meta.jobTitle}</div>
-          )}
-          {report.meta.jobUrl && (
-            <a
-              href={report.meta.jobUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-1 block break-all text-sm text-brand hover:underline"
-            >
-              {report.meta.jobUrl}
-            </a>
+            report.meta.jobUrl ? (
+              <a href={report.meta.jobUrl} target="_blank" rel="noopener noreferrer" className="mb-1 block text-sm text-brand hover:underline">
+                {report.meta.jobTitle} ↗
+              </a>
+            ) : (
+              <div className="mb-1 text-sm text-slate-500">{report.meta.jobTitle}</div>
+            )
           )}
           <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-900">Match Report</h1>
 
