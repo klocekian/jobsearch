@@ -101,6 +101,15 @@ export async function getDb(): Promise<Client> {
     try { await client.execute(sql); } catch { /* already exists */ }
   }
 
+  // One-time backfill: set previous_status for existing terminal jobs
+  const backfills = [
+    "UPDATE jobs SET previous_status = 'applied' WHERE status = 'rejected' AND previous_status IS NULL",
+    "UPDATE jobs SET previous_status = 'saved' WHERE status IN ('closed', 'abandoned') AND previous_status IS NULL",
+  ];
+  for (const sql of backfills) {
+    try { await client.execute(sql); } catch { /* ignore */ }
+  }
+
   _initialized = true;
   return client;
 }
