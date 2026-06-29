@@ -7,6 +7,7 @@ export interface ResumeRow {
   content: string;
   file_name: string;
   is_default: number;
+  tags: string;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +43,7 @@ export async function createResume(userId: number | null, data: {
   content: string;
   file_name?: string;
   is_default?: boolean;
+  tags?: string[];
 }): Promise<ResumeRow> {
   const db = await getDb();
   if (data.is_default) {
@@ -52,10 +54,21 @@ export async function createResume(userId: number | null, data: {
     }
   }
   const result = await db.execute({
-    sql: "INSERT INTO resumes (user_id, name, content, file_name, is_default) VALUES (?, ?, ?, ?, ?) RETURNING *",
-    args: [userId, data.name, data.content, data.file_name ?? "", data.is_default ? 1 : 0],
+    sql: "INSERT INTO resumes (user_id, name, content, file_name, is_default, tags) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
+    args: [userId, data.name, data.content, data.file_name ?? "", data.is_default ? 1 : 0, JSON.stringify(data.tags ?? [])],
   });
   return rowToResume(result.rows[0]);
+}
+
+export async function addResumeTag(id: number, tag: string): Promise<void> {
+  const db = await getDb();
+  const resume = await getResume(id);
+  if (!resume) return;
+  const tags: string[] = JSON.parse(resume.tags || "[]");
+  if (!tags.includes(tag)) {
+    tags.push(tag);
+    await db.execute({ sql: "UPDATE resumes SET tags = ? WHERE id = ?", args: [JSON.stringify(tags), id] });
+  }
 }
 
 export async function updateResume(id: number, data: {

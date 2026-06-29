@@ -160,6 +160,23 @@ export function ResumeView({
           >
             {exporting.kind === "loading" ? "Preparing…" : "Download PDF"}
           </button>
+          <button
+            onClick={async () => {
+              const text = resultRef.current.trim() || original;
+              const name = `${company ? company.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, "_").toLowerCase() : "tailored"}_resume_${new Date().getFullYear()}`;
+              const res = await fetch("/api/resumes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, content: text, tags: [company].filter(Boolean) }),
+              });
+              if (res.ok) {
+                alert("Saved as new resume in your Profile.");
+              }
+            }}
+            className="rounded-lg border border-slate-300 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
+            Save as Resume
+          </button>
         </div>
       </div>
 

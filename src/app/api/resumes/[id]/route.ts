@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getResume, updateResume, deleteResume } from "@/lib/db/resumes";
+import { getResume, updateResume, deleteResume, addResumeTag } from "@/lib/db/resumes";
 
 export const runtime = "nodejs";
 
@@ -23,7 +23,12 @@ export async function GET(_request: Request, ctx: Params) {
 export async function PATCH(request: Request, ctx: Params) {
   const { id } = await ctx.params;
   try {
-    const body: unknown = await request.json();
+    const body = await request.json() as Record<string, unknown>;
+    if (typeof body.add_tag === "string") {
+      await addResumeTag(Number(id), body.add_tag);
+      const resume = await getResume(Number(id));
+      return NextResponse.json({ resume });
+    }
     const data = UpdateSchema.parse(body);
     const resume = await updateResume(Number(id), data);
     if (!resume) return NextResponse.json({ error: "Not found" }, { status: 404 });
