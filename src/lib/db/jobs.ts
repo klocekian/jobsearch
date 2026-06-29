@@ -68,7 +68,7 @@ export async function listJobs(userId: number | null, opts?: {
     params.push(opts.status);
   }
   if (opts?.search) {
-    conditions.push("(company LIKE ? OR title LIKE ? OR posting_text LIKE ?)");
+    conditions.push("(company LIKE ? COLLATE NOCASE OR title LIKE ? COLLATE NOCASE OR location LIKE ? COLLATE NOCASE)");
     const like = `%${opts.search}%`;
     params.push(like, like, like);
   }
