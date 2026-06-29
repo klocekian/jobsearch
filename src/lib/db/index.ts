@@ -82,6 +82,7 @@ export async function getDb(): Promise<Client> {
   const addColumns = [
     "ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
     "ALTER TABLE resumes ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
+    "ALTER TABLE jobs ADD COLUMN previous_status TEXT",
   ];
   for (const sql of addColumns) {
     try { await client.execute(sql); } catch { /* already exists */ }

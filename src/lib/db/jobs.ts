@@ -21,6 +21,7 @@ export interface JobRow {
   created_at: string;
   updated_at: string;
   applied_at: string | null;
+  previous_status: string | null;
 }
 
 export type JobInsert = Partial<Omit<JobRow, "id" | "created_at" | "updated_at">>;
