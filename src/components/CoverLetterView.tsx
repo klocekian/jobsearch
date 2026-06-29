@@ -109,14 +109,14 @@ export function CoverLetterView({
           <button
             onClick={generate}
             disabled={status === "loading"}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {status === "loading" ? "Writing…" : letter ? "Regenerate" : "Generate"}
           </button>
           <button
             onClick={downloadPdf}
             disabled={!letter.trim()}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
           >
             Download PDF
           </button>
