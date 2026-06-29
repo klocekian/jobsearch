@@ -54,6 +54,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [aiDetection, setAiDetection] = useState<AiDetectionState>({ status: "loading", data: null });
   const [materials, setMaterials] = useState<ContextMaterial[]>(() => loadContextMaterials());
   const fileRef = useRef<HTMLInputElement>(null);
+  const [splitPct, setSplitPct] = useState(50);
+  const dragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { saveContextMaterials(materials); }, [materials]);
 
@@ -204,11 +207,43 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     fetchJob();
   };
 
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setSplitPct(Math.max(25, Math.min(75, pct)));
+    };
+    const onUp = () => {
+      dragging.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, []);
+
   if (loading) return <p className="py-12 text-center text-sm text-slate-400">Loading…</p>;
   if (!job) return <p className="py-12 text-center text-sm text-slate-500">Job not found.</p>;
 
   return (
-    <div className="grid h-[calc(100vh-57px)] grid-cols-2 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden"
+      style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}
+    >
+      {/* Drag handle */}
+      <div
+        onMouseDown={onDragStart}
+        className="absolute top-0 bottom-0 z-10 w-1 cursor-col-resize bg-transparent hover:bg-brand/30 active:bg-brand/50 transition-colors"
+        style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
+      />
         {/* Header */}
         <div className="col-start-1 row-start-1 border-b border-r border-slate-200 bg-white px-4 py-3">
           <div className="flex items-start justify-between gap-3">
