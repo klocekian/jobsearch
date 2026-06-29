@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type {
   MatchReport,
   SearchabilityGroup,
@@ -16,9 +17,14 @@ export interface AiDetectionState {
   data: AiDetection | null;
 }
 
+type ReportSubTab = "match" | "ai";
+
 interface MatchReportViewProps {
   report: MatchReport;
   aiDetection: AiDetectionState;
+  onRunAnalysis?: () => void;
+  analysisDisabled?: boolean;
+  hasAnalysis?: boolean;
 }
 
 function SummaryCards({ report }: { report: MatchReport }) {
@@ -218,45 +224,81 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
   );
 }
 
-export function MatchReportView({ report, aiDetection }: MatchReportViewProps) {
+export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDisabled, hasAnalysis }: MatchReportViewProps) {
+  const [subTab, setSubTab] = useState<ReportSubTab>("match");
+
   return (
     <div>
-      {report.meta.jobTitle && (
-        <div className="mb-1 text-sm text-slate-500">{report.meta.jobTitle}</div>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex">
+          {(["match", "ai"] as const).map((key) => (
+            <button
+              key={key}
+              onClick={() => setSubTab(key)}
+              className={`-mb-px border-b-2 px-3 py-2 text-xs font-medium transition ${
+                subTab === key ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {key === "match" ? "Match" : "AI Detection"}
+            </button>
+          ))}
+        </div>
+        {onRunAnalysis && (
+          <button
+            onClick={onRunAnalysis}
+            disabled={analysisDisabled}
+            className="shrink-0 rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+          >
+            {hasAnalysis ? "Re-run analysis" : "Run analysis"}
+          </button>
+        )}
+      </div>
+
+      {subTab === "match" && (
+        <>
+          {report.meta.jobTitle && (
+            <div className="mb-1 text-sm text-slate-500">{report.meta.jobTitle}</div>
+          )}
+          {report.meta.jobUrl && (
+            <a
+              href={report.meta.jobUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-1 block break-all text-sm text-brand hover:underline"
+            >
+              {report.meta.jobUrl}
+            </a>
+          )}
+          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-900">Match Report</h1>
+
+          <SummaryCards report={report} />
+
+          <Section title="Searchability">
+            <SearchabilityTable groups={report.searchability} />
+          </Section>
+
+          <Section title="Hard Skills">
+            <SkillsTable section={report.hardSkills} title="Hard skills" />
+          </Section>
+
+          <Section title="Soft Skills">
+            <SkillsTable section={report.softSkills} title="Soft skills" />
+          </Section>
+
+          <Section title="Recruiter Tips">
+            <RecruiterTable tips={report.recruiterTips} />
+          </Section>
+        </>
       )}
-      {report.meta.jobUrl && (
-        <a
-          href={report.meta.jobUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mb-1 block break-all text-sm text-brand hover:underline"
-        >
-          {report.meta.jobUrl}
-        </a>
+
+      {subTab === "ai" && (
+        <>
+          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-900">AI Authorship Detection</h1>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <AiDetectionSection state={aiDetection} />
+          </div>
+        </>
       )}
-      <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-900">Match Report</h1>
-
-      <SummaryCards report={report} />
-
-      <Section title="Searchability">
-        <SearchabilityTable groups={report.searchability} />
-      </Section>
-
-      <Section title="Hard Skills">
-        <SkillsTable section={report.hardSkills} title="Hard skills" />
-      </Section>
-
-      <Section title="Soft Skills">
-        <SkillsTable section={report.softSkills} title="Soft skills" />
-      </Section>
-
-      <Section title="Recruiter Tips">
-        <RecruiterTable tips={report.recruiterTips} />
-      </Section>
-
-      <Section title="AI Authorship Detection">
-        <AiDetectionSection state={aiDetection} />
-      </Section>
     </div>
   );
 }
