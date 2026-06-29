@@ -31,11 +31,25 @@ export function JobsList() {
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
+  const [ready, setReady] = useState(false);
   const [search, setSearch] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
+  // Restore filter from sessionStorage before first fetch
+  useEffect(() => {
+    if (!searchParams.get("status")) {
+      const stored = sessionStorage.getItem("jobsStatusFilter");
+      if (stored) {
+        setStatusFilter(stored);
+        router.replace(`/jobs?status=${encodeURIComponent(stored)}`, { scroll: false });
+      }
+    }
+    setReady(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchJobs = useCallback(async () => {
+    if (!ready) return;
     const params = new URLSearchParams();
     params.set("sort", sortKey);
     params.set("order", sortOrder);
@@ -45,21 +59,9 @@ export function JobsList() {
     const data = await res.json();
     setJobs(data.jobs ?? []);
     setLoading(false);
-  }, [sortKey, sortOrder, statusFilter, search]);
+  }, [ready, sortKey, sortOrder, statusFilter, search]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
-
-  useEffect(() => {
-    if (!searchParams.get("status")) {
-      const stored = sessionStorage.getItem("jobsStatusFilter");
-      if (stored) {
-        setStatusFilter(stored);
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("status", stored);
-        router.replace(`/jobs?${params}`, { scroll: false });
-      }
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateStatusFilter = (value: string) => {
     setStatusFilter(value);
