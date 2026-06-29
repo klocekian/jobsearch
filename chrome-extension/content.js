@@ -44,7 +44,15 @@
   const h1 = document.querySelector("h1");
   if (h1) result.h1 = h1.textContent.trim();
 
-  // 4. Grab all visible text from the main content area
+  // 4. If user selected text, use that instead of full page extraction
+  const selection = window.getSelection()?.toString()?.trim();
+  if (selection && selection.length > 50) {
+    result.text = selection.slice(0, 50000);
+    result.hasSelection = true;
+    return result;
+  }
+
+  // 5. Grab all visible text from the main content area
   const mainEl =
     document.querySelector("main") ||
     document.querySelector('[role="main"]') ||

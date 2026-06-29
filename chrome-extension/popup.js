@@ -20,14 +20,22 @@ async function clipPage() {
     pageData = results?.[0]?.result;
     if (!pageData?.text) throw new Error("No content extracted");
 
-    const quick = extractLocally(pageData);
-    fillForm(quick);
-    $("loading").style.display = "none";
-    $("form").style.display = "block";
-
-    const hasBasics = quick.company && quick.title;
-    if (!hasBasics) {
+    if (pageData.hasSelection) {
+      // Selected text — always use AI extraction since page structure isn't available
+      fillForm({ company: "", title: "", location: "", remoteType: "", salary: "", url: pageData.url });
+      $("loading").style.display = "none";
+      $("form").style.display = "block";
       extractWithAI(pageData);
+    } else {
+      const quick = extractLocally(pageData);
+      fillForm(quick);
+      $("loading").style.display = "none";
+      $("form").style.display = "block";
+
+      const hasBasics = quick.company && quick.title;
+      if (!hasBasics) {
+        extractWithAI(pageData);
+      }
     }
   } catch (err) {
     showStatus("error", err.message || "Failed to read the page.");
