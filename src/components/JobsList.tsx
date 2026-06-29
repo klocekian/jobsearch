@@ -30,7 +30,9 @@ export function JobsList() {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams.get("status") ?? (typeof window !== "undefined" ? sessionStorage.getItem("jobsStatusFilter") : null) ?? ""
+  );
   const [search, setSearch] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
@@ -49,8 +51,18 @@ export function JobsList() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
+  useEffect(() => {
+    if (statusFilter && !searchParams.get("status")) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("status", statusFilter);
+      router.replace(`/jobs?${params}`, { scroll: false });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const updateStatusFilter = (value: string) => {
     setStatusFilter(value);
+    if (value) sessionStorage.setItem("jobsStatusFilter", value);
+    else sessionStorage.removeItem("jobsStatusFilter");
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set("status", value);
     else params.delete("status");
