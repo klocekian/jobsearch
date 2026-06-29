@@ -7,20 +7,14 @@ import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
 
 const PIPELINE = ["saved", "applying", "applied", "interview", "onsite", "offer", "accepted"];
 const TERMINAL_LINES = [
-  { status: "rejected", label: "Rejected", color: "#ef4444", stages: ["applied", "interview", "onsite"] },
-  { status: "abandoned", label: "Abandoned", color: "#78716c", stages: ["saved", "applying", "applied", "interview", "onsite", "offer"] },
-  { status: "closed", label: "Closed", color: "#9ca3af", stages: ["saved", "applying", "applied", "interview", "onsite", "offer"] },
+  { status: "rejected", label: "Rejected", color: "text-rose-500", stages: ["applied", "interview", "onsite"] },
+  { status: "abandoned", label: "Abandoned", color: "text-stone-500", stages: ["saved", "applying", "applied", "interview", "onsite", "offer"] },
+  { status: "closed", label: "Closed", color: "text-slate-400", stages: ["saved", "applying", "applied", "interview", "onsite", "offer"] },
 ];
 
 const DOT_COLORS: Record<string, string> = {
-  total: "#1e293b",
-  saved: "#94a3b8",
-  applying: "#f59e0b",
-  applied: "#3b82f6",
-  interview: "#10b981",
-  onsite: "#14b8a6",
-  offer: "#8b5cf6",
-  accepted: "#22c55e",
+  total: "#1e293b", saved: "#94a3b8", applying: "#f59e0b", applied: "#3b82f6",
+  interview: "#10b981", onsite: "#14b8a6", offer: "#8b5cf6", accepted: "#22c55e",
 };
 
 function labelFor(status: string): string {
@@ -58,61 +52,30 @@ export function JobsFunnel() {
   }
   for (const j of jobs) {
     if (terminalByStage[j.status] && j.previous_status) {
-      const stage = j.previous_status;
-      if (terminalByStage[j.status][stage] !== undefined) {
-        terminalByStage[j.status][stage]++;
+      if (terminalByStage[j.status][j.previous_status] !== undefined) {
+        terminalByStage[j.status][j.previous_status]++;
       }
     }
   }
-  const terminalMax = Math.max(
-    ...TERMINAL_LINES.flatMap((tl) => Object.values(terminalByStage[tl.status])),
-    1
-  );
 
-  // SVG layout
+  // SVG layout — main chart only
   const W = 720;
-  const mainH = 180;
-  const termH = 100;
-  const gap = 40;
-  const totalH = mainH + gap + termH * TERMINAL_LINES.length + 20;
+  const H = 180;
   const padX = 40;
   const padTop = 20;
   const padBot = 30;
-
   const chartW = W - padX * 2;
-  const mainChartH = mainH - padTop - padBot;
+  const chartH = H - padTop - padBot;
 
-  function xFor(i: number, total: number) {
-    return padX + (total > 1 ? (i / (total - 1)) * chartW : chartW / 2);
-  }
+  const xFor = (i: number) => padX + (pipelineStages.length > 1 ? (i / (pipelineStages.length - 1)) * chartW : chartW / 2);
 
-  // Main pipeline points
   const mainPoints = pipelineStages.map((s, i) => ({
     ...s,
-    x: xFor(i, pipelineStages.length),
-    y: padTop + mainChartH - (s.count / max) * mainChartH,
+    x: xFor(i),
+    y: padTop + chartH - (s.count / max) * chartH,
   }));
   const mainPath = mainPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const mainTicks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
-
-  // Terminal line points
-  const terminalData = TERMINAL_LINES.map((tl, li) => {
-    const baseY = mainH + gap + li * termH;
-    const innerH = termH - 30;
-    const stageKeys = tl.stages;
-    const points = stageKeys.map((stage, si) => {
-      const c = terminalByStage[tl.status][stage];
-      const pipeIdx = PIPELINE.indexOf(stage);
-      return {
-        stage,
-        count: c,
-        x: xFor(pipeIdx + 1, pipelineStages.length),
-        y: baseY + innerH - (c / terminalMax) * innerH,
-      };
-    });
-    const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-    return { ...tl, points, path, baseY, innerH };
-  });
+  const ticks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
 
   // Selected jobs
   let selectedJobs: JobRow[] = [];
@@ -130,8 +93,7 @@ export function JobsFunnel() {
     }
   }
 
-  const isSelected = (status: string, stage?: string) =>
-    selected?.status === status && selected?.stage === stage;
+  const isSel = (status: string, stage?: string) => selected?.status === status && selected?.stage === stage;
 
   return (
     <div>
@@ -139,61 +101,82 @@ export function JobsFunnel() {
         <h2 className="mb-1 text-lg font-bold text-slate-900">Application Pipeline</h2>
         <p className="mb-4 text-xs text-slate-400">{jobs.length} total jobs tracked</p>
 
-        <svg viewBox={`0 0 ${W} ${totalH}`} className="w-full">
-          {/* Main pipeline Y-axis */}
-          {mainTicks.map((t) => {
-            const y = padTop + mainChartH - (t / max) * mainChartH;
+        {/* Main pipeline chart */}
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }}>
+          {ticks.map((t) => {
+            const y = padTop + chartH - (t / max) * chartH;
             return (
-              <g key={`mt-${t}`}>
+              <g key={t}>
                 <line x1={padX} y1={y} x2={W - padX} y2={y} stroke="#f1f5f9" strokeWidth={1} />
                 <text x={padX - 8} y={y + 4} textAnchor="end" fontSize={10} fill="#94a3b8">{t}</text>
               </g>
             );
           })}
-
-          {/* Main area fill */}
           <defs>
-            <linearGradient id="mainGrad" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id="aGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="#1e293b" />
               <stop offset="30%" stopColor="#3b82f6" />
-              <stop offset="70%" stopColor="#10b981" />
               <stop offset="100%" stopColor="#22c55e" />
             </linearGradient>
           </defs>
           <path
-            d={`${mainPath} L ${mainPoints[mainPoints.length - 1].x} ${padTop + mainChartH} L ${mainPoints[0].x} ${padTop + mainChartH} Z`}
-            fill="url(#mainGrad)" opacity={0.1}
+            d={`${mainPath} L ${mainPoints[mainPoints.length - 1].x} ${padTop + chartH} L ${mainPoints[0].x} ${padTop + chartH} Z`}
+            fill="url(#aGrad)" opacity={0.1}
           />
           <path d={mainPath} fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" />
-
-          {/* Main dots */}
           {mainPoints.map((p) => (
-            <g key={p.status} onClick={() => setSelected(isSelected(p.status) ? null : { status: p.status })} className="cursor-pointer">
-              <circle cx={p.x} cy={p.y} r={isSelected(p.status) ? 8 : 6} fill={DOT_COLORS[p.status] ?? "#94a3b8"} stroke="white" strokeWidth={2} />
+            <g key={p.status} onClick={() => setSelected(isSel(p.status) ? null : { status: p.status })} className="cursor-pointer">
+              <circle cx={p.x} cy={p.y} r={isSel(p.status) ? 8 : 6} fill={DOT_COLORS[p.status] ?? "#94a3b8"} stroke="white" strokeWidth={2} />
               {p.count > 0 && <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize={11} fill="#1e293b" fontWeight={600}>{p.count}</text>}
-              <text x={p.x} y={padTop + mainChartH + 16} textAnchor="middle" fontSize={10} fill="#64748b">{p.label}</text>
-            </g>
-          ))}
-
-          {/* Terminal lines */}
-          {terminalData.map((tl) => (
-            <g key={tl.status}>
-              {/* Label */}
-              <text x={padX - 8} y={tl.baseY + tl.innerH / 2 + 4} textAnchor="end" fontSize={10} fill={tl.color} fontWeight={600}>{tl.label}</text>
-              {/* Baseline */}
-              <line x1={tl.points[0].x} y1={tl.baseY + tl.innerH} x2={tl.points[tl.points.length - 1].x} y2={tl.baseY + tl.innerH} stroke="#f1f5f9" strokeWidth={1} />
-              {/* Line */}
-              <path d={tl.path} fill="none" stroke={tl.color} strokeWidth={2} strokeLinejoin="round" opacity={0.7} />
-              {/* Dots */}
-              {tl.points.map((p) => (
-                <g key={`${tl.status}-${p.stage}`} onClick={() => setSelected(isSelected(tl.status, p.stage) ? null : { status: tl.status, stage: p.stage })} className="cursor-pointer">
-                  <circle cx={p.x} cy={p.y} r={isSelected(tl.status, p.stage) ? 7 : 5} fill={tl.color} stroke="white" strokeWidth={1.5} />
-                  {p.count > 0 && <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize={10} fill={tl.color} fontWeight={600}>{p.count}</text>}
-                </g>
-              ))}
+              <text x={p.x} y={padTop + chartH + 16} textAnchor="middle" fontSize={10} fill="#64748b">{p.label}</text>
             </g>
           ))}
         </svg>
+
+        {/* Terminal rows */}
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          {TERMINAL_LINES.map((tl) => {
+            const stageCounts = tl.stages.map((stage) => ({
+              stage,
+              count: terminalByStage[tl.status][stage],
+              pipeIdx: PIPELINE.indexOf(stage) + 1,
+            }));
+            const total = stageCounts.reduce((s, c) => s + c.count, 0);
+            return (
+              <div key={tl.status} className="flex items-center gap-0 py-1.5">
+                <div className={`w-[72px] shrink-0 text-right pr-3 text-[11px] font-semibold ${tl.color}`}>
+                  {tl.label}
+                </div>
+                <div className="flex flex-1 items-center">
+                  {pipelineStages.map((ps, pi) => {
+                    const entry = stageCounts.find((sc) => sc.pipeIdx === pi);
+                    return (
+                      <div key={pi} className="flex-1 text-center">
+                        {entry ? (
+                          <button
+                            onClick={() => setSelected(isSel(tl.status, entry.stage) ? null : { status: tl.status, stage: entry.stage })}
+                            className={`inline-block min-w-[24px] rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition ${
+                              isSel(tl.status, entry.stage)
+                                ? "bg-slate-800 text-white"
+                                : entry.count > 0
+                                  ? `${tl.color} hover:bg-slate-100`
+                                  : "text-slate-200"
+                            }`}
+                          >
+                            {entry.count}
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-slate-100">·</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="w-10 shrink-0 text-center text-[11px] font-semibold text-slate-400">{total}</div>
+              </div>
+            );
+          })}
+        </div>
 
         {/* Selected jobs list */}
         {selected && (
