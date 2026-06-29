@@ -6,9 +6,9 @@
   let filled = 0;
 
   const matchers = [
-    { keys: ["first_name", "first name", "firstname", "given name", "fname"], value: data.first_name },
+    { keys: ["first_name", "first name", "firstname", "given name", "fname", "preferred first name", "preferred name"], value: data.first_name },
     { keys: ["last_name", "last name", "lastname", "family name", "surname", "lname"], value: data.last_name },
-    { keys: ["full_name", "full name", "name", "your name", "candidate name", "applicant name"], value: data.full_name },
+    { keys: ["full_name", "full name", "legal full name", "legal name", "name", "your name", "candidate name", "applicant name"], value: data.full_name },
     { keys: ["email", "e-mail", "email address"], value: data.email },
     { keys: ["phone", "phone number", "mobile", "telephone", "cell", "contact number"], value: data.phone },
     { keys: ["linkedin", "linkedin profile", "linkedin url"], value: data.linkedin },
@@ -38,14 +38,33 @@
     const parentLabel = el.closest("label");
     if (parentLabel) texts.push(parentLabel.textContent);
 
-    // aria-label
+    // aria-label / aria-labelledby
     if (el.getAttribute("aria-label")) texts.push(el.getAttribute("aria-label"));
+    if (el.getAttribute("aria-labelledby")) {
+      const ref = document.getElementById(el.getAttribute("aria-labelledby"));
+      if (ref) texts.push(ref.textContent);
+    }
 
-    // Preceding label-like element
-    const prev = el.closest("[class*='field'], [class*='form-group'], [class*='question']");
-    if (prev) {
-      const labelEl = prev.querySelector("label, [class*='label'], legend, h3, h4, p");
-      if (labelEl && labelEl !== el) texts.push(labelEl.textContent);
+    // Walk up to find the nearest container with a label-like element
+    let container = el.parentElement;
+    for (let i = 0; i < 5 && container; i++) {
+      const labelEl = container.querySelector("label, legend, [class*='label'], h3, h4");
+      if (labelEl && labelEl !== el && !labelEl.contains(el)) {
+        texts.push(labelEl.textContent);
+        break;
+      }
+      container = container.parentElement;
+    }
+
+    // Check preceding sibling elements for label text
+    let prev = el.previousElementSibling;
+    for (let i = 0; i < 3 && prev; i++) {
+      const tag = prev.tagName;
+      if (tag === "LABEL" || tag === "P" || tag === "SPAN" || tag === "DIV" || tag === "H3" || tag === "H4") {
+        const t = prev.textContent.trim();
+        if (t.length > 0 && t.length < 100) { texts.push(t); break; }
+      }
+      prev = prev.previousElementSibling;
     }
 
     // Attributes
