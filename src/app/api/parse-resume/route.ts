@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ resume });
   } catch (err: unknown) {
     if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Anthropic authentication failed — check ANTHROPIC_API_KEY or run `ant auth login`." }, { status: 502 });
+      return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });
     }
     const message = err instanceof Error ? err.message : "Failed to parse the resume.";
     return NextResponse.json({ error: message }, { status: 502 });

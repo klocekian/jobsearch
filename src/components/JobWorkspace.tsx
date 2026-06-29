@@ -113,6 +113,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         const det = d as unknown as import("@/lib/analysis/types").AiDetection;
         saveAiDetection(text, det);
         setAiDetection({ status: "done", data: det });
+      } else {
+        setAiDetection({ status: "error", data: fallback });
       }
     }).catch(() => { if (active) setAiDetection({ status: "error", data: fallback }); });
     return () => { active = false; };
