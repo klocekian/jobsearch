@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
 
-const PIPELINE = ["saved", "applying", "applied", "interview", "offer", "accepted"];
+const PIPELINE = ["saved", "applying", "applied", "interview", "onsite", "offer", "accepted"];
 const TERMINAL = ["rejected", "declined", "withdrawn", "abandoned", "closed"];
 const ALL_STAGES = [...PIPELINE, ...TERMINAL];
 
@@ -14,6 +14,7 @@ const DOT_COLORS: Record<string, string> = {
   applying: "#f59e0b",
   applied: "#3b82f6",
   interview: "#10b981",
+  onsite: "#14b8a6",
   offer: "#8b5cf6",
   accepted: "#22c55e",
   rejected: "#ef4444",
