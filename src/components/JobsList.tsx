@@ -149,12 +149,12 @@ export function JobsList() {
           placeholder="Search jobs…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="input max-w-xs"
+          className="input max-w-xs py-1.5 text-xs"
         />
         <select
           value={statusFilter}
           onChange={(e) => updateStatusFilter(e.target.value)}
-          className="input max-w-[160px]"
+          className="input max-w-[160px] py-1.5 text-xs"
         >
           <option value="">All statuses</option>
           {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
