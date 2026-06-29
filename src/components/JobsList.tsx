@@ -37,6 +37,7 @@ export function JobsList() {
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
   const [ready, setReady] = useState(false);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
@@ -52,18 +53,23 @@ export function JobsList() {
     setReady(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchJobs = useCallback(async () => {
     if (!ready) return;
     const params = new URLSearchParams();
     params.set("sort", sortKey);
     params.set("order", sortOrder);
     if (statusFilter) params.set("status", statusFilter);
-    if (search) params.set("search", search);
+    if (debouncedSearch) params.set("search", debouncedSearch);
     const res = await fetch(`/api/jobs?${params}`);
     const data = await res.json();
     setJobs(data.jobs ?? []);
     setLoading(false);
-  }, [ready, sortKey, sortOrder, statusFilter, search]);
+  }, [ready, sortKey, sortOrder, statusFilter, debouncedSearch]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
