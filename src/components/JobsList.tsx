@@ -67,6 +67,21 @@ export function JobsList() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
+  // Check job URLs for closures once per day
+  useEffect(() => {
+    const key = "jobsLastUrlCheck";
+    const last = localStorage.getItem(key);
+    const today = new Date().toISOString().slice(0, 10);
+    if (last === today) return;
+    localStorage.setItem(key, today);
+    fetch("/api/jobs/check-status", { method: "POST" })
+      .then((r) => r.json())
+      .then((d: { closed?: number }) => {
+        if (d.closed && d.closed > 0) fetchJobs();
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const updateStatusFilter = (value: string) => {
     setStatusFilter(value);
     if (value) sessionStorage.setItem("jobsStatusFilter", value);
