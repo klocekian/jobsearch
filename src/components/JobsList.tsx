@@ -28,8 +28,12 @@ export function JobsList() {
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortKey, setSortKey] = useState<SortKey>("created_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortKey, setSortKey] = useState<SortKey>(() =>
+    (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey") as SortKey) || "created_at"
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
+    (typeof window !== "undefined" && sessionStorage.getItem("jobsSortOrder") as "asc" | "desc") || "desc"
+  );
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
   const [ready, setReady] = useState(false);
   const [search, setSearch] = useState("");
@@ -74,12 +78,18 @@ export function JobsList() {
   };
 
   const toggleSort = (key: SortKey) => {
+    let newKey = sortKey;
+    let newOrder = sortOrder;
     if (sortKey === key) {
-      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+      newOrder = sortOrder === "asc" ? "desc" : "asc";
     } else {
-      setSortKey(key);
-      setSortOrder(key === "company" || key === "title" ? "asc" : "desc");
+      newKey = key;
+      newOrder = key === "company" || key === "title" ? "asc" : "desc";
     }
+    setSortKey(newKey);
+    setSortOrder(newOrder);
+    sessionStorage.setItem("jobsSortKey", newKey);
+    sessionStorage.setItem("jobsSortOrder", newOrder);
   };
 
   const importFromSheet = async () => {
