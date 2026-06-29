@@ -10,6 +10,7 @@ const TERMINAL = ["rejected", "declined", "withdrawn", "abandoned", "closed"];
 const ALL_STAGES = [...PIPELINE, ...TERMINAL];
 
 const DOT_COLORS: Record<string, string> = {
+  total: "#1e293b",
   saved: "#94a3b8",
   applying: "#f59e0b",
   applied: "#3b82f6",
@@ -41,13 +42,16 @@ export function JobsFunnel() {
   const counts: Record<string, number> = {};
   for (const j of jobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
 
-  const stages = ALL_STAGES
-    .map((status) => ({
-      status,
-      label: STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status,
-      count: counts[status] ?? 0,
-    }))
-    .filter((s) => PIPELINE.includes(s.status) || s.count > 0);
+  const stages = [
+    { status: "total", label: "Total", count: jobs.length },
+    ...ALL_STAGES
+      .map((status) => ({
+        status,
+        label: STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status,
+        count: counts[status] ?? 0,
+      }))
+      .filter((s) => PIPELINE.includes(s.status) || s.count > 0),
+  ];
 
   const max = Math.max(...stages.map((s) => s.count), 1);
 
@@ -71,7 +75,7 @@ export function JobsFunnel() {
   // Y-axis ticks
   const ticks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
 
-  const selectedJobs = selected ? jobs.filter((j) => j.status === selected) : [];
+  const selectedJobs = selected ? (selected === "total" ? jobs : jobs.filter((j) => j.status === selected)) : [];
   const selectedLabel = selected ? stages.find((s) => s.status === selected)?.label : "";
 
   return (
