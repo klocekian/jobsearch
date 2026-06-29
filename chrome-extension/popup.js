@@ -39,13 +39,37 @@ async function loadRecentJobs() {
   const list = $("recentJobs");
   if (!list) return;
   try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const currentUrl = tab?.url ?? "";
+
     const res = await fetch(`${API_BASE}/api/jobs?sort=created_at&order=desc`, { credentials: "include" });
     if (!res.ok) return;
     const data = await res.json();
-    const jobs = (data.jobs ?? []).slice(0, 5);
-    if (jobs.length === 0) { list.style.display = "none"; return; }
-    list.innerHTML = `<div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px">Recent clips</div>` +
-      jobs.map((j) => `<a href="${API_BASE}/jobs/${j.id}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${j.company || "—"}</strong> · ${j.title || "—"}</a>`).join("");
+    const allJobs = data.jobs ?? [];
+    if (allJobs.length === 0) { list.style.display = "none"; return; }
+
+    // Check if current page matches a saved job
+    let matchHtml = "";
+    if (currentUrl) {
+      const normalizedUrl = currentUrl.split("?")[0].split("#")[0].replace(/\/$/, "").toLowerCase();
+      const match = allJobs.find((j) => {
+        if (!j.url) return false;
+        const jUrl = j.url.split("?")[0].split("#")[0].replace(/\/$/, "").toLowerCase();
+        return jUrl === normalizedUrl || currentUrl.includes(j.url) || (j.url && currentUrl.includes(j.url.split("?")[0]));
+      });
+      if (match) {
+        matchHtml = `<div style="margin-bottom:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:12px">` +
+          `<div style="font-size:10px;font-weight:600;color:#dc2626;margin-bottom:3px">Already saved</div>` +
+          `<a href="${API_BASE}/jobs/${match.id}" target="_blank" style="color:#1e293b;text-decoration:none;font-weight:600">${match.company || "—"}</a> · ${match.title || "—"}` +
+          `<div style="margin-top:4px;font-size:10px;color:#64748b">Status: <strong>${match.status}</strong></div>` +
+          `</div>`;
+      }
+    }
+
+    const recent = allJobs.slice(0, 5);
+    list.innerHTML = matchHtml +
+      `<div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px">Recent clips</div>` +
+      recent.map((j) => `<a href="${API_BASE}/jobs/${j.id}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${j.company || "—"}</strong> · ${j.title || "—"}</a>`).join("");
   } catch { /* ignore */ }
 }
 
