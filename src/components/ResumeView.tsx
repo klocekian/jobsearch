@@ -149,14 +149,14 @@ export function ResumeView({
           <button
             onClick={generate}
             disabled={gen.kind === "loading"}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {gen.kind === "loading" ? "Rewriting…" : hasRewrite ? "Regenerate" : "Generate rewrite"}
           </button>
           <button
             onClick={downloadPdf}
             disabled={exporting.kind === "loading"}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+            className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
           >
             {exporting.kind === "loading" ? "Preparing…" : "Download PDF"}
           </button>
