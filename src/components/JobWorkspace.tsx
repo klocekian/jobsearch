@@ -54,6 +54,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [aiDetection, setAiDetection] = useState<AiDetectionState>({ status: "loading", data: null });
   const [materials, setMaterials] = useState<ContextMaterial[]>(() => loadContextMaterials());
   const fileRef = useRef<HTMLInputElement>(null);
+  const resumeFileRef = useRef<HTMLInputElement>(null);
   const [splitPct, setSplitPct] = useState(50);
   const dragging = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -434,22 +435,53 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs text-slate-400">Resume</p>
-              {savedResumes.length > 0 && (
-                <select
-                  className="input mt-1 max-w-[240px] text-sm font-medium"
-                  value={savedResumes.find(r => r.content === resumeText)?.id ?? ""}
-                  onChange={(e) => {
-                    const r = savedResumes.find(r => r.id === Number(e.target.value));
-                    if (r) setResumeText(r.content);
+              <div className="mt-1 flex items-center gap-2">
+                {savedResumes.length > 0 && (
+                  <select
+                    className="input max-w-[220px] text-sm font-medium"
+                    value={savedResumes.find(r => r.content === resumeText)?.id ?? ""}
+                    onChange={(e) => {
+                      const r = savedResumes.find(r => r.id === Number(e.target.value));
+                      if (r) setResumeText(r.content);
+                    }}
+                  >
+                    {savedResumes.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}{r.is_default ? " (default)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <input
+                  ref={resumeFileRef}
+                  type="file"
+                  className="hidden"
+                  accept=".txt,.md,.pdf,.docx"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const text = await file.text();
+                    const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_");
+                    const res = await fetch("/api/resumes", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name, content: text }),
+                    });
+                    if (res.ok) {
+                      const d = await res.json();
+                      setSavedResumes(prev => [...prev, d.resume]);
+                      setResumeText(text);
+                    }
+                    e.target.value = "";
                   }}
+                />
+                <button
+                  onClick={() => resumeFileRef.current?.click()}
+                  className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-50"
                 >
-                  {savedResumes.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}{r.is_default ? " (default)" : ""}
-                    </option>
-                  ))}
-                </select>
-              )}
+                  + Add
+                </button>
+              </div>
               <p className="mt-1 text-xs text-slate-400">
                 {analyzed
                   ? <>Score: <span className="font-semibold text-slate-700">{analyzed.report.score}</span>/100</>
