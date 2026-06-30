@@ -57,7 +57,7 @@ function SummaryCards({ report }: { report: MatchReport }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-8">
-      <h2 className="mb-3 text-xl font-semibold tracking-tight text-slate-800">{title}</h2>
+      <h2 className="mb-3 text-sm font-semibold tracking-tight text-slate-800">{title}</h2>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">{children}</div>
     </section>
   );
@@ -265,7 +265,7 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
               <div className="mb-1 text-sm text-slate-500">{report.meta.jobTitle}</div>
             )
           )}
-          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-900">Match Report</h1>
+          <h1 className="mb-5 text-lg font-bold tracking-tight text-slate-900">Match Report</h1>
 
           <SummaryCards report={report} />
 
@@ -289,7 +289,7 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
 
       {subTab === "ai" && (
         <>
-          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-900">AI Authorship Detection</h1>
+          <h1 className="mb-5 text-lg font-bold tracking-tight text-slate-900">AI Authorship Detection</h1>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <AiDetectionSection state={aiDetection} />
           </div>

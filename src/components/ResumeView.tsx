@@ -137,7 +137,7 @@ export function ResumeView({
     <div>
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Resume</h2>
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">Resume</h2>
           <p className="mt-1 text-sm text-slate-500">
             Generate a tailored rewrite, then click any suggestion to accept it into your resume, or
             just type to edit. Export a clean PDF when you&apos;re done. Saved on this device and
