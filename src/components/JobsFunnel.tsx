@@ -5,16 +5,16 @@ import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
 
-const PIPELINE = ["saved", "applying", "applied", "interview", "onsite", "offer", "accepted"];
+const PIPELINE = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
 const TERMINAL_LINES = [
-  { status: "rejected", label: "Rejected", color: "text-rose-500", stages: ["applied", "interview", "onsite"] },
-  { status: "abandoned", label: "Abandoned", color: "text-stone-500", stages: ["saved", "applying", "applied", "interview", "onsite", "offer"] },
-  { status: "closed", label: "Closed", color: "text-slate-400", stages: ["saved", "applying", "applied", "interview", "onsite", "offer"] },
+  { status: "rejected", label: "Rejected", color: "text-rose-500", stages: ["applied", "interview", "interview2", "onsite"] },
+  { status: "abandoned", label: "Abandoned", color: "text-stone-500", stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
+  { status: "closed", label: "Closed", color: "text-slate-400", stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
 ];
 
 const DOT_COLORS: Record<string, string> = {
   total: "#1e293b", saved: "#94a3b8", applying: "#f59e0b", applied: "#3b82f6",
-  interview: "#10b981", onsite: "#14b8a6", offer: "#8b5cf6", accepted: "#22c55e",
+  interview: "#10b981", interview2: "#06b6d4", onsite: "#14b8a6", offer: "#8b5cf6", accepted: "#22c55e",
 };
 
 function labelFor(status: string): string {
