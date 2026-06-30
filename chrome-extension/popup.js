@@ -271,8 +271,7 @@ function fillForm(data) {
   $("salary").value = data.salary || "";
   $("url").value = data.url || "";
   fullPostingText = data.postingText || "";
-  $("postingPreview").textContent =
-    fullPostingText.slice(0, 500) + (fullPostingText.length > 500 ? "…" : "");
+  $("postingPreview").value = fullPostingText;
   $("charCount").textContent = `${fullPostingText.length.toLocaleString()} chars`;
 }
 
@@ -299,8 +298,7 @@ async function extractWithAI(data) {
     if (result.salaryText && !$("salary").value) $("salary").value = trimSalary(result.salaryText);
     if (result.jobDescription) {
       fullPostingText = result.jobDescription;
-      $("postingPreview").textContent =
-        fullPostingText.slice(0, 500) + (fullPostingText.length > 500 ? "…" : "");
+      $("postingPreview").value = fullPostingText;
       $("charCount").textContent = `${fullPostingText.length.toLocaleString()} chars`;
     }
     $("extractBtn").textContent = "Re-extract with AI";
@@ -326,7 +324,7 @@ $("form").addEventListener("submit", async (e) => {
         location: $("location").value,
         remote_type: $("remoteType").value,
         salary_text: $("salary").value,
-        posting_text: fullPostingText,
+        posting_text: $("postingPreview").value || fullPostingText,
         source: "extension",
       }),
     });

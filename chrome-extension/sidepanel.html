@@ -26,7 +26,7 @@
     .status.success { background: #f0fdf4; color: #15803d; }
     .status.error { background: #fef2f2; color: #dc2626; }
     .badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #f1f5f9; color: #64748b; margin-left: 6px; }
-    #postingPreview { max-height: 200px; overflow-y: auto; font-size: 12px; color: #64748b; line-height: 1.5; white-space: pre-wrap; margin-top: 6px; padding: 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+    #postingPreview { font-size: 12px; color: #64748b; line-height: 1.5; }
     a { color: inherit; }
     .divider { border-top: 1px solid #e2e8f0; margin: 16px 0; }
     .tabs { display: flex; background: #f1f5f9; border-radius: 20px; padding: 3px; margin-bottom: 14px; }
@@ -91,7 +91,7 @@
         Job Description
         <span id="charCount" class="badge"></span>
       </label>
-      <div id="postingPreview"></div>
+      <textarea id="postingPreview" placeholder="Paste or edit job description…" style="min-height:150px"></textarea>
 
       <div class="actions">
         <button type="submit" class="btn-primary" id="saveBtn">Save Job</button>
