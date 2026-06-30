@@ -454,12 +454,12 @@ function autofillPage(data) {
 
   function setVal(el, value) {
     if (!value || !el || el.disabled || el.readOnly) return false;
-    if (el.value && el.value.trim()) return false;
     const proto = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
     const setter = Object.getOwnPropertyDescriptor(proto, "value");
     if (setter && setter.set) { setter.set.call(el, value); } else { el.value = value; }
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.dispatchEvent(new Event("blur", { bubbles: true }));
     return true;
   }
 

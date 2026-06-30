@@ -81,7 +81,8 @@ export function ResumeView({
             .map((p) => ({ label: p.label, examples: p.examples.slice(0, 6) })),
         }),
       });
-      const data: { resume?: string; error?: string } = await res.json();
+      let data: { resume?: string; error?: string };
+      try { data = await res.json(); } catch { throw new Error(`Server error (${res.status}). Try again.`); }
       if (!res.ok || !data.resume) throw new Error(data.error ?? `Request failed (${res.status}).`);
       rewriteRef.current = data.resume;
       setRewrite(data.resume);
