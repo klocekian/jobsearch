@@ -166,6 +166,8 @@ export function ProfileView() {
         </div>
       </section>
 
+      <ApplicationFields />
+
       {/* Resumes */}
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
@@ -369,6 +371,108 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
           </div>
         </div>
       )}
+    </section>
+  );
+}
+
+const PROFILE_FIELDS: { key: string; label: string; type?: "checkbox"; half?: boolean }[] = [
+  { key: "first_name", label: "First name", half: true },
+  { key: "last_name", label: "Last name", half: true },
+  { key: "email", label: "Email", half: true },
+  { key: "phone", label: "Phone", half: true },
+  { key: "address", label: "Address" },
+  { key: "city", label: "City", half: true },
+  { key: "state", label: "State", half: true },
+  { key: "current_title", label: "Current title", half: true },
+  { key: "current_company", label: "Current company", half: true },
+  { key: "linkedin", label: "LinkedIn URL" },
+  { key: "github", label: "GitHub URL", half: true },
+  { key: "website", label: "Website / Portfolio", half: true },
+  { key: "substack", label: "Substack / Blog" },
+  { key: "work_authorized", label: "Authorized to work in US", type: "checkbox" },
+  { key: "sponsorship_required", label: "Requires visa sponsorship", type: "checkbox" },
+];
+
+function ApplicationFields() {
+  const [fields, setFields] = useState<Record<string, string | boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    fetch("/api/profile/autofill")
+      .then((r) => r.ok ? r.json() : {})
+      .then((d: Record<string, unknown>) => {
+        const f: Record<string, string | boolean> = {};
+        for (const pf of PROFILE_FIELDS) {
+          const v = d[pf.key];
+          f[pf.key] = pf.type === "checkbox" ? !!v : String(v ?? "");
+        }
+        setFields(f);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    setMsg("");
+    try {
+      const res = await fetch("/api/profile/autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) throw new Error();
+      setMsg("Saved!");
+      setTimeout(() => setMsg(""), 2000);
+    } catch {
+      setMsg("Failed to save.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs text-slate-400">Loading…</p></section>;
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="mb-1 text-sm font-semibold text-slate-700">Application Fields</h2>
+      <p className="mb-4 text-xs text-slate-500">
+        Used by the extension to auto-fill job applications and shown in the Fill tab for quick copying.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {PROFILE_FIELDS.map((pf) => (
+          <label key={pf.key} className={`block ${pf.half ? "" : "col-span-2"}`}>
+            {pf.type === "checkbox" ? (
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!fields[pf.key]}
+                  onChange={(e) => setFields((p) => ({ ...p, [pf.key]: e.target.checked }))}
+                  className="rounded border-slate-300"
+                />
+                <span className="text-xs text-slate-600">{pf.label}</span>
+              </span>
+            ) : (
+              <>
+                <span className="mb-1 block text-[11px] font-medium text-slate-500">{pf.label}</span>
+                <input
+                  className="input text-xs"
+                  value={String(fields[pf.key] ?? "")}
+                  onChange={(e) => setFields((p) => ({ ...p, [pf.key]: e.target.value }))}
+                />
+              </>
+            )}
+          </label>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50">
+          {saving ? "Saving…" : "Save"}
+        </button>
+        {msg && <span className="text-xs text-emerald-600">{msg}</span>}
+      </div>
     </section>
   );
 }

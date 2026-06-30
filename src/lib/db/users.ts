@@ -8,6 +8,7 @@ export interface UserRow {
   anthropic_token: string | null;
   refresh_token: string | null;
   token_expires: number | null;
+  profile_data: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,5 +64,19 @@ export async function updateUserTokens(id: number, tokens: {
     sql: `UPDATE users SET anthropic_token = ?, refresh_token = COALESCE(?, refresh_token),
           token_expires = ?, updated_at = datetime('now') WHERE id = ?`,
     args: [tokens.anthropic_token, tokens.refresh_token ?? null, tokens.token_expires ?? null, id],
+  });
+}
+
+export async function getProfileData(id: number): Promise<Record<string, unknown> | null> {
+  const user = await getUserById(id);
+  if (!user?.profile_data) return null;
+  try { return JSON.parse(user.profile_data); } catch { return null; }
+}
+
+export async function updateProfileData(id: number, data: string): Promise<void> {
+  const db = await getDb();
+  await db.execute({
+    sql: "UPDATE users SET profile_data = ?, updated_at = datetime('now') WHERE id = ?",
+    args: [data, id],
   });
 }

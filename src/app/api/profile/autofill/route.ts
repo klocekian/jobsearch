@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { listResumes } from "@/lib/db/resumes";
+import { getProfileData, updateProfileData } from "@/lib/db/users";
 
 export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  const user = await getSession().catch(() => null);
+  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const body = await request.json();
+  await updateProfileData(user.id, JSON.stringify(body));
+  return NextResponse.json({ ok: true });
+}
 
 export async function GET() {
   const user = await getSession().catch(() => null);
   const userId = user?.id ?? null;
+
+  if (userId) {
+    const stored = await getProfileData(userId);
+    if (stored && stored.first_name) return NextResponse.json(stored);
+  }
+
   const resumes = await listResumes(userId);
   const def = resumes.find((r) => r.is_default) ?? resumes[0];
 

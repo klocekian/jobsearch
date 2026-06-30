@@ -81,6 +81,48 @@ async function loadRecentJobs() {
   } catch { /* ignore */ }
 }
 
+const FILL_FIELD_LABELS = {
+  first_name: "First name", last_name: "Last name", full_name: "Full name",
+  email: "Email", phone: "Phone", address: "Address", city: "City", state: "State",
+  current_title: "Title", current_company: "Company",
+  linkedin: "LinkedIn", github: "GitHub", website: "Website", substack: "Substack",
+  work_authorized: "Work auth", sponsorship_required: "Sponsorship",
+};
+
+async function loadFillFields() {
+  const container = $("fillFields");
+  if (!container) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/profile/autofill`, { credentials: "include" });
+    if (!res.ok) { container.innerHTML = `<p style="font-size:12px;color:#dc2626">Add a resume or fill in Application Fields on your Profile page.</p>`; return; }
+    const data = await res.json();
+    const keys = Object.keys(FILL_FIELD_LABELS);
+    container.innerHTML = keys.map((key) => {
+      const label = FILL_FIELD_LABELS[key];
+      let value = data[key];
+      if (value === true) value = "Yes";
+      else if (value === false) value = "No";
+      else value = value || "";
+      return `<div class="field-row" data-value="${String(value).replace(/"/g, "&quot;")}" title="Click to copy">` +
+        `<span class="field-label">${label}</span>` +
+        `<span class="field-value ${value ? "" : "empty"}">${value || "—"}</span>` +
+        `</div>`;
+    }).join("");
+    container.querySelectorAll(".field-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        const v = row.getAttribute("data-value");
+        if (!v) return;
+        navigator.clipboard.writeText(v);
+        const valEl = row.querySelector(".field-value");
+        const orig = valEl.textContent;
+        valEl.textContent = "Copied!";
+        valEl.classList.add("copied-flash");
+        setTimeout(() => { valEl.textContent = orig; valEl.classList.remove("copied-flash"); }, 1000);
+      });
+    });
+  } catch { container.innerHTML = `<p style="font-size:12px;color:#94a3b8">Could not load profile.</p>`; }
+}
+
 async function init() {
   const clipBtn = $("clipBtn");
   if (clipBtn) {
@@ -89,6 +131,21 @@ async function init() {
     clipPage();
   }
   loadRecentJobs();
+
+  // Tab switching
+  const tabClip = $("tabClip");
+  const tabFill = $("tabFill");
+  if (tabClip && tabFill) {
+    tabClip.addEventListener("click", () => {
+      tabClip.classList.add("active"); tabFill.classList.remove("active");
+      $("clipContent").style.display = ""; $("fillContent").style.display = "none";
+    });
+    tabFill.addEventListener("click", () => {
+      tabFill.classList.add("active"); tabClip.classList.remove("active");
+      $("clipContent").style.display = "none"; $("fillContent").style.display = "";
+      loadFillFields();
+    });
+  }
 }
 
 function extractLocally(data) {
@@ -331,7 +388,7 @@ async function fillApplication() {
     showStatus("error", err.message || "Failed to fill form.");
   } finally {
     fillBtn.disabled = false;
-    fillBtn.textContent = "Fill application";
+    fillBtn.textContent = "Fill application fields";
   }
 }
 
@@ -449,10 +506,17 @@ if ($("fillBtn")) {
 }
 
 function showStatus(type, msg) {
-  const el = $("statusMsg");
+  const el = $("statusMsg") || $("fillStatus");
+  if (!el) return;
   el.className = `status ${type}`;
   el.innerHTML = msg;
   el.style.display = "block";
+  const fillStatus = $("fillStatus");
+  if (fillStatus && $("fillContent")?.style.display !== "none") {
+    fillStatus.className = `status ${type}`;
+    fillStatus.innerHTML = msg;
+    fillStatus.style.display = "block";
+  }
 }
 
 init();
