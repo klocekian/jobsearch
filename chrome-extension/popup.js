@@ -146,6 +146,14 @@ async function init() {
       loadFillFields();
     });
   }
+
+  const refreshBtn = $("refreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      loadRecentJobs();
+      if ($("fillContent")?.style.display !== "none") loadFillFields();
+    });
+  }
 }
 
 function extractLocally(data) {
