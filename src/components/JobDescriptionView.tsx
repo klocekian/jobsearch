@@ -57,9 +57,6 @@ export function JobDescriptionView({ jobText, jobTitle, matched, missing }: JobD
           <span className="inline-block h-1 w-5 rounded bg-emerald-400" /> Matched Skills
         </span>
       </div>
-      <h2 className="mb-4 text-2xl font-bold tracking-tight text-slate-900">
-        {jobTitle || "Job Description"}
-      </h2>
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm leading-7 text-slate-700">
         <pre className="whitespace-pre-wrap font-sans">
           {tokens.map((t, i) =>
