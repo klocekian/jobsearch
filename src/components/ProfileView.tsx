@@ -27,6 +27,7 @@ export function ProfileView() {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
+  const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes">("account");
 
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json())
@@ -95,8 +96,24 @@ export function ProfileView() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Account */}
+    <div className="space-y-6">
+      <div className="flex justify-center">
+        <div className="inline-flex rounded-full bg-slate-100 p-1">
+          {([["account", "Account"], ["ai", "AI"], ["extension", "Extension"], ["resumes", "Resumes"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setProfileTab(key)}
+              className={`rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                profileTab === key ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {profileTab === "account" && <>
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-slate-700">Account</h2>
         {user === undefined ? (
@@ -137,7 +154,10 @@ export function ProfileView() {
         )}
       </section>
 
-      {/* Claude AI Connection */}
+      <ApplicationFields />
+      </>}
+
+      {profileTab === "ai" && <>
       {user && (
         <ClaudeConnection connected={user.hasAnthropicToken} onUpdate={() => {
           fetch("/api/auth/me").then(r => r.json())
@@ -145,8 +165,9 @@ export function ProfileView() {
             .catch(() => {});
         }} />
       )}
+      </>}
 
-      {/* Chrome Extension */}
+      {profileTab === "extension" && <>
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-slate-700">Chrome Extension</h2>
         <p className="mb-3 text-xs text-slate-500">
@@ -165,9 +186,9 @@ export function ProfileView() {
           </span>
         </div>
       </section>
+      </>}
 
-      <ApplicationFields />
-
+      {profileTab === "resumes" && <>
       {/* Resumes */}
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
@@ -273,6 +294,7 @@ export function ProfileView() {
           </div>
         )}
       </section>
+      </>}
     </div>
   );
 }
