@@ -42,6 +42,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [editing, setEditing] = useState(false);
   const [editNotes, setEditNotes] = useState("");
   const [editPostingText, setEditPostingText] = useState("");
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [headerFields, setHeaderFields] = useState({ title: "", company: "", location: "", salary_text: "", url: "" });
 
   // Paste posting
   const [pasting, setPasting] = useState(false);
@@ -216,6 +218,16 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     fetchJob();
   };
 
+  const saveHeader = async () => {
+    await fetch(`/api/jobs/${jobId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(headerFields),
+    });
+    setEditingHeader(false);
+    fetchJob();
+  };
+
   const onDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     dragging.current = true;
@@ -256,14 +268,40 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         {/* Header */}
         <div className="col-start-1 row-start-1 border-b border-r border-slate-200 bg-white px-4 py-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <Link href="/jobs" className="text-xs text-slate-400 hover:text-slate-600">← All jobs</Link>
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">{job.title || "Untitled"}</h2>
-              <p className="text-xs text-slate-500">
-                {job.company}
-                {job.location && <span> · {job.location}</span>}
-                {job.salary_text && <span> · {job.salary_text}</span>}
-              </p>
+              {editingHeader ? (
+                <div className="mt-1 space-y-1.5">
+                  <input className="input text-sm font-bold" value={headerFields.title} onChange={(e) => setHeaderFields(f => ({ ...f, title: e.target.value }))} placeholder="Job title" autoFocus />
+                  <div className="flex gap-1.5">
+                    <input className="input text-xs" value={headerFields.company} onChange={(e) => setHeaderFields(f => ({ ...f, company: e.target.value }))} placeholder="Company" />
+                    <input className="input text-xs" value={headerFields.location} onChange={(e) => setHeaderFields(f => ({ ...f, location: e.target.value }))} placeholder="Location" />
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input className="input text-xs" value={headerFields.salary_text} onChange={(e) => setHeaderFields(f => ({ ...f, salary_text: e.target.value }))} placeholder="Salary" />
+                    <input className="input text-xs" value={headerFields.url} onChange={(e) => setHeaderFields(f => ({ ...f, url: e.target.value }))} placeholder="URL" />
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button onClick={saveHeader} className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark">Save</button>
+                    <button onClick={() => setEditingHeader(false)} className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="group">
+                  <h2 className="text-lg font-bold text-slate-900 leading-tight">
+                    {job.title || "Untitled"}
+                    <button
+                      onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
+                      className="ml-2 text-xs font-normal text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-500 transition-opacity"
+                    >Edit</button>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    {job.company}
+                    {job.location && <span> · {job.location}</span>}
+                    {job.salary_text && <span> · {job.salary_text}</span>}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <select
