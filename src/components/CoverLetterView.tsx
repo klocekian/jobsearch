@@ -95,7 +95,7 @@ export function CoverLetterView({
     <div>
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Cover Letter</h2>
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">Cover Letter</h2>
           <p className="mt-1 text-sm text-slate-500">
             Generated from your resume and this job posting — grounded in your real experience, never
             fabricated. Add a note below about what draws you to the role, then edit the draft and save
