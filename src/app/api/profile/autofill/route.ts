@@ -19,7 +19,12 @@ export async function GET() {
 
   if (userId) {
     const stored = await getProfileData(userId);
-    if (stored && stored.first_name) return NextResponse.json(stored);
+    if (stored && stored.first_name) {
+      if (!stored.full_name && stored.first_name) {
+        stored.full_name = `${stored.first_name} ${stored.last_name ?? ""}`.trim();
+      }
+      return NextResponse.json(stored);
+    }
   }
 
   const resumes = await listResumes(userId);
