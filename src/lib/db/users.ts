@@ -9,6 +9,9 @@ export interface UserRow {
   refresh_token: string | null;
   token_expires: number | null;
   profile_data: string | null;
+  google_access_token: string | null;
+  google_refresh_token: string | null;
+  google_token_expires: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +38,9 @@ export async function upsertUser(data: {
   anthropic_token?: string;
   refresh_token?: string;
   token_expires?: number;
+  google_access_token?: string;
+  google_refresh_token?: string;
+  google_token_expires?: number;
 }): Promise<UserRow> {
   const db = await getDb();
   const existing = await getUserByEmail(data.email);
@@ -42,14 +48,19 @@ export async function upsertUser(data: {
     await db.execute({
       sql: `UPDATE users SET name = ?, anthropic_token = COALESCE(?, anthropic_token),
             refresh_token = COALESCE(?, refresh_token), token_expires = COALESCE(?, token_expires),
+            google_access_token = COALESCE(?, google_access_token),
+            google_refresh_token = COALESCE(?, google_refresh_token),
+            google_token_expires = COALESCE(?, google_token_expires),
             updated_at = datetime('now') WHERE id = ?`,
-      args: [data.name, data.anthropic_token ?? null, data.refresh_token ?? null, data.token_expires ?? null, existing.id],
+      args: [data.name, data.anthropic_token ?? null, data.refresh_token ?? null, data.token_expires ?? null,
+             data.google_access_token ?? null, data.google_refresh_token ?? null, data.google_token_expires ?? null, existing.id],
     });
     return (await getUserById(existing.id))!;
   }
   const result = await db.execute({
-    sql: "INSERT INTO users (email, name, anthropic_token, refresh_token, token_expires) VALUES (?, ?, ?, ?, ?) RETURNING *",
-    args: [data.email, data.name, data.anthropic_token ?? null, data.refresh_token ?? null, data.token_expires ?? null],
+    sql: "INSERT INTO users (email, name, anthropic_token, refresh_token, token_expires, google_access_token, google_refresh_token, google_token_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
+    args: [data.email, data.name, data.anthropic_token ?? null, data.refresh_token ?? null, data.token_expires ?? null,
+           data.google_access_token ?? null, data.google_refresh_token ?? null, data.google_token_expires ?? null],
   });
   return rowToUser(result.rows[0]);
 }
