@@ -411,8 +411,6 @@ const PROFILE_FIELDS: { key: string; label: string; type?: "checkbox"; half?: bo
   { key: "github", label: "GitHub URL", half: true },
   { key: "website", label: "Website / Portfolio", half: true },
   { key: "substack", label: "Substack / Blog" },
-  { key: "work_authorized", label: "Authorized to work in US", type: "checkbox" },
-  { key: "sponsorship_required", label: "Requires visa sponsorship", type: "checkbox" },
 ];
 
 function ApplicationFields() {
