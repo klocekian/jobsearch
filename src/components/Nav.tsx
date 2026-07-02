@@ -2,25 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 const links = [
   { href: "/jobs", label: "Jobs" },
   { href: "/profile", label: "Profile" },
 ] as const;
 
-interface AuthUser { id: number; name: string; email: string }
+interface NavUser { id: number; name: string; email: string }
 
-export function Nav() {
+export function Nav({ user }: { user: NavUser | null }) {
   const pathname = usePathname();
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d: { user?: AuthUser | null }) => setUser(d.user ?? null))
-      .catch(() => {});
-  }, []);
 
   return (
     <nav className="border-b border-slate-200 bg-white">

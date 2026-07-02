@@ -1,6 +1,5 @@
-import { getSession } from "./auth";
+import { getSessionUserId } from "./auth";
 
 export async function getCurrentUserId(): Promise<number | null> {
-  const user = await getSession();
-  return user?.id ?? null;
+  return await getSessionUserId();
 }

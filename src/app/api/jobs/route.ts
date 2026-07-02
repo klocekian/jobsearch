@@ -29,7 +29,9 @@ export async function GET(request: Request) {
 
   const userId = await getCurrentUserId();
   const jobs = await listJobs(userId, { sort, order, status, search });
-  return NextResponse.json({ jobs });
+  return NextResponse.json({ jobs }, {
+    headers: { "Cache-Control": "private, max-age=5, stale-while-revalidate=30" },
+  });
 }
 
 export async function POST(request: Request) {

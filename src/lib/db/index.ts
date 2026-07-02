@@ -16,7 +16,9 @@ export async function getDb(): Promise<Client> {
   const client = getClient();
   if (_initialized) return client;
 
-  // Core tables (IF NOT EXISTS is safe for new + existing DBs)
+  // Single batch: tables + indexes. Migrations (ALTER TABLE) go through
+  // individual try/catch since they fail if the column already exists,
+  // but we batch them into one executeMultiple to minimize round-trips.
   await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,12 +27,17 @@ export async function getDb(): Promise<Client> {
       anthropic_token TEXT,
       refresh_token   TEXT,
       token_expires   INTEGER,
+      profile_data    TEXT,
+      google_access_token TEXT,
+      google_refresh_token TEXT,
+      google_token_expires INTEGER,
       created_at      TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS jobs (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
       company       TEXT NOT NULL DEFAULT '',
       title         TEXT NOT NULL DEFAULT '',
       url           TEXT NOT NULL DEFAULT '',
@@ -45,6 +52,7 @@ export async function getDb(): Promise<Client> {
       source        TEXT NOT NULL DEFAULT 'manual',
       match_score   INTEGER,
       match_report  TEXT,
+      previous_status TEXT,
       created_at    TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
       applied_at    TEXT
@@ -63,10 +71,12 @@ export async function getDb(): Promise<Client> {
 
     CREATE TABLE IF NOT EXISTS resumes (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
       name        TEXT NOT NULL DEFAULT 'Untitled Resume',
       content     TEXT NOT NULL DEFAULT '',
       file_name   TEXT NOT NULL DEFAULT '',
       is_default  INTEGER NOT NULL DEFAULT 0,
+      tags        TEXT NOT NULL DEFAULT '[]',
       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -76,44 +86,14 @@ export async function getDb(): Promise<Client> {
       value       TEXT NOT NULL,
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+    CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
+    CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id);
+    CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
   `);
-
-  // Migrations — add columns to existing tables (safe to retry)
-  const addColumns = [
-    "ALTER TABLE jobs ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
-    "ALTER TABLE resumes ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
-    "ALTER TABLE jobs ADD COLUMN previous_status TEXT",
-    "ALTER TABLE resumes ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'",
-    "ALTER TABLE users ADD COLUMN profile_data TEXT",
-    "ALTER TABLE users ADD COLUMN google_access_token TEXT",
-    "ALTER TABLE users ADD COLUMN google_refresh_token TEXT",
-    "ALTER TABLE users ADD COLUMN google_token_expires INTEGER",
-  ];
-  for (const sql of addColumns) {
-    try { await client.execute(sql); } catch { /* already exists */ }
-  }
-
-  // Indexes (safe after columns exist)
-  const indexes = [
-    "CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)",
-    "CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company)",
-    "CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)",
-    "CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id)",
-    "CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id)",
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)",
-  ];
-  for (const sql of indexes) {
-    try { await client.execute(sql); } catch { /* already exists */ }
-  }
-
-  // One-time backfill: set previous_status for existing terminal jobs
-  const backfills = [
-    "UPDATE jobs SET previous_status = 'applied' WHERE status = 'rejected' AND previous_status IS NULL",
-    "UPDATE jobs SET previous_status = 'saved' WHERE status IN ('closed', 'abandoned') AND previous_status IS NULL",
-  ];
-  for (const sql of backfills) {
-    try { await client.execute(sql); } catch { /* ignore */ }
-  }
 
   _initialized = true;
   return client;

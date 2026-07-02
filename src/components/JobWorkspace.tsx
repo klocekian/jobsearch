@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Markdown from "react-markdown";
 import { analyze } from "@/lib/analysis/analyze";
 import type { MatchReport } from "@/lib/analysis/types";
 import type { ContextMaterial } from "@/lib/context";
@@ -458,7 +459,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                     {job.notes ? "Edit notes" : "Add notes"}
                   </button>
                   {job.notes ? (
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{job.notes}</pre>
+                    <div className="prose prose-sm prose-slate max-w-none">
+                      <Markdown>{job.notes}</Markdown>
+                    </div>
                   ) : (
                     <p className="py-6 text-center text-xs text-slate-400">No notes yet.</p>
                   )}

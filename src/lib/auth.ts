@@ -31,13 +31,18 @@ export async function setSession(userId: number): Promise<void> {
   });
 }
 
-export async function getSession(): Promise<UserRow | null> {
+export async function getSessionUserId(): Promise<number | null> {
   const store = await cookies();
   const cookie = store.get(SESSION_COOKIE)?.value;
   if (!cookie) return null;
   const payload = verify(cookie);
   if (!payload) return null;
   const userId = Number(payload);
+  return userId || null;
+}
+
+export async function getSession(): Promise<UserRow | null> {
+  const userId = await getSessionUserId();
   if (!userId) return null;
   return (await getUserById(userId)) ?? null;
 }

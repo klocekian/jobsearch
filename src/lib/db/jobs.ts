@@ -24,7 +24,7 @@ export interface JobRow {
   previous_status: string | null;
 }
 
-export type JobInsert = Partial<Omit<JobRow, "id" | "created_at" | "updated_at">>;
+export type JobInsert = Partial<Omit<JobRow, "id">>;
 export type JobUpdate = Partial<Omit<JobRow, "id" | "created_at" | "user_id">>;
 
 function rowToJob(row: Row): JobRow {
@@ -74,7 +74,8 @@ export async function listJobs(userId: number | null, opts?: {
   }
 
   const where = `WHERE ${conditions.join(" AND ")}`;
-  const result = await db.execute({ sql: `SELECT * FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });
+  const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, notes, source, match_score, created_at, updated_at, applied_at";
+  const result = await db.execute({ sql: `SELECT ${listCols} FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });
   return result.rows.map(rowToJob);
 }
 
@@ -91,8 +92,14 @@ export async function getJob(id: number, userId?: number | null): Promise<JobRow
   return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
+function pacificNow(): string {
+  return new Date().toLocaleString("sv-SE", { timeZone: "America/Los_Angeles" }).replace(",", "");
+}
+
 export async function createJob(data: JobInsert): Promise<JobRow> {
   const db = await getDb();
+  if (!data.created_at) (data as Record<string, unknown>).created_at = pacificNow();
+  if (!data.updated_at) (data as Record<string, unknown>).updated_at = pacificNow();
   const fields = Object.keys(data).filter((k) => (data as Record<string, unknown>)[k] !== undefined);
   const values = fields.map((k) => (data as Record<string, unknown>)[k] as InValue);
 
