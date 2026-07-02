@@ -46,6 +46,7 @@ export async function GET(request: Request) {
     }
 
     const tokens = (await tokenRes.json()) as { access_token: string; refresh_token?: string; expires_in?: number };
+    console.log("Google OAuth tokens received:", { hasAccessToken: !!tokens.access_token, hasRefreshToken: !!tokens.refresh_token, expiresIn: tokens.expires_in });
 
     // Get user info from Google
     const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {

@@ -38,6 +38,7 @@ export async function GET(request: Request) {
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const user = await getUserById(session.id);
+  console.log("Calendar request:", { userId: session.id, hasGoogleToken: !!user?.google_access_token, hasRefreshToken: !!user?.google_refresh_token });
   if (!user?.google_access_token) {
     return NextResponse.json({ error: "Calendar not connected. Sign out and sign in again to grant calendar access." }, { status: 403 });
   }
