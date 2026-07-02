@@ -43,7 +43,7 @@ export async function PATCH(request: Request, ctx: Params) {
       if (v !== undefined) updates[k] = v;
     }
     if (data.status === "applied" && !data.applied_at) {
-      updates.applied_at = new Date().toISOString().slice(0, 10);
+      updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
     }
     const terminalStatuses = new Set(["rejected", "declined", "withdrawn", "abandoned", "closed"]);
     if (data.status && terminalStatuses.has(data.status)) {
