@@ -135,24 +135,73 @@ async function init() {
   // Tab switching
   const tabClip = $("tabClip");
   const tabFill = $("tabFill");
-  if (tabClip && tabFill) {
-    tabClip.addEventListener("click", () => {
-      tabClip.classList.add("active"); tabFill.classList.remove("active");
-      $("clipContent").style.display = ""; $("fillContent").style.display = "none";
-    });
-    tabFill.addEventListener("click", () => {
-      tabFill.classList.add("active"); tabClip.classList.remove("active");
-      $("clipContent").style.display = "none"; $("fillContent").style.display = "";
-      loadFillFields();
-    });
+  const tabSchedule = $("tabSchedule");
+  const allTabs = [tabClip, tabFill, tabSchedule].filter(Boolean);
+  const allPanes = ["clipContent", "fillContent", "scheduleContent"];
+
+  function switchTab(activeTab, activePane, onShow) {
+    allTabs.forEach(t => t.classList.remove("active"));
+    allPanes.forEach(p => { const el = $(p); if (el) el.style.display = "none"; });
+    if (activeTab) activeTab.classList.add("active");
+    const pane = $(activePane);
+    if (pane) pane.style.display = "";
+    if (onShow) onShow();
   }
+
+  if (tabClip) tabClip.addEventListener("click", () => switchTab(tabClip, "clipContent"));
+  if (tabFill) tabFill.addEventListener("click", () => switchTab(tabFill, "fillContent", loadFillFields));
+  if (tabSchedule) tabSchedule.addEventListener("click", () => switchTab(tabSchedule, "scheduleContent", () => loadCalendar(scheduleDate)));
+
+  // Schedule tab
+  let scheduleDate = new Date();
+  const schedPrev = $("schedPrev");
+  const schedNext = $("schedNext");
+  if (schedPrev) schedPrev.addEventListener("click", () => { scheduleDate.setDate(scheduleDate.getDate() - 1); loadCalendar(scheduleDate); });
+  if (schedNext) schedNext.addEventListener("click", () => { scheduleDate.setDate(scheduleDate.getDate() + 1); loadCalendar(scheduleDate); });
 
   const refreshBtn = $("refreshBtn");
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {
       loadRecentJobs();
       if ($("fillContent")?.style.display !== "none") loadFillFields();
+      if ($("scheduleContent")?.style.display !== "none") loadCalendar(scheduleDate);
     });
+  }
+}
+
+async function loadCalendar(date) {
+  const container = $("scheduleEvents");
+  const dateLabel = $("schedDate");
+  if (!container) return;
+
+  const iso = date.toISOString().slice(0, 10);
+  const isToday = iso === new Date().toISOString().slice(0, 10);
+  dateLabel.textContent = isToday ? "Today" : date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  container.innerHTML = '<span style="color:#94a3b8">Loading…</span>';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/calendar?date=${iso}`, { credentials: "include" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      container.innerHTML = `<p style="font-size:12px;color:#dc2626">${d.error || "Failed to load calendar."}</p>`;
+      return;
+    }
+    const data = await res.json();
+    const events = data.events || [];
+    if (events.length === 0) {
+      container.innerHTML = '<div class="cal-free">No events today — wide open!</div>';
+      return;
+    }
+    container.innerHTML = events.map((e) => {
+      const startTime = e.allDay ? "All day" : new Date(e.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      const endTime = e.allDay ? "" : " – " + new Date(e.end).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return `<div class="cal-event ${e.allDay ? "all-day" : ""}">` +
+        `<div class="cal-time">${startTime}${endTime}</div>` +
+        `<div class="cal-title">${e.title}</div>` +
+        `</div>`;
+    }).join("");
+  } catch {
+    container.innerHTML = '<p style="font-size:12px;color:#dc2626">Could not connect to calendar.</p>';
   }
 }
 
