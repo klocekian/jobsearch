@@ -69,6 +69,9 @@ export async function GET(request: Request) {
   });
 
   if (!calRes.ok) {
+    const errBody = await calRes.text().catch(() => "");
+    console.error("Calendar API error:", calRes.status, errBody);
+
     if (calRes.status === 401 && user.google_refresh_token) {
       const refreshed = await refreshGoogleToken(user.id, user.google_refresh_token);
       if (refreshed) {
@@ -80,6 +83,9 @@ export async function GET(request: Request) {
           return NextResponse.json({ events: formatEvents(data.items ?? []) });
         }
       }
+    }
+    if (calRes.status === 403 && errBody.includes("Calendar API")) {
+      return NextResponse.json({ error: "Google Calendar API is not enabled. Enable it at console.cloud.google.com/apis." }, { status: 403 });
     }
     return NextResponse.json({ error: "Failed to fetch calendar. Try signing out and in again." }, { status: 502 });
   }
