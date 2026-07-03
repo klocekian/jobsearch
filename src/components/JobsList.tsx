@@ -168,12 +168,12 @@ export function JobsList() {
     sessionStorage.setItem("jobsSortOrder", newOrder);
   };
 
-  const sortablePlugin = useTableSortable<JobRow>({
+  const sortablePlugin = useTableSortable<JobRow & Record<string, unknown>>({
     sort: [{ sortKey, direction: sortOrder === "asc" ? "ascending" : "descending" }],
     onSortChange: handleSortChange,
   });
 
-  const columns: TableColumn<JobRow>[] = [
+  const columns: TableColumn<JobRow & Record<string, unknown>>[] = [
     {
       key: "company",
       header: "Company",
