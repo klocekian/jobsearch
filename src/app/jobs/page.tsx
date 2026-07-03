@@ -5,6 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { JobsList } from "@/components/JobsList";
 import { JobsFunnel } from "@/components/JobsFunnel";
 import { AddJobForm } from "@/components/AddJobForm";
+import { Text } from "@astryxdesign/core/Text";
+import { Card } from "@astryxdesign/core/Card";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
+import { HStack } from "@astryxdesign/core/Stack";
 
 type JobsTab = "list" | "funnel";
 
@@ -14,32 +18,25 @@ function JobsPageInner() {
   const [tab, setTab] = useState<JobsTab>("list");
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-8">
+    <main className="mx-auto w-full max-w-7xl px-5 py-8">
       {adding ? (
         <>
-          <h1 className="mb-6 text-xl font-bold text-slate-900">Add Job</h1>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <AddJobForm />
-          </div>
+          <Text type="display-3" as="h1" className="mb-6">Add Job</Text>
+          <Card>
+            <div className="p-6">
+              <AddJobForm />
+            </div>
+          </Card>
         </>
       ) : (
         <>
-          <div className="mb-6 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-slate-900">Jobs</h1>
-            <div className="inline-flex rounded-full bg-slate-100 p-1">
-              {(["list", "funnel"] as const).map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setTab(key)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition ${
-                    tab === key ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {key === "list" ? "List" : "Funnel"}
-                </button>
-              ))}
-            </div>
-          </div>
+          <HStack className="mb-6 items-center justify-between">
+            <Text type="display-3" as="h1">Jobs</Text>
+            <SegmentedControl value={tab} onChange={(v) => setTab(v as JobsTab)} label="View mode">
+              <SegmentedControlItem value="list" label="List" />
+              <SegmentedControlItem value="funnel" label="Funnel" />
+            </SegmentedControl>
+          </HStack>
           {tab === "list" && <JobsList />}
           {tab === "funnel" && <JobsFunnel />}
         </>

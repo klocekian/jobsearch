@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
+    "@astryxdesign/core": "^0.1.2",
+    "@astryxdesign/theme-neutral": "^0.1.2",
     "@libsql/client": "^0.17.4",
     "@tailwindcss/typography": "^0.5.20",
     "better-sqlite3": "^12.11.1",
@@ -23,6 +26,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "^0.1.2",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",

@@ -7,6 +7,11 @@ import {
   totalContextChars,
   type ContextMaterial,
 } from "@/lib/context";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Card } from "@astryxdesign/core/Card";
+import { Banner } from "@astryxdesign/core/Banner";
 
 interface ContextMaterialsPanelProps {
   materials: ContextMaterial[];
@@ -89,7 +94,7 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
+    <Card className="p-5">
       <div className="mb-1 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">Context materials</h3>
         <span className="text-xs text-slate-400">Shared across Resume &amp; Cover Letter</span>
@@ -136,36 +141,39 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
         />
       </div>
 
-      {status.kind === "error" && <p className="mt-2 text-xs text-rose-500">{status.message}</p>}
+      {status.kind === "error" && <Banner status="error" title={status.message ?? "An error occurred."} className="mt-2" />}
 
       {pasteOpen && (
         <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <input
-            className="input"
+          <TextInput
+            label="Label"
+            isLabelHidden
             value={pasteName}
-            onChange={(e) => setPasteName(e.target.value)}
+            onChange={setPasteName}
             placeholder="Label (e.g. 2024 brag doc)"
           />
-          <textarea
-            className="input h-24 resize-y text-sm"
+          <TextArea
+            label="Paste text"
+            isLabelHidden
             value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
+            onChange={setPasteText}
             placeholder="Paste any supporting text here…"
+            rows={4}
           />
           <div className="flex gap-2">
-            <button
+            <Button
+              label="Add"
+              variant="primary"
+              size="sm"
               onClick={addPaste}
-              disabled={!pasteText.trim()}
-              className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-            >
-              Add
-            </button>
-            <button
+              isDisabled={!pasteText.trim()}
+            />
+            <Button
+              label="Cancel"
+              variant="ghost"
+              size="sm"
               onClick={() => setPasteOpen(false)}
-              className="rounded-md px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
-            >
-              Cancel
-            </button>
+            />
           </div>
         </div>
       )}
@@ -183,17 +191,16 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
                   · {m.source === "paste" ? "pasted" : m.source.toUpperCase()} · {m.text.length.toLocaleString()} chars
                 </span>
               </span>
-              <button
+              <Button
+                label="×"
+                variant="ghost"
+                size="sm"
                 onClick={() => remove(m.id)}
-                aria-label={`Remove ${m.name}`}
-                className="shrink-0 rounded px-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-rose-500"
-              >
-                ×
-              </button>
+              />
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </Card>
   );
 }

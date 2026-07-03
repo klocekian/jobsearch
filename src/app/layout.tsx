@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Nav } from "@/components/Nav";
+import { Providers } from "@/components/Providers";
 import { getSession } from "@/lib/auth";
 import "./globals.css";
 
@@ -25,8 +26,10 @@ export default async function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
-        <Nav user={navUser} />
-        {children}
+        <Providers>
+          <Nav user={navUser} />
+          {children}
+        </Providers>
       </body>
     </html>
   );
