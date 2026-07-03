@@ -33,6 +33,8 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { Text } from "@astryxdesign/core/Text";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Spinner } from "@astryxdesign/core/Spinner";
+import { Card } from "@astryxdesign/core/Card";
+import { Stack, HStack } from "@astryxdesign/core/Stack";
 
 type LeftTab = "posting" | "apply" | "submissions" | "notes";
 type RightTab = "report" | "resume" | "cover";
@@ -52,6 +54,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [editNotes, setEditNotes] = useState("");
   const [editPostingText, setEditPostingText] = useState("");
   const [editingHeader, setEditingHeader] = useState(false);
+  const [viewingSubmission, setViewingSubmission] = useState<number | null>(null);
   const [headerFields, setHeaderFields] = useState({ title: "", company: "", location: "", salary_text: "", url: "" });
 
   // Paste posting
@@ -392,14 +395,14 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           )}
 
           {leftTab === "submissions" && (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <Button label="Upload file" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} />
+            <Stack gap={3}>
+              <HStack gap={2}>
+                <Button label="Upload file" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} />
                 <input ref={fileRef} type="file" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadFile(e.target.files[0]); e.target.value = ""; }} />
                 {analyzed && (
                   <Button
                     label="Save package"
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     onClick={async () => {
                       const resume = loadSavedResume();
@@ -417,26 +420,45 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                     }}
                   />
                 )}
-              </div>
+              </HStack>
               {submissions.length === 0 ? (
                 <Banner status="info" title="No submissions yet." />
               ) : (
-                <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+                <Stack gap={2}>
                   {submissions.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between px-3 py-2">
-                      <div>
-                        <p className="text-xs font-medium text-slate-700">{s.label}</p>
-                        <p className="text-[10px] text-slate-400">{s.type} · {s.format}</p>
+                    <Card key={s.id}>
+                      <div className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="min-w-0 flex-1">
+                            <Text type="body" className="font-medium">{s.label}</Text>
+                            <Text type="supporting">{s.type} · {s.format}</Text>
+                          </div>
+                          <HStack gap={2}>
+                            {s.content && (
+                              <Button
+                                label={viewingSubmission === s.id ? "Close" : "View"}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewingSubmission(viewingSubmission === s.id ? null : s.id)}
+                              />
+                            )}
+                            <a href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} className="text-xs font-medium text-accent hover:underline">Download</a>
+                            <Button label="Remove" variant="ghost" size="sm" onClick={() => deleteSubmission(s.id)} />
+                          </HStack>
+                        </div>
+                        {viewingSubmission === s.id && s.content && (
+                          <div className="mt-3 border-t border-border pt-3">
+                            <div className="prose prose-sm prose-slate max-w-none">
+                              <Markdown>{s.content}</Markdown>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-2">
-                        <a href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} className="text-xs font-medium text-accent hover:underline">Download</a>
-                        <Button label="Remove" variant="destructive" size="sm" onClick={() => deleteSubmission(s.id)} />
-                      </div>
-                    </div>
+                    </Card>
                   ))}
-                </div>
+                </Stack>
               )}
-            </div>
+            </Stack>
           )}
 
           {leftTab === "notes" && (
