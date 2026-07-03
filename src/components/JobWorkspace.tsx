@@ -32,7 +32,6 @@ import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Text } from "@astryxdesign/core/Text";
 import { Banner } from "@astryxdesign/core/Banner";
-import { Link as AstryxLink } from "@astryxdesign/core/Link";
 import { Spinner } from "@astryxdesign/core/Spinner";
 
 type LeftTab = "posting" | "apply" | "submissions" | "notes";
@@ -348,7 +347,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 <div className="flex items-center gap-2">
                   <Button label={job.posting_text ? "Update posting" : "Paste posting"} variant="secondary" size="sm" onClick={() => setPasting(true)} />
                   {job.url && (
-                    <AstryxLink href={job.url}>Open original ↗</AstryxLink>
+                    <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline">Open original ↗</a>
                   )}
                 </div>
               )}
@@ -382,7 +381,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             job.url ? (
               <div className="flex h-full flex-col">
                 <div className="mb-2 flex items-center gap-2">
-                  <AstryxLink href={job.url}>Open in new tab ↗</AstryxLink>
+                  <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline">Open in new tab ↗</a>
                   <Text type="supporting">Many sites block embedding — use the link above if the form doesn&apos;t load below.</Text>
                 </div>
                 <iframe src={job.url} className="flex-1 w-full rounded-lg border border-slate-200" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
@@ -430,7 +429,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                         <p className="text-[10px] text-slate-400">{s.type} · {s.format}</p>
                       </div>
                       <div className="flex gap-2">
-                        <AstryxLink href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`}>Download</AstryxLink>
+                        <a href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} className="text-xs font-medium text-accent hover:underline">Download</a>
                         <Button label="Remove" variant="destructive" size="sm" onClick={() => deleteSubmission(s.id)} />
                       </div>
                     </div>
