@@ -6,6 +6,13 @@ import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Selector } from "@astryxdesign/core/Selector";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { Card } from "@astryxdesign/core/Card";
+import { Spinner } from "@astryxdesign/core/Spinner";
 
 type Tab = "posting" | "notes" | "submissions";
 
@@ -176,7 +183,7 @@ export function JobDetail({ jobId }: { jobId: number }) {
     fetchJob();
   };
 
-  if (loading) return <p className="py-12 text-center text-sm text-slate-400">Loading…</p>;
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
   if (!job) return <p className="py-12 text-center text-sm text-slate-500">Job not found.</p>;
 
   return (
@@ -213,99 +220,53 @@ export function JobDetail({ jobId }: { jobId: number }) {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="mb-6 flex flex-wrap gap-2">
-        <Link
-          href={`/?jobId=${job.id}`}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
-        >
-          Analyze Match
-        </Link>
-        <button
-          onClick={startEdit}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-        >
-          Edit
-        </button>
-        <button
-          onClick={deleteJob}
-          className="rounded-lg border border-rose-200 px-4 py-2 text-sm font-medium text-rose-500 transition hover:bg-rose-50"
-        >
-          Delete
-        </button>
+        <Button label="Analyze Match" variant="primary" href={`/?jobId=${job.id}`} />
+        <Button label="Edit" variant="secondary" onClick={startEdit} />
+        <Button label="Delete" variant="destructive" onClick={deleteJob} />
       </div>
 
       {/* Edit modal */}
       {editing && (
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <Card className="mb-6 p-5">
           <h3 className="mb-4 text-sm font-semibold text-slate-700">Edit Job</h3>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Company</label>
-                <input className="input" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Title</label>
-                <input className="input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-              </div>
+              <TextInput label="Company" value={editCompany} onChange={setEditCompany} />
+              <TextInput label="Title" value={editTitle} onChange={setEditTitle} />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">URL</label>
-              <input className="input" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} />
-            </div>
+            <TextInput label="URL" value={editUrl} onChange={setEditUrl} />
             <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Location</label>
-                <input className="input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Remote</label>
-                <select className="input" value={editRemoteType} onChange={(e) => setEditRemoteType(e.target.value)}>
-                  <option value="">—</option>
-                  <option value="remote">Remote</option>
-                  <option value="hybrid">Hybrid</option>
-                  <option value="onsite">On-site</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Salary</label>
-                <input className="input" value={editSalaryText} onChange={(e) => setEditSalaryText(e.target.value)} />
-              </div>
+              <TextInput label="Location" value={editLocation} onChange={setEditLocation} />
+              <Selector
+                label="Remote"
+                options={[
+                  { value: "", label: "—" },
+                  { value: "remote", label: "Remote" },
+                  { value: "hybrid", label: "Hybrid" },
+                  { value: "onsite", label: "On-site" },
+                ]}
+                value={editRemoteType}
+                onChange={setEditRemoteType}
+              />
+              <TextInput label="Salary" value={editSalaryText} onChange={setEditSalaryText} />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Job Posting Text</label>
-              <textarea className="input h-48 resize-y font-mono text-xs" value={editPostingText} onChange={(e) => setEditPostingText(e.target.value)} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Notes</label>
-              <textarea className="input h-20 resize-y text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
-            </div>
+            <TextArea label="Job Posting Text" value={editPostingText} onChange={setEditPostingText} rows={12} />
+            <TextArea label="Notes" value={editNotes} onChange={setEditNotes} rows={3} />
             <div className="flex gap-2">
-              <button onClick={saveEdit} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">Save</button>
-              <button onClick={() => setEditing(false)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+              <Button label="Save" variant="primary" onClick={saveEdit} />
+              <Button label="Cancel" variant="secondary" onClick={() => setEditing(false)} />
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Tabs */}
-      <div className="mb-4 flex gap-1 border-b border-slate-200">
-        {([
-          ["posting", "Job Posting"],
-          ["submissions", `Submissions (${submissions.length})`],
-          ["notes", "Notes"],
-        ] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key as Tab)}
-            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
-              tab === key ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-4">
+        <TabList value={tab} onChange={(v) => setTab(v as Tab)}>
+          <Tab value="posting" label="Job Posting" />
+          <Tab value="submissions" label={`Submissions (${submissions.length})`} />
+          <Tab value="notes" label="Notes" />
+        </TabList>
       </div>
 
       {/* Tab content */}
@@ -313,93 +274,91 @@ export function JobDetail({ jobId }: { jobId: number }) {
         <div className="space-y-3">
           {!pasting && (
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                label={job.posting_text ? "Paste updated posting" : "Paste job posting"}
+                variant="secondary"
+                size="sm"
                 onClick={() => setPasting(true)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-              >
-                {job.posting_text ? "Paste updated posting" : "Paste job posting"}
-              </button>
+              />
               {extractMsg && <span className="text-xs text-emerald-600">{extractMsg}</span>}
             </div>
           )}
 
           {pasting && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <Card className="p-4">
               <p className="mb-2 text-xs text-slate-500">
                 Select all text on the job posting page, copy it, and paste it here.
               </p>
-              <textarea
-                className="input h-48 resize-y font-mono text-xs leading-relaxed"
+              <TextArea
+                label="Paste posting"
+                isLabelHidden
                 value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
+                onChange={setPasteText}
                 placeholder="Paste the full job posting here…"
-                autoFocus
+                rows={12}
               />
               <div className="mt-2 flex gap-2">
-                <button
+                <Button
+                  label={extracting ? "Extracting…" : "Extract & fill missing fields"}
+                  variant="primary"
                   onClick={pasteAndExtract}
-                  disabled={!pasteText.trim() || extracting}
-                  className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
-                >
-                  {extracting ? "Extracting…" : "Extract & fill missing fields"}
-                </button>
-                <button
+                  isDisabled={!pasteText.trim() || extracting}
+                />
+                <Button
+                  label="Just save as posting text"
+                  variant="secondary"
                   onClick={pasteDirect}
-                  disabled={!pasteText.trim()}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Just save as posting text
-                </button>
-                <button
+                  isDisabled={!pasteText.trim()}
+                />
+                <Button
+                  label="Cancel"
+                  variant="secondary"
                   onClick={() => { setPasting(false); setPasteText(""); }}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
+                />
               </div>
               {extractMsg && <p className="mt-2 text-xs text-emerald-600">{extractMsg}</p>}
-            </div>
+            </Card>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <Card className="p-5">
             {job.posting_text ? (
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{job.posting_text}</pre>
             ) : (
               <p className="text-sm text-slate-400">No posting text saved. Paste it above or click Edit.</p>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
       {tab === "notes" && (
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <Card className="p-5">
           {job.notes ? (
             <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{job.notes}</pre>
           ) : (
             <p className="text-sm text-slate-400">No notes yet. Click Edit to add some.</p>
           )}
-        </div>
+        </Card>
       )}
 
       {tab === "submissions" && (
         <div className="space-y-3">
           <div className="flex gap-2">
-            <button
+            <Button
+              label="Upload file"
+              variant="secondary"
+              size="sm"
               onClick={() => fileRef.current?.click()}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Upload file
-            </button>
+            />
             <input ref={fileRef} type="file" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadFile(e.target.files[0]); e.target.value = ""; }} />
-            <button
+            <Button
+              label="Save text"
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 const text = prompt("Paste submission text:");
                 if (text) saveTextSubmission("other", "Pasted text", "txt", text);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Save text
-            </button>
+            />
           </div>
 
           {submissions.length === 0 ? (
@@ -407,7 +366,7 @@ export function JobDetail({ jobId }: { jobId: number }) {
               No submissions yet. Save your resume, cover letter, or application materials here.
             </p>
           ) : (
-            <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+            <Card className="divide-y divide-slate-100">
               {submissions.map((s) => (
                 <div key={s.id} className="flex items-center justify-between px-4 py-3">
                   <div>
@@ -427,26 +386,26 @@ export function JobDetail({ jobId }: { jobId: number }) {
                         Download
                       </a>
                     ) : s.content ? (
-                      <button
+                      <Button
+                        label="View"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           const w = window.open("", "_blank");
                           if (w) { w.document.write(`<pre>${s.content.replace(/</g, "&lt;")}</pre>`); w.document.title = s.label; }
                         }}
-                        className="text-xs font-medium text-brand hover:underline"
-                      >
-                        View
-                      </button>
+                      />
                     ) : null}
-                    <button
+                    <Button
+                      label="Remove"
+                      variant="destructive"
+                      size="sm"
                       onClick={() => deleteSubmission(s.id)}
-                      className="text-xs text-rose-400 hover:text-rose-600"
-                    >
-                      Remove
-                    </button>
+                    />
                   </div>
                 </div>
               ))}
-            </div>
+            </Card>
           )}
         </div>
       )}

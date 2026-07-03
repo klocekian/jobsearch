@@ -2,6 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Banner } from "@astryxdesign/core/Banner";
+
+const remoteOptions = [
+  { value: "", label: "—" },
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "On-site" },
+];
 
 export function AddJobForm() {
   const router = useRouter();
@@ -100,107 +112,82 @@ export function AddJobForm() {
   return (
     <div className="space-y-4">
       <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">Job Posting URL</label>
-        <div className="flex gap-2">
-          <input
-            className="input flex-1"
-            type="url"
+        <div className="flex gap-2 items-end">
+          <TextInput
+            label="Job Posting URL"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={setUrl}
             placeholder="https://careers.example.com/job/12345"
+            className="flex-1"
           />
-          <button
-            type="button"
+          <Button
+            label={fetchStatus === "loading" ? "Fetching…" : "Fetch"}
+            variant="secondary"
+            size="md"
             onClick={fetchFromUrl}
-            disabled={!url.trim() || fetchStatus === "loading"}
-            className="shrink-0 rounded-lg border border-brand px-4 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white disabled:opacity-50"
-          >
-            {fetchStatus === "loading" ? "Fetching…" : "Fetch"}
-          </button>
+            isDisabled={!url.trim() || fetchStatus === "loading"}
+          />
         </div>
-        {fetchStatus === "done" && <p className="mt-1 text-xs text-emerald-600">{fetchMsg}</p>}
-        {fetchStatus === "error" && <p className="mt-1 text-xs text-rose-500">{fetchMsg}</p>}
+        {fetchStatus === "done" && <Banner status="success" title={fetchMsg} />}
+        {fetchStatus === "error" && <Banner status="error" title={fetchMsg} />}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Company</label>
-          <input className="input" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Google" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Job Title</label>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Director, UX" />
-        </div>
+        <TextInput label="Company" value={company} onChange={setCompany} placeholder="Google" />
+        <TextInput label="Job Title" value={title} onChange={setTitle} placeholder="Director, UX" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Location</label>
-          <input className="input" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="San Francisco, CA" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Remote</label>
-          <select className="input" value={remoteType} onChange={(e) => setRemoteType(e.target.value)}>
-            <option value="">—</option>
-            <option value="remote">Remote</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="onsite">On-site</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-600">Salary</label>
-          <input className="input" value={salaryText} onChange={(e) => setSalaryText(e.target.value)} placeholder="$150k–$200k" />
-        </div>
+        <TextInput label="Location" value={location} onChange={setLocation} placeholder="San Francisco, CA" />
+        <Selector label="Remote" options={remoteOptions} value={remoteType} onChange={setRemoteType} />
+        <TextInput label="Salary" value={salaryText} onChange={setSalaryText} placeholder="$150k–$200k" />
       </div>
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <label className="text-xs font-medium text-slate-600">
+          <span className="text-xs font-medium text-slate-600">
             Job Description (paste the full posting)
-          </label>
-          <button
-            type="button"
+          </span>
+          <Button
+            label={extractStatus === "loading" ? "Extracting…" : "Extract fields from text"}
+            variant="ghost"
+            size="sm"
             onClick={extractFromText}
-            disabled={!postingText.trim() || extractStatus === "loading"}
-            className="rounded-md border border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
-          >
-            {extractStatus === "loading" ? "Extracting…" : "Extract fields from text"}
-          </button>
+            isDisabled={!postingText.trim() || extractStatus === "loading"}
+          />
         </div>
-        <textarea
-          className="input h-64 resize-y font-mono text-xs leading-relaxed"
+        <TextArea
+          label="Job Description"
+          isLabelHidden
           value={postingText}
-          onChange={(e) => setPostingText(e.target.value)}
+          onChange={setPostingText}
+          rows={12}
           placeholder="Paste the full job posting here. Select all the text on the job page, copy it, and paste it here — then click 'Extract fields from text' to auto-fill the fields above."
         />
-        {extractStatus === "done" && <p className="mt-1 text-xs text-emerald-600">{extractMsg}</p>}
-        {extractStatus === "error" && <p className="mt-1 text-xs text-rose-500">{extractMsg}</p>}
+        {extractStatus === "done" && <Banner status="success" title={extractMsg} />}
+        {extractStatus === "error" && <Banner status="error" title={extractMsg} />}
       </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-600">Notes (optional)</label>
-        <textarea
-          className="input h-20 resize-y text-sm"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Any notes — who referred you, why you're interested, etc."
-        />
-      </div>
+      <TextArea
+        label="Notes (optional)"
+        value={notes}
+        onChange={setNotes}
+        rows={3}
+        placeholder="Any notes — who referred you, why you're interested, etc."
+      />
 
       <div className="flex gap-3">
-        <button
+        <Button
+          label={saving ? "Saving…" : "Save Job"}
+          variant="primary"
           onClick={save}
-          disabled={saving || (!company.trim() && !title.trim())}
-          className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-        >
-          {saving ? "Saving…" : "Save Job"}
-        </button>
-        <button
+          isDisabled={saving || (!company.trim() && !title.trim())}
+        />
+        <Button
+          label="Cancel"
+          variant="secondary"
           onClick={() => router.push("/jobs")}
-          className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-        >
-          Cancel
-        </button>
+        />
       </div>
     </div>
   );

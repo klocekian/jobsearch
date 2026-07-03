@@ -9,6 +9,11 @@ import type {
   AiDetection,
 } from "@/lib/analysis/types";
 import { StatusIcon, ScoreRing } from "./icons";
+import { Button } from "@astryxdesign/core/Button";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { Card } from "@astryxdesign/core/Card";
+import { Spinner } from "@astryxdesign/core/Spinner";
+import { Banner } from "@astryxdesign/core/Banner";
 
 /** Async state of the LLM-based AI-authorship check (owned by App). */
 export interface AiDetectionState {
@@ -39,7 +44,7 @@ function SummaryCards({ report }: { report: MatchReport }) {
       <ScoreRing score={report.score} />
       <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <Card key={c.label} className="px-4 py-3">
             <div className="text-xs text-slate-500">{c.label}</div>
             <div className="mt-1 text-sm">
               <span className={`text-xl font-semibold ${c.n > 0 ? "text-slate-800" : "text-emerald-600"}`}>
@@ -47,7 +52,7 @@ function SummaryCards({ report }: { report: MatchReport }) {
               </span>{" "}
               <span className="text-slate-500">{c.n === 1 ? "issue" : "issues"}</span>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>
@@ -58,7 +63,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="mt-8">
       <h2 className="mb-3 text-sm font-semibold tracking-tight text-slate-800">{title}</h2>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">{children}</div>
+      <Card className="overflow-hidden">{children}</Card>
     </section>
   );
 }
@@ -168,14 +173,14 @@ function AiDetectionSection({ state }: { state: AiDetectionState }) {
     return (
       <div className="px-5 py-6">
         <div className="flex items-center gap-3 text-sm text-slate-500">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-brand" />
+          <Spinner size="sm" />
           Checking the writing for AI authorship…
         </div>
       </div>
     );
   }
   if (!state.data) {
-    return <p className="px-5 py-4 text-sm text-slate-400">AI authorship check unavailable.</p>;
+    return <Banner status="info" title="AI authorship check unavailable." className="mx-5 my-4" />;
   }
   return (
     <AiDetectionPanel
@@ -230,27 +235,18 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="inline-flex rounded-full bg-slate-100 p-1">
-          {(["match", "ai"] as const).map((key) => (
-            <button
-              key={key}
-              onClick={() => setSubTab(key)}
-              className={`rounded-full px-4 py-1.5 text-xs font-medium transition ${
-                subTab === key ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {key === "match" ? "Match" : "AI Detection"}
-            </button>
-          ))}
-        </div>
+        <TabList value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)}>
+          <Tab value="match" label="Match" />
+          <Tab value="ai" label="AI Detection" />
+        </TabList>
         {onRunAnalysis && (
-          <button
+          <Button
+            label={hasAnalysis ? "Re-run analysis" : "Run analysis"}
+            variant="primary"
+            size="sm"
             onClick={onRunAnalysis}
-            disabled={analysisDisabled}
-            className="shrink-0 rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-          >
-            {hasAnalysis ? "Re-run analysis" : "Run analysis"}
-          </button>
+            isDisabled={analysisDisabled}
+          />
         )}
       </div>
 
@@ -290,9 +286,9 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
       {subTab === "ai" && (
         <>
           <h1 className="mb-5 text-lg font-bold tracking-tight text-slate-900">AI Authorship Detection</h1>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <Card className="overflow-hidden">
             <AiDetectionSection state={aiDetection} />
-          </div>
+          </Card>
         </>
       )}
     </div>

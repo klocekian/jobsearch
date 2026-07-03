@@ -25,6 +25,15 @@ import { buildPackageMarkdown } from "@/lib/package";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
+import { Button } from "@astryxdesign/core/Button";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { Selector } from "@astryxdesign/core/Selector";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { Text } from "@astryxdesign/core/Text";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Link as AstryxLink } from "@astryxdesign/core/Link";
+import { Spinner } from "@astryxdesign/core/Spinner";
 
 type LeftTab = "posting" | "apply" | "submissions" | "notes";
 type RightTab = "report" | "resume" | "cover";
@@ -251,8 +260,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     document.addEventListener("mouseup", onUp);
   }, []);
 
-  if (loading) return <p className="py-12 text-center text-sm text-slate-400">Loading…</p>;
-  if (!job) return <p className="py-12 text-center text-sm text-slate-500">Job not found.</p>;
+  if (loading) return <div className="py-12 text-center"><Spinner label="Loading…" /></div>;
+  if (!job) return <div className="py-12"><Banner status="error" title="Job not found." /></div>;
 
   return (
     <div
@@ -273,28 +282,32 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               <Link href="/jobs" className="text-xs text-slate-400 hover:text-slate-600">← All jobs</Link>
               {editingHeader ? (
                 <div className="mt-1 space-y-1.5">
-                  <input className="input text-sm font-bold" value={headerFields.title} onChange={(e) => setHeaderFields(f => ({ ...f, title: e.target.value }))} placeholder="Job title" autoFocus />
+                  <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" className="text-sm font-bold" />
                   <div className="flex gap-1.5">
-                    <input className="input text-xs" value={headerFields.company} onChange={(e) => setHeaderFields(f => ({ ...f, company: e.target.value }))} placeholder="Company" />
-                    <input className="input text-xs" value={headerFields.location} onChange={(e) => setHeaderFields(f => ({ ...f, location: e.target.value }))} placeholder="Location" />
+                    <TextInput label="Company" isLabelHidden value={headerFields.company} onChange={(v) => setHeaderFields(f => ({ ...f, company: v }))} placeholder="Company" className="text-xs" />
+                    <TextInput label="Location" isLabelHidden value={headerFields.location} onChange={(v) => setHeaderFields(f => ({ ...f, location: v }))} placeholder="Location" className="text-xs" />
                   </div>
                   <div className="flex gap-1.5">
-                    <input className="input text-xs" value={headerFields.salary_text} onChange={(e) => setHeaderFields(f => ({ ...f, salary_text: e.target.value }))} placeholder="Salary" />
-                    <input className="input text-xs" value={headerFields.url} onChange={(e) => setHeaderFields(f => ({ ...f, url: e.target.value }))} placeholder="URL" />
+                    <TextInput label="Salary" isLabelHidden value={headerFields.salary_text} onChange={(v) => setHeaderFields(f => ({ ...f, salary_text: v }))} placeholder="Salary" className="text-xs" />
+                    <TextInput label="URL" isLabelHidden value={headerFields.url} onChange={(v) => setHeaderFields(f => ({ ...f, url: v }))} placeholder="URL" className="text-xs" />
                   </div>
                   <div className="flex gap-1.5">
-                    <button onClick={saveHeader} className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark">Save</button>
-                    <button onClick={() => setEditingHeader(false)} className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <Button label="Save" variant="primary" size="sm" onClick={saveHeader} />
+                    <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditingHeader(false)} />
                   </div>
                 </div>
               ) : (
                 <div className="group">
                   <h2 className="text-lg font-bold text-slate-900 leading-tight">
                     {job.title || "Untitled"}
-                    <button
-                      onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
-                      className="ml-2 text-xs font-normal text-slate-300 opacity-0 group-hover:opacity-100 hover:text-slate-500 transition-opacity"
-                    >Edit</button>
+                    <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity inline-block">
+                      <Button
+                        label="Edit"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
+                      />
+                    </span>
                   </h2>
                   <p className="text-xs text-slate-500">
                     {job.company}
@@ -312,29 +325,19 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               >
                 {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
-              <button onClick={deleteJob} className="text-xs text-rose-400 hover:text-rose-600">Delete</button>
+              <Button label="Delete" variant="destructive" size="sm" onClick={deleteJob} />
             </div>
           </div>
         </div>
 
         {/* Left tabs */}
-        <div className="col-start-1 row-start-2 flex border-b border-r border-slate-200 bg-white px-4">
-          {([
-            ["posting", "Job Posting"],
-            ["apply", "Apply"],
-            ["submissions", `Submissions (${submissions.length})`],
-            ["notes", "Notes"],
-          ] as const).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setLeftTab(key as LeftTab)}
-              className={`-mb-px border-b-2 px-3 py-2 text-xs font-medium transition ${
-                leftTab === key ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="col-start-1 row-start-2 border-b border-r border-slate-200 bg-white px-4">
+          <TabList value={leftTab} onChange={(v) => setLeftTab(v as LeftTab)}>
+            <Tab value="posting" label="Job Posting" />
+            <Tab value="apply" label="Apply" />
+            <Tab value="submissions" label={`Submissions (${submissions.length})`} />
+            <Tab value="notes" label="Notes" />
+          </TabList>
         </div>
 
         {/* Left content */}
@@ -343,22 +346,18 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             <div className="space-y-3">
               {!pasting && (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setPasting(true)} className="rounded-md border border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-50">
-                    {job.posting_text ? "Update posting" : "Paste posting"}
-                  </button>
+                  <Button label={job.posting_text ? "Update posting" : "Paste posting"} variant="secondary" size="sm" onClick={() => setPasting(true)} />
                   {job.url && (
-                    <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-brand hover:underline">
-                      Open original ↗
-                    </a>
+                    <AstryxLink href={job.url}>Open original ↗</AstryxLink>
                   )}
                 </div>
               )}
               {pasting && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <textarea className="input h-32 resize-y font-mono text-xs" value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste job posting text…" autoFocus />
+                  <TextArea label="Paste posting" isLabelHidden value={pasteText} onChange={setPasteText} placeholder="Paste job posting text…" rows={6} />
                   <div className="mt-2 flex gap-2">
-                    <button onClick={pasteDirect} disabled={!pasteText.trim()} className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50">Save</button>
-                    <button onClick={() => { setPasting(false); setPasteText(""); }} className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <Button label="Save" variant="primary" size="sm" onClick={pasteDirect} isDisabled={!pasteText.trim()} />
+                    <Button label="Cancel" variant="secondary" size="sm" onClick={() => { setPasting(false); setPasteText(""); }} />
                   </div>
                 </div>
               )}
@@ -374,7 +373,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                   <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{job.posting_text}</pre>
                 )
               ) : (
-                <p className="py-8 text-center text-sm text-slate-400">No posting text. Paste it above or use the Chrome extension.</p>
+                <Banner status="info" title="No posting text. Paste it above or use the Chrome extension." />
               )}
             </div>
           )}
@@ -383,25 +382,26 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             job.url ? (
               <div className="flex h-full flex-col">
                 <div className="mb-2 flex items-center gap-2">
-                  <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand hover:underline">
-                    Open in new tab ↗
-                  </a>
-                  <span className="text-[10px] text-slate-400">Many sites block embedding — use the link above if the form doesn&apos;t load below.</span>
+                  <AstryxLink href={job.url}>Open in new tab ↗</AstryxLink>
+                  <Text type="supporting">Many sites block embedding — use the link above if the form doesn&apos;t load below.</Text>
                 </div>
                 <iframe src={job.url} className="flex-1 w-full rounded-lg border border-slate-200" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
               </div>
             ) : (
-              <p className="py-8 text-center text-sm text-slate-400">No URL saved for this job. Add one to open the application here.</p>
+              <Banner status="info" title="No URL saved for this job. Add one to open the application here." />
             )
           )}
 
           {leftTab === "submissions" && (
             <div className="space-y-3">
               <div className="flex gap-2">
-                <button onClick={() => fileRef.current?.click()} className="rounded-md border border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-50">Upload file</button>
+                <Button label="Upload file" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} />
                 <input ref={fileRef} type="file" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadFile(e.target.files[0]); e.target.value = ""; }} />
                 {analyzed && (
-                  <button
+                  <Button
+                    label="Save package"
+                    variant="secondary"
+                    size="sm"
                     onClick={async () => {
                       const resume = loadSavedResume();
                       const md = buildPackageMarkdown({
@@ -416,14 +416,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                       });
                       fetchJob();
                     }}
-                    className="rounded-md border border-emerald-300 px-2.5 py-1 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50"
-                  >
-                    Save package
-                  </button>
+                  />
                 )}
               </div>
               {submissions.length === 0 ? (
-                <p className="py-6 text-center text-xs text-slate-400">No submissions yet.</p>
+                <Banner status="info" title="No submissions yet." />
               ) : (
                 <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
                   {submissions.map((s) => (
@@ -433,8 +430,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                         <p className="text-[10px] text-slate-400">{s.type} · {s.format}</p>
                       </div>
                       <div className="flex gap-2">
-                        <a href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} className="text-[10px] font-medium text-brand hover:underline">Download</a>
-                        <button onClick={() => deleteSubmission(s.id)} className="text-[10px] text-rose-400 hover:text-rose-600">Remove</button>
+                        <AstryxLink href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`}>Download</AstryxLink>
+                        <Button label="Remove" variant="destructive" size="sm" onClick={() => deleteSubmission(s.id)} />
                       </div>
                     </div>
                   ))}
@@ -447,23 +444,21 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             <div>
               {editing ? (
                 <div>
-                  <textarea className="input h-48 resize-y text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} autoFocus />
+                  <TextArea label="Notes" isLabelHidden value={editNotes} onChange={setEditNotes} rows={10} />
                   <div className="mt-2 flex gap-2">
-                    <button onClick={saveNotes} className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-dark">Save</button>
-                    <button onClick={() => setEditing(false)} className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <Button label="Save" variant="primary" size="sm" onClick={saveNotes} />
+                    <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditing(false)} />
                   </div>
                 </div>
               ) : (
                 <div>
-                  <button onClick={() => { setEditNotes(job.notes); setEditing(true); }} className="mb-3 rounded-md border border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-50">
-                    {job.notes ? "Edit notes" : "Add notes"}
-                  </button>
+                  <Button label={job.notes ? "Edit notes" : "Add notes"} variant="secondary" size="sm" onClick={() => { setEditNotes(job.notes); setEditing(true); }} />
                   {job.notes ? (
                     <div className="prose prose-sm prose-slate max-w-none">
                       <Markdown>{job.notes}</Markdown>
                     </div>
                   ) : (
-                    <p className="py-6 text-center text-xs text-slate-400">No notes yet.</p>
+                    <Banner status="info" title="No notes yet." />
                   )}
                 </div>
               )}
@@ -478,20 +473,17 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               <p className="text-xs text-slate-400">Resume</p>
               <div className="mt-1 flex items-center gap-2">
                 {savedResumes.length > 0 && (
-                  <select
-                    className="input max-w-[220px] text-sm font-medium"
-                    value={savedResumes.find(r => r.content === resumeText)?.id ?? ""}
-                    onChange={(e) => {
-                      const r = savedResumes.find(r => r.id === Number(e.target.value));
+                  <Selector
+                    label="Resume"
+                    isLabelHidden
+                    className="max-w-[220px]"
+                    options={savedResumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` }))}
+                    value={String(savedResumes.find(r => r.content === resumeText)?.id ?? "")}
+                    onChange={(v) => {
+                      const r = savedResumes.find(r => r.id === Number(v));
                       if (r) setResumeText(r.content);
                     }}
-                  >
-                    {savedResumes.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}{r.is_default ? " (default)" : ""}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 )}
                 <input
                   ref={resumeFileRef}
@@ -516,12 +508,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                     e.target.value = "";
                   }}
                 />
-                <button
-                  onClick={() => resumeFileRef.current?.click()}
-                  className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-50"
-                >
-                  + Add
-                </button>
+                <Button label="+ Add" variant="secondary" size="sm" onClick={() => resumeFileRef.current?.click()} />
               </div>
               <p className="mt-1 text-xs text-slate-400">
                 {analyzed
@@ -532,44 +519,32 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             </div>
             {!analyzed && (
               <div className="flex shrink-0 items-center gap-2">
-                <button
-                  onClick={runAnalysis}
-                  disabled={!resumeText.trim() || !job.posting_text.trim()}
-                  className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-                >
-                  Run analysis
-                </button>
+                <Button label="Run analysis" variant="primary" size="sm" onClick={runAnalysis} isDisabled={!resumeText.trim() || !job.posting_text.trim()} />
               </div>
             )}
           </div>
         </div>
 
         {/* Right tabs */}
-        <div className="col-start-2 row-start-2 flex border-b border-slate-200 bg-white px-4">
-          {([
-            ["report", "Report"],
-            ["resume", "Resume"],
-            ["cover", "Cover Letter"],
-          ] as const).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setRightTab(key as RightTab)}
-              className={`-mb-px border-b-2 px-3 py-2 text-xs font-medium transition ${
-                rightTab === key ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="col-start-2 row-start-2 border-b border-slate-200 bg-white px-4">
+          <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
+            <Tab value="report" label="Report" />
+            <Tab value="resume" label="Resume" />
+            <Tab value="cover" label="Cover Letter" />
+          </TabList>
         </div>
 
         {/* Right content */}
         <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-4">
           {!analyzed && !job.posting_text && (
-            <p className="py-12 text-center text-sm text-slate-400">Add a job posting and run analysis to see results here.</p>
+            <div className="py-12">
+              <Banner status="info" title="Add a job posting and run analysis to see results here." />
+            </div>
           )}
           {!analyzed && job.posting_text && (
-            <p className="py-12 text-center text-sm text-slate-400">Click &ldquo;Run analysis&rdquo; to match your resume against this posting.</p>
+            <div className="py-12">
+              <Banner status="info" title={'Click "Run analysis" to match your resume against this posting.'} />
+            </div>
           )}
 
           {analyzed && rightTab === "report" && (

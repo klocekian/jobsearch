@@ -9,6 +9,9 @@ import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { RewriteEditor } from "./RewriteEditor";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
 import type { AiDetection } from "@/lib/analysis/types";
+import { Button } from "@astryxdesign/core/Button";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Card } from "@astryxdesign/core/Card";
 
 interface ResumeViewProps {
   /** The analyzed resume text — the starting point ("original"). */
@@ -147,21 +150,24 @@ export function ResumeView({
           {restored && <p className="mt-1 text-xs text-emerald-600">Restored your saved draft.</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button
+          <Button
+            label={gen.kind === "loading" ? "Rewriting…" : hasRewrite ? "Regenerate" : "Generate rewrite"}
+            variant="primary"
+            size="sm"
             onClick={generate}
-            disabled={gen.kind === "loading"}
-            className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {gen.kind === "loading" ? "Rewriting…" : hasRewrite ? "Regenerate" : "Generate rewrite"}
-          </button>
-          <button
+            isDisabled={gen.kind === "loading"}
+          />
+          <Button
+            label={exporting.kind === "loading" ? "Preparing…" : "Download PDF"}
+            variant="primary"
+            size="sm"
             onClick={downloadPdf}
-            disabled={exporting.kind === "loading"}
-            className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
-          >
-            {exporting.kind === "loading" ? "Preparing…" : "Download PDF"}
-          </button>
-          <button
+            isDisabled={exporting.kind === "loading"}
+          />
+          <Button
+            label="Save as Resume"
+            variant="secondary"
+            size="sm"
             onClick={async () => {
               const text = resultRef.current.trim() || original;
               const name = `${company ? company.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, "_").toLowerCase() : "tailored"}_resume_${new Date().getFullYear()}`;
@@ -174,21 +180,16 @@ export function ResumeView({
                 alert("Saved as new resume in your Profile.");
               }
             }}
-            className="rounded-lg border border-slate-300 px-4 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            Save as Resume
-          </button>
+          />
         </div>
       </div>
 
       {exporting.kind === "error" && (
-        <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
-          {exporting.message}
-        </p>
+        <Banner status="error" title={exporting.message ?? "An error occurred."} className="mb-4" />
       )}
 
       {/* Control: context materials + generate */}
-      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
+      <Card className="mb-4 p-5">
         <h3 className="text-sm font-semibold text-slate-700">Tailor to this posting</h3>
         <p className="mb-3 mt-1 text-xs text-slate-500">
           Rewrites your resume to match the job, grounded in your real experience — never fabricated.
@@ -197,11 +198,9 @@ export function ResumeView({
         </p>
         <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
         {gen.kind === "error" && (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
-            {gen.message}
-          </p>
+          <Banner status="error" title={gen.message ?? "Something went wrong."} className="mt-3" />
         )}
-      </section>
+      </Card>
 
       {hasRewrite && (
         <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -210,12 +209,8 @@ export function ResumeView({
             or × to dismiss. Type anywhere to edit.
           </span>
           <div className="ml-auto flex gap-2">
-            <button onClick={acceptAll} className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50">
-              Accept all
-            </button>
-            <button onClick={reset} className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50">
-              Reset to original
-            </button>
+            <Button label="Accept all" variant="secondary" size="sm" onClick={acceptAll} />
+            <Button label="Reset to original" variant="secondary" size="sm" onClick={reset} />
           </div>
         </div>
       )}

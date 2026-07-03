@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Spinner } from "@astryxdesign/core/Spinner";
 
 const PIPELINE = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
 const TERMINAL_LINES = [
@@ -33,7 +36,7 @@ export function JobsFunnel() {
       .catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="py-12 text-center text-sm text-slate-400">Loading...</p>;
+  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
 
   const counts: Record<string, number> = {};
   for (const j of jobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
@@ -97,7 +100,7 @@ export function JobsFunnel() {
 
   return (
     <div>
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <Card className="mb-6 p-6">
         <h2 className="mb-1 text-lg font-bold text-slate-900">Application Pipeline</h2>
         <p className="mb-4 text-xs text-slate-400">{jobs.length} total jobs tracked</p>
 
@@ -184,12 +187,12 @@ export function JobsFunnel() {
             <div className="mb-3 flex items-center gap-2">
               <span className="text-sm font-semibold text-slate-700">{selectedLabel}</span>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">{selectedJobs.length}</span>
-              <button onClick={() => setSelected(null)} className="ml-auto text-[10px] text-slate-400 hover:text-slate-600">Clear</button>
+              <Button label="Clear" variant="ghost" size="sm" onClick={() => setSelected(null)} />
             </div>
             {selectedJobs.length === 0 ? (
               <p className="text-xs text-slate-400">No jobs in this stage.</p>
             ) : (
-              <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+              <Card className="divide-y divide-slate-100">
                 {selectedJobs.map((j) => (
                   <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50">
                     <div>
@@ -200,11 +203,11 @@ export function JobsFunnel() {
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${STATUS_COLORS[j.status] ?? ""}`}>{j.status}</span>
                   </Link>
                 ))}
-              </div>
+              </Card>
             )}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

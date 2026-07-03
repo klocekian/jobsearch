@@ -1,6 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { Switch } from "@astryxdesign/core/Switch";
+import { Text } from "@astryxdesign/core/Text";
+import { Stack } from "@astryxdesign/core/Stack";
+import { HStack } from "@astryxdesign/core/HStack";
 
 interface AuthUser { id: number; name: string; email: string; hasAnthropicToken: boolean }
 interface Resume {
@@ -96,63 +106,54 @@ export function ProfileView() {
   };
 
   return (
-    <div className="space-y-6">
+    <Stack gap={6}>
       <div className="flex justify-center">
-        <div className="inline-flex rounded-full bg-slate-100 p-1">
-          {([["account", "Account"], ["ai", "AI"], ["extension", "Extension"], ["resumes", "Resumes"]] as const).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setProfileTab(key)}
-              className={`rounded-full px-4 py-1.5 text-xs font-medium transition ${
-                profileTab === key ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <TabList value={profileTab} onChange={(v) => setProfileTab(v as typeof profileTab)}>
+          <Tab value="account" label="Account" />
+          <Tab value="ai" label="AI" />
+          <Tab value="extension" label="Extension" />
+          <Tab value="resumes" label="Resumes" />
+        </TabList>
       </div>
 
       {profileTab === "account" && <>
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">Account</h2>
-        {user === undefined ? (
-          <p className="text-xs text-slate-400">Loading…</p>
-        ) : user ? (
-          <div className="flex items-center justify-between">
+      <Card>
+        <div className="p-5">
+          <Text type="label" className="mb-3">Account</Text>
+          {user === undefined ? (
+            <Text type="supporting">Loading…</Text>
+          ) : user ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <Text type="body" className="font-medium">{user.name}</Text>
+                <Text type="supporting">{user.email}</Text>
+              </div>
+              <HStack gap={3} className="items-center">
+                <Badge
+                  label={user.hasAnthropicToken ? "Claude connected" : "No Claude token"}
+                  variant={user.hasAnthropicToken ? "success" : "warning"}
+                />
+                <form action="/api/auth/logout" method="POST">
+                  <Button label="Sign out" variant="ghost" size="sm" />
+                </form>
+              </HStack>
+            </div>
+          ) : (
             <div>
-              <p className="text-sm font-medium text-slate-800">{user.name}</p>
-              <p className="text-xs text-slate-400">{user.email}</p>
+              <Text type="supporting" className="mb-3">
+                Sign in with Google to save your data and track your job search.
+              </Text>
+              <a
+                href="/api/auth/login"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+                Sign in with Google
+              </a>
             </div>
-            <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                user.hasAnthropicToken
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-amber-50 text-amber-700"
-              }`}>
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${user.hasAnthropicToken ? "bg-emerald-500" : "bg-amber-400"}`} />
-                {user.hasAnthropicToken ? "Claude connected" : "No Claude token"}
-              </span>
-              <form action="/api/auth/logout" method="POST">
-                <button className="text-xs text-slate-400 hover:text-slate-600">Sign out</button>
-              </form>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <p className="mb-3 text-xs text-slate-500">
-              Sign in with Google to save your data and track your job search.
-            </p>
-            <a
-              href="/api/auth/login"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
-              Sign in with Google
-            </a>
-          </div>
-        )}
-      </section>
+          )}
+        </div>
+      </Card>
 
       <ApplicationFields />
       </>}
@@ -168,134 +169,133 @@ export function ProfileView() {
       </>}
 
       {profileTab === "extension" && <>
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">Chrome Extension</h2>
-        <p className="mb-3 text-xs text-slate-500">
-          Clip job postings from any page directly into your tracker. The extension opens in
-          Chrome&apos;s side panel so it stays open while you browse.
-        </p>
-        <div className="flex items-center gap-3">
-          <a
-            href="/chrome-extension.zip"
-            className="inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Download Extension
-          </a>
-          <span className="text-xs text-slate-400">
-            Unzip, then load in chrome://extensions with Developer Mode on.
-          </span>
+      <Card>
+        <div className="p-5">
+          <Text type="label" className="mb-3">Chrome Extension</Text>
+          <Text type="supporting" className="mb-3">
+            Clip job postings from any page directly into your tracker. The extension opens in
+            Chrome&apos;s side panel so it stays open while you browse.
+          </Text>
+          <HStack gap={3} className="items-center">
+            <a
+              href="/chrome-extension.zip"
+              className="inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Download Extension
+            </a>
+            <Text type="supporting">
+              Unzip, then load in chrome://extensions with Developer Mode on.
+            </Text>
+          </HStack>
         </div>
-      </section>
+      </Card>
       </>}
 
       {profileTab === "resumes" && <>
-      {/* Resumes */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-700">Resumes</h2>
-            <p className="text-xs text-slate-400">Manage multiple resumes for different job types. Select which to use when analyzing or writing.</p>
+      <Card>
+        <div className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <Text type="label">Resumes</Text>
+              <Text type="supporting">Manage multiple resumes for different job types. Select which to use when analyzing or writing.</Text>
+            </div>
+            {!adding && (
+              <Button label="Add Resume" variant="primary" size="sm" onClick={() => setAdding(true)} />
+            )}
           </div>
-          {!adding && (
-            <button onClick={() => setAdding(true)} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark">
-              Add Resume
-            </button>
+
+          {adding && (
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3">
+                <TextInput label="Name" value={newName} onChange={setNewName} placeholder="e.g. General, Design Lead, IC Focus" />
+              </div>
+              <div className="mb-3">
+                <div className="mb-1 flex items-center justify-between">
+                  <Text type="supporting" className="font-medium">Content</Text>
+                  <Button label="Upload PDF / text file" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} />
+                  <input ref={fileRef} type="file" accept=".pdf,.txt,.md,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], setNewContent, setNewName)} />
+                </div>
+                <TextArea label="Content" isLabelHidden value={newContent} onChange={setNewContent} placeholder="Paste your resume text, or upload a file above." rows={10} />
+              </div>
+              <HStack gap={2}>
+                <Button label={saving ? "Saving…" : "Save Resume"} variant="primary" onClick={saveNew} isDisabled={!newContent.trim() || saving} />
+                <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); }} />
+              </HStack>
+            </div>
+          )}
+
+          {loading ? (
+            <Text type="supporting" className="py-8 text-center">Loading…</Text>
+          ) : resumes.length === 0 && !adding ? (
+            <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center">
+              <Text type="body">No resumes yet.</Text>
+              <Text type="supporting" className="mt-1">Add a resume to use it for matching and cover letters.</Text>
+            </div>
+          ) : (
+            <Stack gap={3}>
+              {resumes.map((r) => (
+                <Card key={r.id}>
+                  {editingId === r.id ? (
+                    <div className="p-4">
+                      <div className="mb-3">
+                        <TextInput label="Name" value={editName} onChange={setEditName} />
+                      </div>
+                      <div className="mb-3">
+                        <div className="mb-1 flex items-center justify-between">
+                          <Text type="supporting" className="font-medium">Content</Text>
+                          <Button label="Re-upload" variant="ghost" size="sm" onClick={() => editFileRef.current?.click()} />
+                          <input ref={editFileRef} type="file" accept=".pdf,.txt,.md,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], setEditContent)} />
+                        </div>
+                        <TextArea label="Content" isLabelHidden value={editContent} onChange={setEditContent} rows={10} />
+                      </div>
+                      <HStack gap={2}>
+                        <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={saveEdit} isDisabled={saving} />
+                        <Button label="Cancel" variant="secondary" onClick={() => setEditingId(null)} />
+                      </HStack>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between p-4">
+                      <div className="min-w-0 flex-1">
+                        <HStack gap={2} className="items-center">
+                          <Text type="body" className="font-medium">{r.name}</Text>
+                          {r.is_default === 1 && (
+                            <Badge label="Default" variant="success" />
+                          )}
+                        </HStack>
+                        <Text type="supporting" className="mt-1">
+                          {r.content.length.toLocaleString()} chars
+                          {" · Updated "}
+                          {new Date(r.updated_at.replace(" ", "T")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </Text>
+                        {(() => {
+                          const tags: string[] = (() => { try { return JSON.parse(r.tags || "[]"); } catch { return []; } })();
+                          return tags.length > 0 ? (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {tags.map((t) => (
+                                <Badge key={t} label={t} variant="neutral" />
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+                        <Text type="supporting" className="mt-2 line-clamp-2">{r.content.slice(0, 200)}</Text>
+                      </div>
+                      <HStack gap={1} className="ml-4 shrink-0">
+                        {r.is_default !== 1 && (
+                          <Button label="Set default" variant="ghost" size="sm" onClick={() => setDefault(r.id)} />
+                        )}
+                        <Button label="Edit" variant="ghost" size="sm" onClick={() => { setEditingId(r.id); setEditName(r.name); setEditContent(r.content); }} />
+                        <Button label="Delete" variant="destructive" size="sm" onClick={() => deleteResume(r.id)} />
+                      </HStack>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </Stack>
           )}
         </div>
-
-        {adding && (
-          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-slate-600">Name</label>
-              <input className="input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. General, Design Lead, IC Focus" />
-            </div>
-            <div className="mb-3">
-              <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-600">Content</label>
-                <button type="button" onClick={() => fileRef.current?.click()} className="text-[11px] font-medium text-brand hover:underline">Upload PDF / text file</button>
-                <input ref={fileRef} type="file" accept=".pdf,.txt,.md,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], setNewContent, setNewName)} />
-              </div>
-              <textarea className="input h-48 resize-y font-mono text-xs leading-relaxed" value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="Paste your resume text, or upload a file above." />
-            </div>
-            <div className="flex gap-2">
-              <button onClick={saveNew} disabled={!newContent.trim() || saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50">{saving ? "Saving…" : "Save Resume"}</button>
-              <button onClick={() => { setAdding(false); setNewName(""); setNewContent(""); }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-            </div>
-          </div>
-        )}
-
-        {loading ? (
-          <p className="py-8 text-center text-sm text-slate-400">Loading…</p>
-        ) : resumes.length === 0 && !adding ? (
-          <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center">
-            <p className="text-sm text-slate-500">No resumes yet.</p>
-            <p className="mt-1 text-xs text-slate-400">Add a resume to use it for matching and cover letters.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {resumes.map((r) => (
-              <div key={r.id} className="rounded-lg border border-slate-200 bg-white">
-                {editingId === r.id ? (
-                  <div className="p-4">
-                    <div className="mb-3">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">Name</label>
-                      <input className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                    </div>
-                    <div className="mb-3">
-                      <div className="mb-1 flex items-center justify-between">
-                        <label className="text-xs font-medium text-slate-600">Content</label>
-                        <button type="button" onClick={() => editFileRef.current?.click()} className="text-[11px] font-medium text-brand hover:underline">Re-upload</button>
-                        <input ref={editFileRef} type="file" accept=".pdf,.txt,.md,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], setEditContent)} />
-                      </div>
-                      <textarea className="input h-48 resize-y font-mono text-xs leading-relaxed" value={editContent} onChange={(e) => setEditContent(e.target.value)} />
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={saveEdit} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-                      <button onClick={() => setEditingId(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start justify-between p-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-medium text-slate-800">{r.name}</h3>
-                        {r.is_default === 1 && (
-                          <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">Default</span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {r.content.length.toLocaleString()} chars
-                        {" · Updated "}
-                        {new Date(r.updated_at.replace(" ", "T")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </p>
-                      {(() => {
-                        const tags: string[] = (() => { try { return JSON.parse(r.tags || "[]"); } catch { return []; } })();
-                        return tags.length > 0 ? (
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {tags.map((t) => (
-                              <span key={t} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">{t}</span>
-                            ))}
-                          </div>
-                        ) : null;
-                      })()}
-                      <p className="mt-2 line-clamp-2 text-xs text-slate-500">{r.content.slice(0, 200)}</p>
-                    </div>
-                    <div className="ml-4 flex shrink-0 gap-1">
-                      {r.is_default !== 1 && (
-                        <button onClick={() => setDefault(r.id)} className="rounded px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-50">Set default</button>
-                      )}
-                      <button onClick={() => { setEditingId(r.id); setEditName(r.name); setEditContent(r.content); }} className="rounded px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-50">Edit</button>
-                      <button onClick={() => deleteResume(r.id)} className="rounded px-2 py-1 text-[11px] text-rose-400 hover:bg-rose-50">Delete</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      </Card>
       </>}
-    </div>
+    </Stack>
   );
 }
 
@@ -328,72 +328,59 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
   };
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-3 text-sm font-semibold text-slate-700">Claude AI</h2>
-      <p className="mb-3 text-xs text-slate-500">
-        Connect your Anthropic account to enable AI features: cover letter generation,
-        resume rewriting, and smart field extraction. Uses your Max/Pro subscription credits.
-      </p>
+    <Card>
+      <div className="p-5">
+        <Text type="label" className="mb-3">Claude AI</Text>
+        <Text type="supporting" className="mb-3">
+          Connect your Anthropic account to enable AI features: cover letter generation,
+          resume rewriting, and smart field extraction. Uses your Max/Pro subscription credits.
+        </Text>
 
-      {connected && !editing ? (
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Connected
-          </span>
-          <button onClick={() => setEditing(true)} className="text-xs text-slate-400 hover:text-slate-600">
-            Update
-          </button>
-          {msg && <span className="text-xs text-emerald-600">{msg}</span>}
-        </div>
-      ) : !editing ? (
-        <div>
-          <button
-            onClick={() => setEditing(true)}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Connect Claude
-          </button>
-          {msg && <span className="ml-3 text-xs text-emerald-600">{msg}</span>}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <input
-            type="password"
-            className="input font-mono text-xs"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder="sk-ant-api03-..."
-            autoFocus
-          />
-          <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 space-y-1">
-            <p>
-              <strong>API key</strong> — create at{" "}
-              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-                console.anthropic.com/settings/keys
-              </a>
-            </p>
-            <p>
-              <strong>Max/Pro subscribers</strong> — run in terminal:
-            </p>
-            <p>
-              1. <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth login</code>
-            </p>
-            <p>
-              2. <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth print-credentials --access-token</code>
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={save} disabled={!key.trim() || saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50">
-              {saving ? "Saving…" : "Save"}
-            </button>
-            <button onClick={() => { setEditing(false); setKey(""); }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
+        {connected && !editing ? (
+          <HStack gap={3} className="items-center">
+            <Badge label="Connected" variant="success" />
+            <Button label="Update" variant="ghost" size="sm" onClick={() => setEditing(true)} />
+            {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
+          </HStack>
+        ) : !editing ? (
+          <HStack gap={3} className="items-center">
+            <Button label="Connect Claude" variant="primary" onClick={() => setEditing(true)} />
+            {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
+          </HStack>
+        ) : (
+          <Stack gap={2}>
+            <TextInput
+              label="API Key"
+              isLabelHidden
+              value={key}
+              onChange={setKey}
+              placeholder="sk-ant-api03-..."
+            />
+            <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 space-y-1">
+              <p>
+                <strong>API key</strong> — create at{" "}
+                <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+                  console.anthropic.com/settings/keys
+                </a>
+              </p>
+              <p>
+                <strong>Max/Pro subscribers</strong> — run in terminal:
+              </p>
+              <p>
+                1. <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth login</code>
+              </p>
+              <p>
+                2. <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth print-credentials --access-token</code>
+              </p>
+            </div>
+            <HStack gap={2}>
+              <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={save} isDisabled={!key.trim() || saving} />
+              <Button label="Cancel" variant="secondary" onClick={() => { setEditing(false); setKey(""); }} />
+            </HStack>
+          </Stack>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -453,46 +440,39 @@ function ApplicationFields() {
     }
   };
 
-  if (loading) return <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs text-slate-400">Loading…</p></section>;
+  if (loading) return <Card><div className="p-5"><Text type="supporting">Loading…</Text></div></Card>;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-1 text-sm font-semibold text-slate-700">Application Fields</h2>
-      <p className="mb-4 text-xs text-slate-500">
-        Used by the extension to auto-fill job applications and shown in the Fill tab for quick copying.
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        {PROFILE_FIELDS.map((pf) => (
-          <label key={pf.key} className={`block ${pf.half ? "" : "col-span-2"}`}>
-            {pf.type === "checkbox" ? (
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!!fields[pf.key]}
-                  onChange={(e) => setFields((p) => ({ ...p, [pf.key]: e.target.checked }))}
-                  className="rounded border-slate-300"
+    <Card>
+      <div className="p-5">
+        <Text type="label" className="mb-1">Application Fields</Text>
+        <Text type="supporting" className="mb-4">
+          Used by the extension to auto-fill job applications and shown in the Fill tab for quick copying.
+        </Text>
+        <div className="grid grid-cols-2 gap-3">
+          {PROFILE_FIELDS.map((pf) => (
+            <div key={pf.key} className={pf.half ? "" : "col-span-2"}>
+              {pf.type === "checkbox" ? (
+                <Switch
+                  label={pf.label}
+                  value={!!fields[pf.key]}
+                  onChange={(checked) => setFields((p) => ({ ...p, [pf.key]: checked }))}
                 />
-                <span className="text-xs text-slate-600">{pf.label}</span>
-              </span>
-            ) : (
-              <>
-                <span className="mb-1 block text-[11px] font-medium text-slate-500">{pf.label}</span>
-                <input
-                  className="input text-xs"
+              ) : (
+                <TextInput
+                  label={pf.label}
                   value={String(fields[pf.key] ?? "")}
-                  onChange={(e) => setFields((p) => ({ ...p, [pf.key]: e.target.value }))}
+                  onChange={(v) => setFields((p) => ({ ...p, [pf.key]: v }))}
                 />
-              </>
-            )}
-          </label>
-        ))}
+              )}
+            </div>
+          ))}
+        </div>
+        <HStack gap={3} className="mt-4 items-center">
+          <Button label={saving ? "Saving…" : "Save"} variant="primary" size="sm" onClick={save} isDisabled={saving} />
+          {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
+        </HStack>
       </div>
-      <div className="mt-4 flex items-center gap-3">
-        <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50">
-          {saving ? "Saving…" : "Save"}
-        </button>
-        {msg && <span className="text-xs text-emerald-600">{msg}</span>}
-      </div>
-    </section>
+    </Card>
   );
 }

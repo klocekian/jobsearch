@@ -1,11 +1,12 @@
 "use client";
 
 import { ProfileView } from "@/components/ProfileView";
+import { Text } from "@astryxdesign/core/Text";
 
 export default function ProfilePage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-5 py-8">
-      <h1 className="mb-6 text-xl font-bold text-slate-900">Profile</h1>
+      <Text type="display-3" as="h1" className="mb-6">Profile</Text>
       <ProfileView />
     </main>
   );
