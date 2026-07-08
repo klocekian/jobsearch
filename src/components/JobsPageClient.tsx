@@ -13,7 +13,7 @@ import { HStack } from "@astryxdesign/core/Stack";
 
 type JobsTab = "list" | "funnel";
 
-export function JobsPageClient({ initialJobs }: { initialJobs: JobRow[] }) {
+export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const params = useSearchParams();
   const adding = params.get("add") === "1";
   const [tab, setTab] = useState<JobsTab>("list");
@@ -41,8 +41,8 @@ export function JobsPageClient({ initialJobs }: { initialJobs: JobRow[] }) {
         </SegmentedControl>
       </HStack>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === "list" && <JobsList initialJobs={initialJobs} />}
-        {tab === "funnel" && <JobsFunnel initialJobs={initialJobs} />}
+        {tab === "list" && <JobsList jobsPromise={jobsPromise} />}
+        {tab === "funnel" && <JobsFunnel jobsPromise={jobsPromise} />}
       </div>
     </main>
   );

@@ -76,18 +76,21 @@ function GateStepper({ job }: { job: JobRow }) {
   );
 }
 
-export function JobsFunnel({ initialJobs }: { initialJobs: JobRow[] }) {
-  const [jobs, setJobs] = useState<JobRow[]>(initialJobs);
+export function JobsFunnel({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
+  const [jobs, setJobs] = useState<JobRow[]>([]);
   const [selected, setSelected] = useState<{ status: string; stage?: string } | null>(null);
 
-  // Seeded from the page's server-rendered snapshot for an instant first paint,
-  // then refreshed here in case a job was edited elsewhere since that load.
+  // jobsPromise was already kicked off server-side before this component
+  // mounted, so it resolves faster than a fresh client fetch would — this
+  // gives an instant first paint without the client-fetch round trip.
+  // Re-fetch afterward in case a job was edited elsewhere since that load.
   useEffect(() => {
+    jobsPromise.then(setJobs).catch(() => {});
     fetch("/api/jobs?sort=created_at&order=desc")
       .then((r) => r.json())
       .then((d) => setJobs(d.jobs ?? []))
       .catch(() => {});
-  }, []);
+  }, [jobsPromise]);
 
   const counts: Record<string, number> = {};
   for (const j of jobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
