@@ -11,8 +11,11 @@ import { Switch } from "@astryxdesign/core/Switch";
 import { Text } from "@astryxdesign/core/Text";
 import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
+import { Code } from "@astryxdesign/core/Code";
+import { Link } from "@astryxdesign/core/Link";
 
-interface AuthUser { id: number; name: string; email: string; hasAnthropicToken: boolean }
+type ClaudeStatus = "connected" | "expired" | "none";
+interface AuthUser { id: number; name: string; email: string; claudeStatus: ClaudeStatus }
 interface Resume {
   id: number;
   name: string;
@@ -24,8 +27,13 @@ interface Resume {
   updated_at: string;
 }
 
-export function ProfileView() {
-  const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
+interface ProfileViewProps {
+  initialUser: AuthUser | null;
+  initialAutofillFields: Record<string, unknown>;
+}
+
+export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewProps) {
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -39,10 +47,10 @@ export function ProfileView() {
   const editFileRef = useRef<HTMLInputElement>(null);
   const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes">("account");
 
-  useEffect(() => {
+  const refetchUser = useCallback(() => {
     fetch("/api/auth/me").then(r => r.json())
       .then((d: { user?: AuthUser | null }) => setUser(d.user ?? null))
-      .catch(() => setUser(null));
+      .catch(() => {});
   }, []);
 
   const fetchResumes = useCallback(async () => {
@@ -119,51 +127,42 @@ export function ProfileView() {
       {profileTab === "account" && <>
       <Card>
         <div className="p-5">
-          <Text type="label" className="mb-3">Account</Text>
-          {user === undefined ? (
-            <Text type="supporting">Loading…</Text>
-          ) : user ? (
+          <Text type="label" display="block" className="mb-3">Account</Text>
+          {user ? (
             <div className="flex items-center justify-between">
               <div>
-                <Text type="body" className="font-medium">{user.name}</Text>
-                <Text type="supporting">{user.email}</Text>
+                <Text weight="semibold" display="block">{user.name}</Text>
+                <Text type="supporting" display="block">{user.email}</Text>
               </div>
-              <HStack gap={3} className="items-center">
-                <Badge
-                  label={user.hasAnthropicToken ? "Claude connected" : "No Claude token"}
-                  variant={user.hasAnthropicToken ? "success" : "warning"}
-                />
-                <form action="/api/auth/logout" method="POST">
-                  <Button label="Sign out" variant="ghost" size="sm" />
-                </form>
-              </HStack>
+              <form action="/api/auth/logout" method="POST">
+                <Button label="Sign out of Google" variant="ghost" size="sm" />
+              </form>
             </div>
           ) : (
             <div>
-              <Text type="supporting" className="mb-3">
+              <Text type="supporting" display="block" className="mb-3">
                 Sign in with Google to save your data and track your job search.
               </Text>
-              <a
+              <Button
+                label="Sign in with Google"
+                variant="secondary"
                 href="/api/auth/login"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
-                Sign in with Google
-              </a>
+                icon={
+                  <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+                }
+              />
             </div>
           )}
         </div>
       </Card>
 
-      <ApplicationFields />
+      <ApplicationFields initialFields={initialAutofillFields} />
       </>}
 
       {profileTab === "ai" && <>
       {user && (
-        <ClaudeConnection connected={user.hasAnthropicToken} onUpdate={() => {
-          fetch("/api/auth/me").then(r => r.json())
-            .then((d: { user?: AuthUser | null }) => setUser(d.user ?? null))
-            .catch(() => {});
+        <ClaudeConnection status={user.claudeStatus} onUpdate={() => {
+          refetchUser();
         }} />
       )}
       </>}
@@ -171,18 +170,13 @@ export function ProfileView() {
       {profileTab === "extension" && <>
       <Card>
         <div className="p-5">
-          <Text type="label" className="mb-3">Chrome Extension</Text>
-          <Text type="supporting" className="mb-3">
+          <Text type="label" display="block" className="mb-3">Chrome Extension</Text>
+          <Text type="supporting" display="block" className="mb-3">
             Clip job postings from any page directly into your tracker. The extension opens in
             Chrome&apos;s side panel so it stays open while you browse.
           </Text>
           <HStack gap={3} className="items-center">
-            <a
-              href="/chrome-extension.zip"
-              className="inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Download Extension
-            </a>
+            <Button label="Download Extension" variant="primary" href="/chrome-extension.zip" />
             <Text type="supporting">
               Unzip, then load in chrome://extensions with Developer Mode on.
             </Text>
@@ -196,8 +190,8 @@ export function ProfileView() {
         <div className="p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <Text type="label">Resumes</Text>
-              <Text type="supporting">Manage multiple resumes for different job types. Select which to use when analyzing or writing.</Text>
+              <Text type="label" display="block">Resumes</Text>
+              <Text type="supporting" display="block">Manage multiple resumes for different job types. Select which to use when analyzing or writing.</Text>
             </div>
             {!adding && (
               <Button label="Add Resume" variant="primary" size="sm" onClick={() => setAdding(true)} />
@@ -211,7 +205,7 @@ export function ProfileView() {
               </div>
               <div className="mb-3">
                 <div className="mb-1 flex items-center justify-between">
-                  <Text type="supporting" className="font-medium">Content</Text>
+                  <Text type="supporting" weight="semibold">Content</Text>
                   <Button label="Upload PDF / text file" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} />
                   <input ref={fileRef} type="file" accept=".pdf,.txt,.md,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], setNewContent, setNewName)} />
                 </div>
@@ -228,8 +222,8 @@ export function ProfileView() {
             <Text type="supporting" className="py-8 text-center">Loading…</Text>
           ) : resumes.length === 0 && !adding ? (
             <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center">
-              <Text type="body">No resumes yet.</Text>
-              <Text type="supporting" className="mt-1">Add a resume to use it for matching and cover letters.</Text>
+              <Text display="block">No resumes yet.</Text>
+              <Text type="supporting" display="block" className="mt-1">Add a resume to use it for matching and cover letters.</Text>
             </div>
           ) : (
             <Stack gap={3}>
@@ -242,7 +236,7 @@ export function ProfileView() {
                       </div>
                       <div className="mb-3">
                         <div className="mb-1 flex items-center justify-between">
-                          <Text type="supporting" className="font-medium">Content</Text>
+                          <Text type="supporting" weight="semibold">Content</Text>
                           <Button label="Re-upload" variant="ghost" size="sm" onClick={() => editFileRef.current?.click()} />
                           <input ref={editFileRef} type="file" accept=".pdf,.txt,.md,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], setEditContent)} />
                         </div>
@@ -257,7 +251,7 @@ export function ProfileView() {
                     <div className="flex items-start justify-between p-4">
                       <div className="min-w-0 flex-1">
                         <HStack gap={2} className="items-center">
-                          <Text type="body" className="font-medium">{r.name}</Text>
+                          <Text weight="semibold">{r.name}</Text>
                           {r.is_default === 1 && (
                             <Badge label="Default" variant="success" />
                           )}
@@ -299,7 +293,7 @@ export function ProfileView() {
   );
 }
 
-function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdate: () => void }) {
+function ClaudeConnection({ status, onUpdate }: { status: ClaudeStatus; onUpdate: () => void }) {
   const [editing, setEditing] = useState(false);
   const [key, setKey] = useState("");
   const [saving, setSaving] = useState(false);
@@ -330,16 +324,22 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
   return (
     <Card>
       <div className="p-5">
-        <Text type="label" className="mb-3">Claude AI</Text>
-        <Text type="supporting" className="mb-3">
+        <Text type="label" display="block" className="mb-3">Claude AI</Text>
+        <Text type="supporting" display="block" className="mb-3">
           Connect your Anthropic account to enable AI features: cover letter generation,
           resume rewriting, and smart field extraction. Uses your Max/Pro subscription credits.
         </Text>
 
-        {connected && !editing ? (
+        {status === "connected" && !editing ? (
           <HStack gap={3} className="items-center">
             <Badge label="Connected" variant="success" />
             <Button label="Update" variant="ghost" size="sm" onClick={() => setEditing(true)} />
+            {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
+          </HStack>
+        ) : status === "expired" && !editing ? (
+          <HStack gap={3} className="items-center">
+            <Badge label="Expired" variant="warning" />
+            <Button label="Reconnect" variant="primary" size="sm" onClick={() => setEditing(true)} />
             {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
           </HStack>
         ) : !editing ? (
@@ -356,23 +356,21 @@ function ClaudeConnection({ connected, onUpdate }: { connected: boolean; onUpdat
               onChange={setKey}
               placeholder="sk-ant-api03-..."
             />
-            <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 space-y-1">
-              <p>
-                <strong>API key</strong> — create at{" "}
-                <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-                  console.anthropic.com/settings/keys
-                </a>
-              </p>
-              <p>
-                <strong>Max/Pro subscribers</strong> — run in terminal:
-              </p>
-              <p>
-                1. <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth login</code>
-              </p>
-              <p>
-                2. <code className="rounded bg-slate-200 px-1 py-0.5 text-[10px] select-all">ant auth print-credentials --access-token</code>
-              </p>
-            </div>
+            <Card className="p-3">
+              <Stack gap={1}>
+                <Text type="supporting" display="block">
+                  <Text type="supporting" weight="semibold">API key</Text> — create at{" "}
+                  <Link href="https://console.anthropic.com/settings/keys" isExternalLink>
+                    console.anthropic.com/settings/keys
+                  </Link>
+                </Text>
+                <Text type="supporting" display="block">
+                  <Text type="supporting" weight="semibold">Max/Pro subscribers</Text> — run in terminal:
+                </Text>
+                <Text type="supporting" display="block">1. <Code>ant auth login</Code></Text>
+                <Text type="supporting" display="block">2. <Code>ant auth print-credentials --access-token</Code></Text>
+              </Stack>
+            </Card>
             <HStack gap={2}>
               <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={save} isDisabled={!key.trim() || saving} />
               <Button label="Cancel" variant="secondary" onClick={() => { setEditing(false); setKey(""); }} />
@@ -400,26 +398,19 @@ const PROFILE_FIELDS: { key: string; label: string; type?: "checkbox"; half?: bo
   { key: "substack", label: "Substack / Blog" },
 ];
 
-function ApplicationFields() {
-  const [fields, setFields] = useState<Record<string, string | boolean>>({});
-  const [loading, setLoading] = useState(true);
+function fieldsFromAutofill(d: Record<string, unknown>): Record<string, string | boolean> {
+  const f: Record<string, string | boolean> = {};
+  for (const pf of PROFILE_FIELDS) {
+    const v = d[pf.key];
+    f[pf.key] = pf.type === "checkbox" ? !!v : String(v ?? "");
+  }
+  return f;
+}
+
+function ApplicationFields({ initialFields }: { initialFields: Record<string, unknown> }) {
+  const [fields, setFields] = useState<Record<string, string | boolean>>(() => fieldsFromAutofill(initialFields));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
-
-  useEffect(() => {
-    fetch("/api/profile/autofill")
-      .then((r) => r.ok ? r.json() : {})
-      .then((d: Record<string, unknown>) => {
-        const f: Record<string, string | boolean> = {};
-        for (const pf of PROFILE_FIELDS) {
-          const v = d[pf.key];
-          f[pf.key] = pf.type === "checkbox" ? !!v : String(v ?? "");
-        }
-        setFields(f);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   const save = async () => {
     setSaving(true);
@@ -440,13 +431,11 @@ function ApplicationFields() {
     }
   };
 
-  if (loading) return <Card><div className="p-5"><Text type="supporting">Loading…</Text></div></Card>;
-
   return (
     <Card>
       <div className="p-5">
-        <Text type="label" className="mb-1">Application Fields</Text>
-        <Text type="supporting" className="mb-4">
+        <Text type="label" display="block" className="mb-1">Application Fields</Text>
+        <Text type="supporting" display="block" className="mb-4">
           Used by the extension to auto-fill job applications and shown in the Fill tab for quick copying.
         </Text>
         <div className="grid grid-cols-2 gap-3">

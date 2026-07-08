@@ -21,6 +21,7 @@ const UpdateSchema = z.object({
   match_report: z.string().nullable().optional(),
   applied_at: z.string().nullable().optional(),
   previous_status: z.string().max(50).nullable().optional(),
+  is_starred: z.number().int().min(0).max(1).optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };

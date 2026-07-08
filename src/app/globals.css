@@ -25,4 +25,31 @@ body {
   .input {
     @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-primary outline-none transition placeholder:text-disabled focus:border-accent focus:ring-2 focus:ring-accent/20;
   }
+
+  /* Pins the Astryx Table's <thead> to the top of its scroll container, so
+     rows scroll underneath while the column headers stay put.
+     Astryx's own horizontal scroll wrapper (.astryx-table-scroll-wrapper,
+     overflow-x: auto) already establishes a scroll container per the CSS
+     Overflow spec (a non-visible value on one axis implies auto on the
+     other) — an *additional* outer overflow-y wrapper would just be a
+     second, unrelated scroll container the header can't see past. So this
+     makes the Astryx wrapper itself the vertical scroll boundary instead
+     of introducing a redundant one. */
+  .sticky-table-header {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+  .sticky-table-header .astryx-table-scroll-wrapper {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+  .sticky-table-header thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--color-surface, white);
+  }
 }

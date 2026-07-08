@@ -12,6 +12,9 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { Card } from "@astryxdesign/core/Card";
 import { Banner } from "@astryxdesign/core/Banner";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
+import { Link } from "@astryxdesign/core/Link";
 
 interface ContextMaterialsPanelProps {
   materials: ContextMaterial[];
@@ -96,13 +99,13 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
   return (
     <Card className="p-5">
       <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Context materials</h3>
-        <span className="text-xs text-slate-400">Shared across Resume &amp; Cover Letter</span>
+        <Heading level={3}>Context materials</Heading>
+        <Text type="supporting" color="secondary">Shared across Resume &amp; Cover Letter</Text>
       </div>
-      <p className="mb-3 text-xs text-slate-500">
+      <Text type="supporting" color="secondary" display="block" className="mb-3">
         Add supporting materials the AI can draw on — brag docs, project write-ups, past letters,
         performance reviews. Everything stays grounded in what you provide.
-      </p>
+      </Text>
 
       <div
         onDragOver={(e) => e.preventDefault()}
@@ -112,25 +115,17 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
         }}
         className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2"
       >
-        <span className="text-xs text-slate-500">
+        <Text type="supporting" color="secondary">
           Drop PDF / DOCX / .txt / .md here,{" "}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="font-medium text-brand hover:underline"
-          >
+          <Link onClick={() => fileInputRef.current?.click()} hasUnderline>
             browse
-          </button>
+          </Link>
           , or{" "}
-          <button
-            type="button"
-            onClick={() => setPasteOpen((v) => !v)}
-            className="font-medium text-brand hover:underline"
-          >
+          <Link onClick={() => setPasteOpen((v) => !v)} hasUnderline>
             paste a note
-          </button>
-        </span>
-        {status.kind === "loading" && <span className="text-xs text-slate-500">Reading…</span>}
+          </Link>
+        </Text>
+        {status.kind === "loading" && <Text type="supporting" color="secondary">Reading…</Text>}
         <input
           ref={fileInputRef}
           type="file"
@@ -185,11 +180,11 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
               key={m.id}
               className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
             >
-              <span className="min-w-0 flex-1 truncate text-xs text-slate-700">
-                <span className="font-medium">{m.name}</span>{" "}
-                <span className="text-slate-400">
+              <span className="min-w-0 flex-1 truncate">
+                <Text type="supporting" weight="semibold">{m.name}</Text>{" "}
+                <Text type="supporting" color="secondary">
                   · {m.source === "paste" ? "pasted" : m.source.toUpperCase()} · {m.text.length.toLocaleString()} chars
-                </span>
+                </Text>
               </span>
               <Button
                 label="×"

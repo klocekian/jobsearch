@@ -16,8 +16,10 @@ export interface UserRow {
   updated_at: string;
 }
 
+// See rowToJob in jobs.ts for why the spread is needed — libsql's Row isn't
+// actually a plain object (it carries hidden array-index own properties).
 function rowToUser(row: Row): UserRow {
-  return row as unknown as UserRow;
+  return { ...row } as unknown as UserRow;
 }
 
 export async function getUserById(id: number): Promise<UserRow | undefined> {

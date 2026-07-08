@@ -22,13 +22,18 @@ export interface JobRow {
   updated_at: string;
   applied_at: string | null;
   previous_status: string | null;
+  is_starred: number;
 }
 
 export type JobInsert = Partial<Omit<JobRow, "id">>;
 export type JobUpdate = Partial<Omit<JobRow, "id" | "created_at" | "user_id">>;
 
+// libsql's Row is array-like (numeric indices + a `length` own property
+// alongside the named columns), so casting it directly isn't a plain object —
+// React's Server-to-Client serialization rejects it. Spreading strips those
+// non-enumerable extras and leaves just the named fields.
 function rowToJob(row: Row): JobRow {
-  return row as unknown as JobRow;
+  return { ...row } as unknown as JobRow;
 }
 
 export async function listJobs(userId: number | null, opts?: {
@@ -36,6 +41,7 @@ export async function listJobs(userId: number | null, opts?: {
   order?: "asc" | "desc";
   status?: string;
   search?: string;
+  starred?: boolean;
 }): Promise<JobRow[]> {
   const db = await getDb();
   const allowedSorts: Record<string, string> = {
@@ -74,7 +80,11 @@ export async function listJobs(userId: number | null, opts?: {
   }
 
   const where = `WHERE ${conditions.join(" AND ")}`;
-  const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, notes, source, match_score, created_at, updated_at, applied_at";
+  if (opts?.starred) {
+    conditions.push("is_starred = 1");
+  }
+
+  const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, notes, source, match_score, is_starred, created_at, updated_at, applied_at";
   const result = await db.execute({ sql: `SELECT ${listCols} FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });
   return result.rows.map(rowToJob);
 }

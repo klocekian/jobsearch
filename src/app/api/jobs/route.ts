@@ -26,9 +26,10 @@ export async function GET(request: Request) {
   const order = url.searchParams.get("order") as "asc" | "desc" | undefined;
   const status = url.searchParams.get("status") ?? undefined;
   const search = url.searchParams.get("search") ?? undefined;
+  const starred = url.searchParams.get("starred") === "1";
 
   const userId = await getCurrentUserId();
-  const jobs = await listJobs(userId, { sort, order, status, search });
+  const jobs = await listJobs(userId, { sort, order, status, search, starred: starred || undefined });
   return NextResponse.json({ jobs }, {
     headers: { "Cache-Control": "private, max-age=5, stale-while-revalidate=30" },
   });

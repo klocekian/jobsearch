@@ -10,10 +10,15 @@ import type {
 } from "@/lib/analysis/types";
 import { StatusIcon, ScoreRing } from "./icons";
 import { Button } from "@astryxdesign/core/Button";
-import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Card } from "@astryxdesign/core/Card";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Banner } from "@astryxdesign/core/Banner";
+import { Text } from "@astryxdesign/core/Text";
+import { Heading } from "@astryxdesign/core/Heading";
+
+import { Badge } from "@astryxdesign/core/Badge";
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 
 /** Async state of the LLM-based AI-authorship check (owned by App). */
 export interface AiDetectionState {
@@ -45,12 +50,12 @@ function SummaryCards({ report }: { report: MatchReport }) {
       <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
         {cards.map((c) => (
           <Card key={c.label} className="px-4 py-3">
-            <div className="text-xs text-slate-500">{c.label}</div>
-            <div className="mt-1 text-sm">
-              <span className={`text-xl font-semibold ${c.n > 0 ? "text-slate-800" : "text-emerald-600"}`}>
+            <Text type="supporting" color="secondary" display="block">{c.label}</Text>
+            <div className="mt-1">
+              <Text type="large" weight="semibold" color={c.n > 0 ? "primary" : undefined} className={c.n === 0 ? "text-emerald-600" : undefined}>
                 {c.n}
-              </span>{" "}
-              <span className="text-slate-500">{c.n === 1 ? "issue" : "issues"}</span>
+              </Text>{" "}
+              <Text type="supporting" color="secondary">{c.n === 1 ? "issue" : "issues"}</Text>
             </div>
           </Card>
         ))}
@@ -62,7 +67,7 @@ function SummaryCards({ report }: { report: MatchReport }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-8">
-      <h2 className="mb-3 text-sm font-semibold tracking-tight text-slate-800">{title}</h2>
+      <Heading level={2} className="mb-3 tracking-tight">{title}</Heading>
       <Card className="overflow-hidden">{children}</Card>
     </section>
   );
@@ -73,12 +78,12 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
     <div className="divide-y divide-slate-100">
       {groups.map((g) => (
         <div key={g.label} className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-[160px_1fr]">
-          <div className="text-sm font-semibold text-slate-700">{g.label}</div>
+          <Text type="label" weight="semibold" display="block">{g.label}</Text>
           <ul className="space-y-2">
             {g.items.map((item, i) => (
-              <li key={i} className="flex gap-3 text-sm leading-relaxed text-slate-600">
+              <li key={i} className="flex gap-3 leading-relaxed">
                 <StatusIcon status={item.status} />
-                <span>{item.message}</span>
+                <Text color="secondary">{item.message}</Text>
               </li>
             ))}
           </ul>
@@ -91,24 +96,24 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
 function SkillsTable({ section, title }: { section: SkillSection; title: string }) {
   return (
     <div>
-      <div className="flex items-center gap-4 border-b border-slate-100 px-5 py-3 text-sm">
-        <span className="font-semibold text-slate-700">{title}</span>
-        <span className="text-slate-500">
-          Matched <span className="font-semibold text-emerald-600">{section.matched}</span>
-        </span>
-        <span className="text-slate-500">
-          Missing <span className="font-semibold text-rose-500">{section.missing}</span>
-        </span>
+      <div className="flex items-center gap-4 border-b border-slate-100 px-5 py-3">
+        <Text type="label" weight="semibold">{title}</Text>
+        <Text color="secondary">
+          Matched <Text weight="semibold" className="text-emerald-600">{section.matched}</Text>
+        </Text>
+        <Text color="secondary">
+          Missing <Text weight="semibold" className="text-rose-500">{section.missing}</Text>
+        </Text>
       </div>
       {section.rows.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-slate-400">No skills of this type detected in the job description.</p>
+        <Text type="supporting" color="secondary" display="block" className="px-5 py-4">No skills of this type detected in the job description.</Text>
       ) : (
-        <table className="w-full text-sm">
+        <table className="w-full">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-              <th className="px-5 py-2 font-medium">Skill</th>
-              <th className="px-5 py-2 text-right font-medium">Resume</th>
-              <th className="px-5 py-2 text-right font-medium">Job Description</th>
+            <tr className="text-left uppercase tracking-wide">
+              <th className="px-5 py-2"><Text type="supporting" color="secondary" weight="semibold">Skill</Text></th>
+              <th className="px-5 py-2 text-right"><Text type="supporting" color="secondary" weight="semibold">Resume</Text></th>
+              <th className="px-5 py-2 text-right"><Text type="supporting" color="secondary" weight="semibold">Job Description</Text></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -117,18 +122,16 @@ function SkillsTable({ section, title }: { section: SkillSection; title: string 
                 <td className="px-5 py-2.5">
                   <span className="inline-flex items-center gap-2">
                     <StatusIcon status={row.state === "missing" ? "fail" : "pass"} className="h-4 w-4" />
-                    <span className="text-slate-700">{row.skill}</span>
+                    <Text>{row.skill}</Text>
                     {row.state === "exceeds" && (
-                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
-                        over-indexed
-                      </span>
+                      <Badge variant="warning" label="over-indexed" />
                     )}
                   </span>
                 </td>
-                <td className="px-5 py-2.5 text-right tabular-nums text-slate-700">
-                  {row.state === "missing" ? <span className="text-rose-400">✕</span> : row.resumeCount}
+                <td className="px-5 py-2.5 text-right tabular-nums">
+                  {row.state === "missing" ? <Text className="text-rose-400">✕</Text> : <Text>{row.resumeCount}</Text>}
                 </td>
-                <td className="px-5 py-2.5 text-right tabular-nums text-slate-700">{row.jobCount}</td>
+                <td className="px-5 py-2.5 text-right tabular-nums"><Text>{row.jobCount}</Text></td>
               </tr>
             ))}
           </tbody>
@@ -143,20 +146,20 @@ function RecruiterTable({ tips }: { tips: RecruiterTip[] }) {
     <div className="divide-y divide-slate-100">
       {tips.map((t) => (
         <div key={t.label} className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-[160px_1fr]">
-          <div className="text-sm font-semibold text-slate-700">{t.label}</div>
+          <Text type="label" weight="semibold" display="block">{t.label}</Text>
           <div className="space-y-2">
-            <div className="flex gap-3 text-sm leading-relaxed text-slate-600">
+            <div className="flex gap-3 leading-relaxed">
               <StatusIcon status={t.status} />
-              <span>{t.message}</span>
+              <Text color="secondary">{t.message}</Text>
             </div>
             {t.evidence && t.evidence.length > 0 && (
               <div className="ml-8 rounded-lg bg-slate-50 px-3 py-2">
-                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                <Text type="supporting" weight="semibold" display="block" className="mb-1 uppercase tracking-wide">
                   Evidence
-                </div>
-                <ul className="space-y-1 text-xs italic text-slate-500">
+                </Text>
+                <ul className="space-y-1 italic">
                   {t.evidence.map((e, i) => (
-                    <li key={i}>&ldquo;{e}&rdquo;</li>
+                    <li key={i}><Text type="supporting" color="secondary">&ldquo;{e}&rdquo;</Text></li>
                   ))}
                 </ul>
               </div>
@@ -172,9 +175,9 @@ function AiDetectionSection({ state }: { state: AiDetectionState }) {
   if (state.status === "loading") {
     return (
       <div className="px-5 py-6">
-        <div className="flex items-center gap-3 text-sm text-slate-500">
+        <div className="flex items-center gap-3">
           <Spinner size="sm" />
-          Checking the writing for AI authorship…
+          <Text color="secondary">Checking the writing for AI authorship…</Text>
         </div>
       </div>
     );
@@ -196,31 +199,26 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
   return (
     <div className="px-5 py-4">
       <div className="flex items-center gap-3">
-        <div className="text-3xl font-semibold text-slate-800">{ai.confidence}%</div>
-        <div className="text-sm">
-          <div className={`font-semibold capitalize ${bandColor}`}>{ai.band} AI signal</div>
-          <div className="text-slate-500">
+        <Heading level={2} className={bandColor}>{ai.confidence}%</Heading>
+        <div>
+          <Text weight="semibold" display="block" className={`capitalize ${bandColor}`}>{ai.band} AI signal</Text>
+          <Text color="secondary" display="block">
             Probabilistic estimate of how AI-generated the resume reads — not a verdict.
-          </div>
+          </Text>
         </div>
       </div>
-      {note && <p className="mt-2 text-xs text-amber-600">{note}</p>}
+      {note && <Text type="supporting" display="block" className="mt-2 text-amber-600">{note}</Text>}
       <div className="mt-4 space-y-3">
         {ai.patterns.map((p) => (
           <div key={p.label}>
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-slate-700">{p.label}</span>
-              <span className="tabular-nums text-slate-400">{p.signal}</span>
+            <div className="flex items-center justify-between">
+              <Text weight="semibold">{p.label}</Text>
+              <Text type="supporting" color="secondary" className="tabular-nums">{p.signal}</Text>
             </div>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className={`h-full rounded-full ${p.signal >= 66 ? "bg-rose-400" : p.signal >= 33 ? "bg-amber-400" : "bg-emerald-400"}`}
-                style={{ width: `${p.signal}%` }}
-              />
-            </div>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">{p.message}</p>
+            <ProgressBar value={p.signal} max={100} label={p.label} className="mt-1" />
+            <Text type="supporting" color="secondary" display="block" className="mt-1 leading-relaxed">{p.message}</Text>
             {p.examples.length > 0 && (
-              <p className="mt-1 text-xs text-slate-400">e.g. {p.examples.join(", ")}</p>
+              <Text type="supporting" color="secondary" display="block" className="mt-1">e.g. {p.examples.join(", ")}</Text>
             )}
           </div>
         ))}
@@ -235,10 +233,10 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-4">
-        <TabList value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)}>
-          <Tab value="match" label="Match" />
-          <Tab value="ai" label="AI Detection" />
-        </TabList>
+        <SegmentedControl value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)} label="Report view">
+          <SegmentedControlItem value="match" label="Match" />
+          <SegmentedControlItem value="ai" label="AI Detection" />
+        </SegmentedControl>
         {onRunAnalysis && (
           <Button
             label={hasAnalysis ? "Re-run analysis" : "Run analysis"}
@@ -252,16 +250,7 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
 
       {subTab === "match" && (
         <>
-          {report.meta.jobTitle && (
-            report.meta.jobUrl ? (
-              <a href={report.meta.jobUrl} target="_blank" rel="noopener noreferrer" className="mb-1 block text-sm text-brand hover:underline">
-                {report.meta.jobTitle} ↗
-              </a>
-            ) : (
-              <div className="mb-1 text-sm text-slate-500">{report.meta.jobTitle}</div>
-            )
-          )}
-          <h1 className="mb-5 text-lg font-bold tracking-tight text-slate-900">Match Report</h1>
+          <Heading level={1} className="mb-5">Match Report</Heading>
 
           <SummaryCards report={report} />
 
@@ -285,7 +274,7 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
 
       {subTab === "ai" && (
         <>
-          <h1 className="mb-5 text-lg font-bold tracking-tight text-slate-900">AI Authorship Detection</h1>
+          <Heading level={1} className="mb-5 tracking-tight">AI Authorship Detection</Heading>
           <Card className="overflow-hidden">
             <AiDetectionSection state={aiDetection} />
           </Card>

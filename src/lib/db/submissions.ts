@@ -12,8 +12,10 @@ export interface SubmissionRow {
   created_at: string;
 }
 
+// See rowToJob in jobs.ts for why the spread is needed — libsql's Row isn't
+// actually a plain object (it carries hidden array-index own properties).
 function rowToSub(row: Row): SubmissionRow {
-  return row as unknown as SubmissionRow;
+  return { ...row } as unknown as SubmissionRow;
 }
 
 export async function listSubmissions(jobId: number): Promise<SubmissionRow[]> {

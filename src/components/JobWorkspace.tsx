@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+
 import Markdown from "react-markdown";
 import { analyze } from "@/lib/analysis/analyze";
 import type { MatchReport } from "@/lib/analysis/types";
@@ -11,6 +11,7 @@ import { MatchReportView, type AiDetectionState } from "./MatchReportView";
 import { JobDescriptionView } from "./JobDescriptionView";
 import { ResumeView } from "./ResumeView";
 import { CoverLetterView } from "./CoverLetterView";
+import { JobStatusDot } from "./icons";
 import {
   loadSavedResume,
   coverLetterText,
@@ -24,13 +25,15 @@ import {
 import { buildPackageMarkdown } from "@/lib/package";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
-import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
+import { STATUS_OPTIONS } from "@/lib/status";
 import { Button } from "@astryxdesign/core/Button";
 import { TabList, Tab } from "@astryxdesign/core/TabList";
 import { Selector } from "@astryxdesign/core/Selector";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Text } from "@astryxdesign/core/Text";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Link as AstryxLink } from "@astryxdesign/core/Link";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Card } from "@astryxdesign/core/Card";
@@ -281,17 +284,17 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         <div className="col-start-1 row-start-1 border-b border-r border-slate-200 bg-white px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <Link href="/jobs" className="text-xs text-slate-400 hover:text-slate-600">← All jobs</Link>
+              <AstryxLink href="/jobs">← All jobs</AstryxLink>
               {editingHeader ? (
                 <div className="mt-1 space-y-1.5">
-                  <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" className="text-sm font-bold" />
+                  <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" />
                   <div className="flex gap-1.5">
-                    <TextInput label="Company" isLabelHidden value={headerFields.company} onChange={(v) => setHeaderFields(f => ({ ...f, company: v }))} placeholder="Company" className="text-xs" />
-                    <TextInput label="Location" isLabelHidden value={headerFields.location} onChange={(v) => setHeaderFields(f => ({ ...f, location: v }))} placeholder="Location" className="text-xs" />
+                    <TextInput label="Company" isLabelHidden value={headerFields.company} onChange={(v) => setHeaderFields(f => ({ ...f, company: v }))} placeholder="Company" />
+                    <TextInput label="Location" isLabelHidden value={headerFields.location} onChange={(v) => setHeaderFields(f => ({ ...f, location: v }))} placeholder="Location" />
                   </div>
                   <div className="flex gap-1.5">
-                    <TextInput label="Salary" isLabelHidden value={headerFields.salary_text} onChange={(v) => setHeaderFields(f => ({ ...f, salary_text: v }))} placeholder="Salary" className="text-xs" />
-                    <TextInput label="URL" isLabelHidden value={headerFields.url} onChange={(v) => setHeaderFields(f => ({ ...f, url: v }))} placeholder="URL" className="text-xs" />
+                    <TextInput label="Salary" isLabelHidden value={headerFields.salary_text} onChange={(v) => setHeaderFields(f => ({ ...f, salary_text: v }))} placeholder="Salary" />
+                    <TextInput label="URL" isLabelHidden value={headerFields.url} onChange={(v) => setHeaderFields(f => ({ ...f, url: v }))} placeholder="URL" />
                   </div>
                   <div className="flex gap-1.5">
                     <Button label="Save" variant="primary" size="sm" onClick={saveHeader} />
@@ -300,9 +303,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 </div>
               ) : (
                 <div className="group">
-                  <h2 className="text-lg font-bold text-slate-900 leading-tight">
-                    {job.title || "Untitled"}
-                    <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity inline-block">
+                  <HStack gap={2} className="items-center">
+                    <Heading level={2}>{job.title || "Untitled"}</Heading>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         label="Edit"
                         variant="ghost"
@@ -310,23 +313,25 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                         onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
                       />
                     </span>
-                  </h2>
-                  <p className="text-xs text-slate-500">
+                  </HStack>
+                  <Text type="supporting" display="block">
                     {job.company}
-                    {job.location && <span> · {job.location}</span>}
-                    {job.salary_text && <span> · {job.salary_text}</span>}
-                  </p>
+                    {job.location && <> · {job.location}</>}
+                    {job.salary_text && <> · {job.salary_text}</>}
+                  </Text>
                 </div>
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <select
+              <Selector
+                label="Status"
+                isLabelHidden
+                size="sm"
+                startIcon={<JobStatusDot status={job.status} />}
+                options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
                 value={job.status}
-                onChange={(e) => updateStatus(e.target.value)}
-                className={`rounded-full border-0 px-3 py-1 text-xs font-semibold capitalize ${STATUS_COLORS[job.status] ?? ""}`}
-              >
-                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
+                onChange={(v) => updateStatus(v as string)}
+              />
               <Button label="Delete" variant="destructive" size="sm" onClick={deleteJob} />
             </div>
           </div>
@@ -350,7 +355,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 <div className="flex items-center gap-2">
                   <Button label={job.posting_text ? "Update posting" : "Paste posting"} variant="secondary" size="sm" onClick={() => setPasting(true)} />
                   {job.url && (
-                    <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline">Open original ↗</a>
+                    <AstryxLink href={job.url} isExternalLink>Open original</AstryxLink>
                   )}
                 </div>
               )}
@@ -372,7 +377,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                     missing={analyzed.report.highlights.missing}
                   />
                 ) : (
-                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{job.posting_text}</pre>
+                  <Text display="block" className="whitespace-pre-wrap leading-relaxed">{job.posting_text}</Text>
                 )
               ) : (
                 <Banner status="info" title="No posting text. Paste it above or use the Chrome extension." />
@@ -384,7 +389,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             job.url ? (
               <div className="flex h-full flex-col">
                 <div className="mb-2 flex items-center gap-2">
-                  <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline">Open in new tab ↗</a>
+                  <AstryxLink href={job.url} isExternalLink>Open in new tab</AstryxLink>
                   <Text type="supporting">Many sites block embedding — use the link above if the form doesn&apos;t load below.</Text>
                 </div>
                 <iframe src={job.url} className="flex-1 w-full rounded-lg border border-slate-200" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
@@ -430,8 +435,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                       <div className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="min-w-0 flex-1">
-                            <Text type="body" className="font-medium">{s.label}</Text>
-                            <Text type="supporting">{s.type} · {s.format}</Text>
+                            <Text weight="semibold" display="block">{s.label}</Text>
+                            <Text type="supporting" display="block">{s.type} · {s.format}</Text>
                           </div>
                           <HStack gap={2}>
                             {s.content && (
@@ -442,7 +447,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                                 onClick={() => setViewingSubmission(viewingSubmission === s.id ? null : s.id)}
                               />
                             )}
-                            <a href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} className="text-xs font-medium text-accent hover:underline">Download</a>
+                            <Button label="Download" variant="ghost" size="sm" href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} />
                             <Button label="Remove" variant="ghost" size="sm" onClick={() => deleteSubmission(s.id)} />
                           </HStack>
                         </div>
@@ -475,11 +480,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 <div>
                   <Button label={job.notes ? "Edit notes" : "Add notes"} variant="secondary" size="sm" onClick={() => { setEditNotes(job.notes); setEditing(true); }} />
                   {job.notes ? (
-                    <div className="prose prose-sm prose-slate max-w-none">
+                    <div className="prose prose-sm prose-slate mt-3 max-w-none">
                       <Markdown>{job.notes}</Markdown>
                     </div>
                   ) : (
-                    <Banner status="info" title="No notes yet." />
+                    <div className="mt-3">
+                      <Banner status="info" title="No notes yet." />
+                    </div>
                   )}
                 </div>
               )}
@@ -491,7 +498,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         <div className="col-start-2 row-start-1 border-b border-slate-200 bg-white px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs text-slate-400">Resume</p>
+              <Text type="supporting" display="block">Resume</Text>
               <div className="mt-1 flex items-center gap-2">
                 {savedResumes.length > 0 && (
                   <Selector
@@ -531,12 +538,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 />
                 <Button label="+ Add" variant="secondary" size="sm" onClick={() => resumeFileRef.current?.click()} />
               </div>
-              <p className="mt-1 text-xs text-slate-400">
+              <Text type="supporting" display="block" className="mt-1">
                 {analyzed
-                  ? <>Score: <span className="font-semibold text-slate-700">{analyzed.report.score}</span>/100</>
+                  ? <>Score: <Text weight="semibold">{analyzed.report.score}</Text>/100</>
                   : "Select a resume and run analysis"
                 }
-              </p>
+              </Text>
             </div>
             {!analyzed && (
               <div className="flex shrink-0 items-center gap-2">

@@ -13,6 +13,7 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Card } from "@astryxdesign/core/Card";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Text } from "@astryxdesign/core/Text";
+import { Heading } from "@astryxdesign/core/Heading";
 
 interface CoverLetterViewProps {
   resumeText: string;
@@ -99,7 +100,7 @@ export function CoverLetterView({
     <div>
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">Cover Letter</h2>
+          <Heading level={2}>Cover Letter</Heading>
           <Text>
             Generated from your resume and this job posting — grounded in your real experience, never
             fabricated. Add a note below about what draws you to the role, then edit the draft and save
@@ -155,7 +156,7 @@ export function CoverLetterView({
         <>
           <Card className="mt-6">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">Letter header</h3>
+              <Heading level={3}>Letter header</Heading>
               <Button
                 label="Reset from resume"
                 variant="ghost"
@@ -175,7 +176,7 @@ export function CoverLetterView({
 
           <Card className="mt-4">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-2.5">
-              <span className="text-xs font-medium text-slate-500">Draft — edit as needed</span>
+              <Text type="supporting">Draft — edit as needed</Text>
               <div className="flex gap-2">
                 <Button
                   label={copied ? "Copied!" : "Copy"}
