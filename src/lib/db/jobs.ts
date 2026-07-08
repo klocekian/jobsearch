@@ -79,10 +79,10 @@ export async function listJobs(userId: number | null, opts?: {
     params.push(like, like, like);
   }
 
-  const where = `WHERE ${conditions.join(" AND ")}`;
   if (opts?.starred) {
     conditions.push("is_starred = 1");
   }
+  const where = `WHERE ${conditions.join(" AND ")}`;
 
   const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, notes, source, match_score, is_starred, created_at, updated_at, applied_at";
   const result = await db.execute({ sql: `SELECT ${listCols} FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });

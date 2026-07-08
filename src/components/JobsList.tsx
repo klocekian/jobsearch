@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
@@ -28,11 +28,24 @@ function formatSalary(job: JobRow): string {
   return "";
 }
 
-export function JobsList({ initialJobs }: { initialJobs?: JobRow[] }) {
+export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [jobs, setJobs] = useState<JobRow[]>(initialJobs ?? []);
-  const [loading, setLoading] = useState(initialJobs === undefined);
+  const [jobs, setJobs] = useState<JobRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  // fetchJobs (the client-side sort/filter-aware fetch below) is the
+  // authoritative source once it resolves. jobsPromise — already in flight
+  // from the server before this component even mounted — is purely a faster
+  // first paint for the default view; if fetchJobs somehow wins the race,
+  // don't let the slower default-sorted promise clobber its result.
+  const fetchedFromClient = useRef(false);
+  useEffect(() => {
+    jobsPromise.then((initial) => {
+      if (fetchedFromClient.current) return;
+      setJobs(initial);
+      setLoading(false);
+    });
+  }, [jobsPromise]);
   const [sortKey, setSortKey] = useState<SortKey>(() =>
     (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey") as SortKey) || "created_at"
   );
@@ -74,6 +87,7 @@ export function JobsList({ initialJobs }: { initialJobs?: JobRow[] }) {
     if (starredOnly) params.set("starred", "1");
     const res = await fetch(`/api/jobs?${params}`);
     const data = await res.json();
+    fetchedFromClient.current = true;
     setJobs(data.jobs ?? []);
     setLoading(false);
   }, [ready, sortKey, sortOrder, statusFilter, debouncedSearch, starredOnly]);
