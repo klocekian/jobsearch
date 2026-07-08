@@ -438,9 +438,9 @@ function ApplicationFields({ initialFields }: { initialFields: Record<string, un
         <Text type="supporting" display="block" className="mb-4">
           Used by the extension to auto-fill job applications and shown in the Fill tab for quick copying.
         </Text>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {PROFILE_FIELDS.map((pf) => (
-            <div key={pf.key} className={pf.half ? "" : "col-span-2"}>
+            <div key={pf.key} className={pf.half ? "" : "sm:col-span-2"}>
               {pf.type === "checkbox" ? (
                 <Switch
                   label={pf.label}

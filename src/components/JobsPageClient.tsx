@@ -42,7 +42,7 @@ export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]>
       </HStack>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "list" && <JobsList jobsPromise={jobsPromise} />}
-        {tab === "funnel" && <JobsFunnel jobsPromise={jobsPromise} />}
+        {tab === "funnel" && <JobsFunnel />}
       </div>
     </main>
   );

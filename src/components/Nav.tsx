@@ -48,7 +48,7 @@ export function Nav({ user }: { user: NavUser | null }) {
         user ? (
           <HStack gap={2} className="items-center">
             <StatusDot {...CLAUDE_STATUS_DOT[claudeStatus]} tooltip={CLAUDE_STATUS_DOT[claudeStatus].label} />
-            <span>{user.name || user.email}</span>
+            <span className="hidden sm:inline">{user.name || user.email}</span>
           </HStack>
         ) : (
           <a href="/api/auth/login">
