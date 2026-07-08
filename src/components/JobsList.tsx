@@ -17,6 +17,7 @@ import { Stack, HStack } from "@astryxdesign/core/Stack";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Table, useTableSortable, proportional, pixel } from "@astryxdesign/core/Table";
 import type { TableColumn, TableSortState } from "@astryxdesign/core/Table";
+import { useMediaQuery } from "@astryxdesign/core/hooks";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "created_at" | "applied_at";
 
@@ -31,6 +32,7 @@ function formatSalary(job: JobRow): string {
 export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
   // fetchJobs (the client-side sort/filter-aware fetch below) is the
@@ -179,7 +181,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, is_starred: newVal } : j));
   };
 
-  const columns: TableColumn<JobRow & Record<string, unknown>>[] = [
+  const allColumns: TableColumn<JobRow & Record<string, unknown>>[] = [
     {
       key: "is_starred",
       header: "★",
@@ -210,7 +212,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
       width: proportional(2),
       sortable: true,
       renderCell: (job) => (
-        <Link href={`/jobs/${job.id}`} className="text-secondary hover:text-accent">
+        <Link href={`/jobs/${job.id}`} className="block truncate text-secondary hover:text-accent">
           {job.title || "—"}
         </Link>
       ),
@@ -218,7 +220,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     {
       key: "status",
       header: "Status",
-      width: pixel(150),
+      width: pixel(isMobile ? 110 : 150),
       sortable: true,
       renderCell: (job) => (
         <Selector
@@ -279,6 +281,11 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     },
   ];
 
+  // On mobile, keep only what's useful at a glance — Company/Title/Status —
+  // so the table fits a phone width without horizontal scrolling.
+  const MOBILE_HIDDEN_COLUMNS = new Set(["salary_max", "location", "match_score", "created_at", "applied_at"]);
+  const columns = isMobile ? allColumns.filter((c) => !MOBILE_HIDDEN_COLUMNS.has(c.key)) : allColumns;
+
   const statusOptions = [
     { value: "", label: "All statuses" },
     ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label })),
@@ -309,9 +316,9 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
             <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
             <span className={starredOnly ? "text-amber-500 font-medium" : "text-secondary"}>★ Starred</span>
           </label>
-          <HStack gap={2} className="ml-auto items-center">
+          <HStack gap={2} className="items-center sm:ml-auto">
             <Button label={checking ? "Checking…" : "Check closed"} variant="ghost" size="sm" onClick={checkClosed} isDisabled={checking} />
-            <Button label={importing ? "Importing…" : "Import from Google Sheet"} variant="ghost" size="sm" onClick={importFromSheet} isDisabled={importing} />
+            <Button label={importing ? "Importing…" : isMobile ? "Import" : "Import from Google Sheet"} variant="ghost" size="sm" onClick={importFromSheet} isDisabled={importing} />
             <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
           </HStack>
         </HStack>

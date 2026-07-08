@@ -28,6 +28,7 @@ import type { SubmissionRow } from "@/lib/db/submissions";
 import { STATUS_OPTIONS } from "@/lib/status";
 import { Button } from "@astryxdesign/core/Button";
 import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Selector } from "@astryxdesign/core/Selector";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -38,9 +39,11 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Card } from "@astryxdesign/core/Card";
 import { Stack, HStack } from "@astryxdesign/core/Stack";
+import { useMediaQuery } from "@astryxdesign/core/hooks";
 
 type LeftTab = "posting" | "apply" | "submissions" | "notes";
 type RightTab = "report" | "resume" | "cover";
+type MobilePane = "posting" | "analysis";
 
 interface SavedResume { id: number; name: string; content: string; is_default: number }
 
@@ -51,6 +54,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [loading, setLoading] = useState(true);
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
   const [rightTab, setRightTab] = useState<RightTab>("report");
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
 
   // Editing
   const [editing, setEditing] = useState(false);
@@ -268,88 +273,74 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   if (loading) return <div className="py-12 text-center"><Spinner label="Loading…" /></div>;
   if (!job) return <div className="py-12"><Banner status="error" title="Job not found." /></div>;
 
-  return (
-    <div
-      ref={containerRef}
-      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden"
-      style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}
-    >
-      {/* Drag handle */}
-      <div
-        onMouseDown={onDragStart}
-        className="absolute top-0 bottom-0 z-10 w-1 cursor-col-resize bg-transparent hover:bg-brand/30 active:bg-brand/50 transition-colors"
-        style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
-      />
-        {/* Header */}
-        <div className="col-start-1 row-start-1 border-b border-r border-slate-200 bg-white px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <AstryxLink href="/jobs">← All jobs</AstryxLink>
-              {editingHeader ? (
-                <div className="mt-1 space-y-1.5">
-                  <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" />
-                  <div className="flex gap-1.5">
-                    <TextInput label="Company" isLabelHidden value={headerFields.company} onChange={(v) => setHeaderFields(f => ({ ...f, company: v }))} placeholder="Company" />
-                    <TextInput label="Location" isLabelHidden value={headerFields.location} onChange={(v) => setHeaderFields(f => ({ ...f, location: v }))} placeholder="Location" />
-                  </div>
-                  <div className="flex gap-1.5">
-                    <TextInput label="Salary" isLabelHidden value={headerFields.salary_text} onChange={(v) => setHeaderFields(f => ({ ...f, salary_text: v }))} placeholder="Salary" />
-                    <TextInput label="URL" isLabelHidden value={headerFields.url} onChange={(v) => setHeaderFields(f => ({ ...f, url: v }))} placeholder="URL" />
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Button label="Save" variant="primary" size="sm" onClick={saveHeader} />
-                    <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditingHeader(false)} />
-                  </div>
-                </div>
-              ) : (
-                <div className="group">
-                  <HStack gap={2} className="items-center">
-                    <Heading level={2}>{job.title || "Untitled"}</Heading>
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        label="Edit"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
-                      />
-                    </span>
-                  </HStack>
-                  <Text type="supporting" display="block">
-                    {job.company}
-                    {job.location && <> · {job.location}</>}
-                    {job.salary_text && <> · {job.salary_text}</>}
-                  </Text>
-                </div>
-              )}
+  const jobHeaderInner = (
+    <>
+      <div className="min-w-0 flex-1">
+        <AstryxLink href="/jobs">← All jobs</AstryxLink>
+        {editingHeader ? (
+          <div className="mt-1 space-y-1.5">
+            <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" />
+            <div className="flex gap-1.5">
+              <TextInput label="Company" isLabelHidden value={headerFields.company} onChange={(v) => setHeaderFields(f => ({ ...f, company: v }))} placeholder="Company" />
+              <TextInput label="Location" isLabelHidden value={headerFields.location} onChange={(v) => setHeaderFields(f => ({ ...f, location: v }))} placeholder="Location" />
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Selector
-                label="Status"
-                isLabelHidden
-                size="sm"
-                startIcon={<JobStatusDot status={job.status} />}
-                options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
-                value={job.status}
-                onChange={(v) => updateStatus(v as string)}
-              />
-              <Button label="Delete" variant="destructive" size="sm" onClick={deleteJob} />
+            <div className="flex gap-1.5">
+              <TextInput label="Salary" isLabelHidden value={headerFields.salary_text} onChange={(v) => setHeaderFields(f => ({ ...f, salary_text: v }))} placeholder="Salary" />
+              <TextInput label="URL" isLabelHidden value={headerFields.url} onChange={(v) => setHeaderFields(f => ({ ...f, url: v }))} placeholder="URL" />
+            </div>
+            <div className="flex gap-1.5">
+              <Button label="Save" variant="primary" size="sm" onClick={saveHeader} />
+              <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditingHeader(false)} />
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="group">
+            <HStack gap={2} className="items-center">
+              <Heading level={2}>{job.title || "Untitled"}</Heading>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  label="Edit"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
+                />
+              </span>
+            </HStack>
+            <Text type="supporting" display="block">
+              {job.company}
+              {job.location && <> · {job.location}</>}
+              {job.salary_text && <> · {job.salary_text}</>}
+            </Text>
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Selector
+          label="Status"
+          isLabelHidden
+          size="sm"
+          startIcon={<JobStatusDot status={job.status} />}
+          options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
+          value={job.status}
+          onChange={(v) => updateStatus(v as string)}
+        />
+        <Button label="Delete" variant="destructive" size="sm" onClick={deleteJob} />
+      </div>
+    </>
+  );
 
-        {/* Left tabs */}
-        <div className="col-start-1 row-start-2 border-b border-r border-slate-200 bg-white px-4">
-          <TabList value={leftTab} onChange={(v) => setLeftTab(v as LeftTab)}>
-            <Tab value="posting" label="Job Posting" />
-            <Tab value="apply" label="Apply" />
-            <Tab value="submissions" label={`Submissions (${submissions.length})`} />
-            <Tab value="notes" label="Notes" />
-          </TabList>
-        </div>
+  const leftTabBar = (
+    <TabList value={leftTab} onChange={(v) => setLeftTab(v as LeftTab)}>
+      <Tab value="posting" label="Job Posting" />
+      <Tab value="apply" label="Apply" />
+      <Tab value="submissions" label={`Submissions (${submissions.length})`} />
+      <Tab value="notes" label="Notes" />
+    </TabList>
+  );
 
-        {/* Left content */}
-        <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-slate-200 p-4">
-          {leftTab === "posting" && (
+  const leftPaneBody = (
+    <>
+      {leftTab === "posting" && (
             <div className="space-y-3">
               {!pasting && (
                 <div className="flex items-center gap-2">
@@ -492,11 +483,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               )}
             </div>
           )}
-        </div>
+    </>
+  );
 
-        {/* Analysis controls */}
-        <div className="col-start-2 row-start-1 border-b border-slate-200 bg-white px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
+  const resumeControls = (
+    <>
             <div className="min-w-0">
               <Text type="supporting" display="block">Resume</Text>
               <div className="mt-1 flex items-center gap-2">
@@ -550,20 +541,19 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 <Button label="Run analysis" variant="primary" size="sm" onClick={runAnalysis} isDisabled={!resumeText.trim() || !job.posting_text.trim()} />
               </div>
             )}
-          </div>
-        </div>
+    </>
+  );
 
-        {/* Right tabs */}
-        <div className="col-start-2 row-start-2 border-b border-slate-200 bg-white px-4">
-          <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
-            <Tab value="report" label="Report" />
-            <Tab value="resume" label="Resume" />
-            <Tab value="cover" label="Cover Letter" />
-          </TabList>
-        </div>
+  const rightTabBar = (
+    <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
+      <Tab value="report" label="Report" />
+      <Tab value="resume" label="Resume" />
+      <Tab value="cover" label="Cover Letter" />
+    </TabList>
+  );
 
-        {/* Right content */}
-        <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-4">
+  const rightPaneBody = (
+    <>
           {!analyzed && !job.posting_text && (
             <div className="py-12">
               <Banner status="info" title="Add a job posting and run analysis to see results here." />
@@ -606,7 +596,72 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               onMaterialsChange={setMaterials}
             />
           )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3">
+          <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
         </div>
+        <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-2">
+          <SegmentedControl value={mobilePane} onChange={(v) => setMobilePane(v as MobilePane)} label="View">
+            <SegmentedControlItem value="posting" label="Posting" />
+            <SegmentedControlItem value="analysis" label="Analysis" />
+          </SegmentedControl>
+        </div>
+        {mobilePane === "posting" ? (
+          <>
+            <div className="shrink-0 border-b border-slate-200 bg-white px-4">{leftTabBar}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">{leftPaneBody}</div>
+          </>
+        ) : (
+          <>
+            <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3">
+              <div className="flex items-start justify-between gap-3">{resumeControls}</div>
+            </div>
+            <div className="shrink-0 border-b border-slate-200 bg-white px-4">{rightTabBar}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden"
+      style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}
+    >
+      {/* Drag handle */}
+      <div
+        onMouseDown={onDragStart}
+        className="absolute top-0 bottom-0 z-10 w-1 cursor-col-resize bg-transparent hover:bg-brand/30 active:bg-brand/50 transition-colors"
+        style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
+      />
+      {/* Header */}
+      <div className="col-start-1 row-start-1 border-b border-r border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
+      </div>
+
+      {/* Left tabs */}
+      <div className="col-start-1 row-start-2 border-b border-r border-slate-200 bg-white px-4">{leftTabBar}</div>
+
+      {/* Left content */}
+      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-slate-200 p-4">{leftPaneBody}</div>
+
+      {/* Analysis controls */}
+      <div className="col-start-2 row-start-1 border-b border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-start justify-between gap-3">{resumeControls}</div>
+      </div>
+
+      {/* Right tabs */}
+      <div className="col-start-2 row-start-2 border-b border-slate-200 bg-white px-4">{rightTabBar}</div>
+
+      {/* Right content */}
+      <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-4">{rightPaneBody}</div>
     </div>
   );
 }

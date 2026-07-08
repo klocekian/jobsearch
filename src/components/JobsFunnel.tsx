@@ -76,21 +76,23 @@ function GateStepper({ job }: { job: JobRow }) {
   );
 }
 
-export function JobsFunnel({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
+export function JobsFunnel() {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [selected, setSelected] = useState<{ status: string; stage?: string } | null>(null);
 
-  // jobsPromise was already kicked off server-side before this component
-  // mounted, so it resolves faster than a fresh client fetch would — this
-  // gives an instant first paint without the client-fetch round trip.
-  // Re-fetch afterward in case a job was edited elsewhere since that load.
+  // Not the default tab, so unlike JobsList there's no server-streamed
+  // promise to seed from here — the user already navigated within the app to
+  // reach it, so a quick client fetch is unnoticeable. (A shared jobsPromise
+  // consumed here too would also break: Next's Flight promise wire format
+  // doesn't support a second component calling .then() on the same
+  // already-resolved reference — it crashes with "reading 'catch' of
+  // undefined", which is why this fetches independently instead.)
   useEffect(() => {
-    jobsPromise.then(setJobs).catch(() => {});
     fetch("/api/jobs?sort=created_at&order=desc")
       .then((r) => r.json())
       .then((d) => setJobs(d.jobs ?? []))
       .catch(() => {});
-  }, [jobsPromise]);
+  }, []);
 
   const counts: Record<string, number> = {};
   for (const j of jobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
