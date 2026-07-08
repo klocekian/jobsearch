@@ -95,6 +95,9 @@ export async function getDb(): Promise<Client> {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
   `);
 
+  await client.execute("ALTER TABLE jobs ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0").catch(() => {});
+  await client.execute("CREATE INDEX IF NOT EXISTS idx_jobs_starred ON jobs(is_starred)").catch(() => {});
+
   _initialized = true;
   return client;
 }

@@ -12,6 +12,8 @@ import type { AiDetection } from "@/lib/analysis/types";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
 
 interface ResumeViewProps {
   /** The analyzed resume text — the starting point ("original"). */
@@ -141,13 +143,13 @@ export function ResumeView({
     <div>
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">Resume</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <Heading level={2}>Resume</Heading>
+          <Text type="supporting" display="block" className="mt-1">
             Generate a tailored rewrite, then click any suggestion to accept it into your resume, or
             just type to edit. Export a clean PDF when you&apos;re done. Saved on this device and
             restored next time.
-          </p>
-          {restored && <p className="mt-1 text-xs text-emerald-600">Restored your saved draft.</p>}
+          </Text>
+          {restored && <Text type="supporting" display="block" className="mt-1 text-emerald-600">Restored your saved draft.</Text>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
@@ -190,12 +192,12 @@ export function ResumeView({
 
       {/* Control: context materials + generate */}
       <Card className="mb-4 p-5">
-        <h3 className="text-sm font-semibold text-slate-700">Tailor to this posting</h3>
-        <p className="mb-3 mt-1 text-xs text-slate-500">
+        <Text type="label" weight="semibold" display="block">Tailor to this posting</Text>
+        <Text type="supporting" display="block" className="mb-3 mt-1">
           Rewrites your resume to match the job, grounded in your real experience — never fabricated.
           It also fixes the AI-authorship tells flagged in the report. Add context materials to ground
           it in more of your work.
-        </p>
+        </Text>
         <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
         {gen.kind === "error" && (
           <Banner status="error" title={gen.message ?? "Something went wrong."} className="mt-3" />
@@ -204,10 +206,10 @@ export function ResumeView({
 
       {hasRewrite && (
         <div className="mb-2 flex flex-wrap items-center gap-3">
-          <span className="text-xs text-slate-500">
+          <Text type="supporting">
             Click a <span className="rounded bg-emerald-100 px-1 text-emerald-900">green suggestion</span> to accept it,
             or × to dismiss. Type anywhere to edit.
-          </span>
+          </Text>
           <div className="ml-auto flex gap-2">
             <Button label="Accept all" variant="secondary" size="sm" onClick={acceptAll} />
             <Button label="Reset to original" variant="secondary" size="sm" onClick={reset} />

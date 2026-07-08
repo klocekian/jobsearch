@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
+import { STATUS_OPTIONS } from "@/lib/status";
+import { formatDate } from "@/lib/format";
+import { JobStatusDot } from "./icons";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Selector } from "@astryxdesign/core/Selector";
@@ -26,33 +28,11 @@ function formatSalary(job: JobRow): string {
   return "";
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso.replace(" ", "T") + (iso.includes("T") || iso.includes(" ") ? "" : "T00:00:00"));
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-const BADGE_VARIANTS: Record<string, "success" | "error" | "warning" | "blue" | "purple" | "teal" | "neutral"> = {
-  saved: "neutral",
-  applying: "warning",
-  applied: "blue",
-  interview: "success",
-  interview2: "teal",
-  onsite: "teal",
-  offer: "purple",
-  accepted: "success",
-  rejected: "error",
-  withdrawn: "neutral",
-  closed: "neutral",
-  abandoned: "neutral",
-};
-
-export function JobsList() {
+export function JobsList({ initialJobs }: { initialJobs?: JobRow[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState<JobRow[]>(initialJobs ?? []);
+  const [loading, setLoading] = useState(initialJobs === undefined);
   const [sortKey, setSortKey] = useState<SortKey>(() =>
     (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey") as SortKey) || "created_at"
   );
@@ -63,6 +43,7 @@ export function JobsList() {
   const [ready, setReady] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [starredOnly, setStarredOnly] = useState(false);
   const [importing, setImporting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [importMsg, setImportMsg] = useState("");
@@ -88,13 +69,14 @@ export function JobsList() {
     const params = new URLSearchParams();
     params.set("sort", sortKey);
     params.set("order", sortOrder);
-    if (statusFilter) params.set("status", statusFilter);
+    if (statusFilter && !starredOnly) params.set("status", statusFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
+    if (starredOnly) params.set("starred", "1");
     const res = await fetch(`/api/jobs?${params}`);
     const data = await res.json();
     setJobs(data.jobs ?? []);
     setLoading(false);
-  }, [ready, sortKey, sortOrder, statusFilter, debouncedSearch]);
+  }, [ready, sortKey, sortOrder, statusFilter, debouncedSearch, starredOnly]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -173,7 +155,30 @@ export function JobsList() {
     onSortChange: handleSortChange,
   });
 
+  const toggleStar = async (job: JobRow) => {
+    const newVal = job.is_starred ? 0 : 1;
+    await fetch(`/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_starred: newVal }),
+    });
+    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, is_starred: newVal } : j));
+  };
+
   const columns: TableColumn<JobRow & Record<string, unknown>>[] = [
+    {
+      key: "is_starred",
+      header: "★",
+      width: pixel(40),
+      renderCell: (job) => (
+        <button
+          onClick={(e) => { e.preventDefault(); toggleStar(job); }}
+          className={`text-lg leading-none transition ${job.is_starred ? "text-amber-400" : "text-slate-200 hover:text-amber-300"}`}
+        >
+          {job.is_starred ? "★" : "☆"}
+        </button>
+      ),
+    },
     {
       key: "company",
       header: "Company",
@@ -199,23 +204,25 @@ export function JobsList() {
     {
       key: "status",
       header: "Status",
-      width: pixel(120),
+      width: pixel(150),
       sortable: true,
       renderCell: (job) => (
-        <select
+        <Selector
+          label="Status"
+          isLabelHidden
+          size="sm"
+          startIcon={<JobStatusDot status={job.status} />}
+          options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
           value={job.status}
-          onChange={async (e) => {
+          onChange={async (v) => {
             await fetch(`/api/jobs/${job.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: e.target.value }),
+              body: JSON.stringify({ status: v }),
             });
             fetchJobs();
           }}
-          className={`rounded-full border-0 px-2 py-0.5 text-[10px] font-semibold capitalize cursor-pointer ${STATUS_COLORS[job.status] ?? STATUS_COLORS.saved}`}
-        >
-          {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
+        />
       ),
     },
     {
@@ -223,14 +230,14 @@ export function JobsList() {
       header: "Salary",
       width: proportional(1.2),
       sortable: true,
-      renderCell: (job) => <Text type="supporting">{formatSalary(job)}</Text>,
+      renderCell: (job) => <Text>{formatSalary(job)}</Text>,
     },
     {
       key: "location",
       header: "Location",
       width: proportional(1),
       sortable: true,
-      renderCell: (job) => <Text type="supporting">{job.location || "—"}</Text>,
+      renderCell: (job) => <Text>{job.location || "—"}</Text>,
     },
     {
       key: "match_score",
@@ -240,21 +247,21 @@ export function JobsList() {
       renderCell: (job) =>
         job.match_score != null
           ? <Badge variant={job.match_score >= 80 ? "success" : job.match_score >= 60 ? "warning" : "neutral"} label={`${job.match_score}%`} />
-          : <Text type="supporting">—</Text>,
+          : <Text>—</Text>,
     },
     {
       key: "created_at",
       header: "Added",
       width: pixel(80),
       sortable: true,
-      renderCell: (job) => <Text type="supporting">{formatDate(job.created_at)}</Text>,
+      renderCell: (job) => <Text>{formatDate(job.created_at)}</Text>,
     },
     {
       key: "applied_at",
       header: "Applied",
       width: pixel(80),
       sortable: true,
-      renderCell: (job) => <Text type="supporting">{formatDate(job.applied_at)}</Text>,
+      renderCell: (job) => <Text>{formatDate(job.applied_at)}</Text>,
     },
   ];
 
@@ -264,52 +271,62 @@ export function JobsList() {
   ];
 
   return (
-    <Stack gap={3}>
-      <HStack gap={3} className="flex-wrap items-center">
-        <TextInput
-          label="Search"
-          isLabelHidden
-          value={search}
-          onChange={setSearch}
-          placeholder="Search jobs…"
-          className="w-40"
-        />
-        <Selector
-          label="Status filter"
-          isLabelHidden
-          options={statusOptions}
-          value={statusFilter}
-          onChange={(v) => updateStatusFilter(v as string)}
-          placeholder="All statuses"
-          className="w-36"
-        />
-        <HStack gap={2} className="ml-auto items-center">
-          <Button label={checking ? "Checking…" : "Check closed"} variant="ghost" size="sm" onClick={checkClosed} isDisabled={checking} />
-          <Button label={importing ? "Importing…" : "Import from Google Sheet"} variant="ghost" size="sm" onClick={importFromSheet} isDisabled={importing} />
-          <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
+    <div className="flex h-full flex-col">
+      <Stack gap={3} className="shrink-0">
+        <HStack gap={3} className="flex-wrap items-center">
+          <TextInput
+            label="Search"
+            isLabelHidden
+            value={search}
+            onChange={setSearch}
+            placeholder="Search jobs…"
+            className="w-40"
+          />
+          <Selector
+            label="Status filter"
+            isLabelHidden
+            options={statusOptions}
+            value={statusFilter}
+            onChange={(v) => updateStatusFilter(v as string)}
+            placeholder="All statuses"
+            className="w-36"
+          />
+          <label className="flex cursor-pointer items-center gap-1.5 text-sm select-none">
+            <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
+            <span className={starredOnly ? "text-amber-500 font-medium" : "text-secondary"}>★ Starred</span>
+          </label>
+          <HStack gap={2} className="ml-auto items-center">
+            <Button label={checking ? "Checking…" : "Check closed"} variant="ghost" size="sm" onClick={checkClosed} isDisabled={checking} />
+            <Button label={importing ? "Importing…" : "Import from Google Sheet"} variant="ghost" size="sm" onClick={importFromSheet} isDisabled={importing} />
+            <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
+          </HStack>
         </HStack>
-      </HStack>
 
-      {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
+        {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
+      </Stack>
 
-      {loading ? (
-        <Spinner label="Loading jobs…" />
-      ) : jobs.length === 0 ? (
-        <Stack gap={1} className="py-12 text-center">
-          <Text type="body">No jobs tracked yet.</Text>
-          <Text type="supporting">Add a job manually, import from your Google Sheet, or paste a job posting URL.</Text>
-        </Stack>
-      ) : (
-        <Table
-          data={jobs as (JobRow & Record<string, unknown>)[]}
-          columns={columns}
-          idKey="id"
-          hasHover
-          plugins={{ sortable: sortablePlugin }}
-        />
-      )}
+      <div className="mt-3 flex min-h-0 flex-1 flex-col">
+        {loading ? (
+          <Spinner label="Loading jobs…" />
+        ) : jobs.length === 0 ? (
+          <Stack gap={1} className="py-12 text-center">
+            <Text type="body">No jobs tracked yet.</Text>
+            <Text type="supporting">Add a job manually, import from your Google Sheet, or paste a job posting URL.</Text>
+          </Stack>
+        ) : (
+          <div className="sticky-table-header">
+            <Table
+              data={jobs as (JobRow & Record<string, unknown>)[]}
+              columns={columns}
+              idKey="id"
+              hasHover
+              plugins={{ sortable: sortablePlugin }}
+            />
+          </div>
+        )}
 
-      <Text type="supporting">{jobs.length} job{jobs.length !== 1 ? "s" : ""}</Text>
-    </Stack>
+        <Text type="supporting" display="block" className="mt-3 shrink-0">{jobs.length} job{jobs.length !== 1 ? "s" : ""}</Text>
+      </div>
+    </div>
   );
 }

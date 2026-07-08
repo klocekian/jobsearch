@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import { Nav } from "@/components/Nav";
 import { Providers } from "@/components/Providers";
 import { getSession } from "@/lib/auth";
+import { getUserClaudeStatus } from "@/lib/anthropic";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +19,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await getSession().catch(() => null);
-  const navUser = user ? { id: user.id, name: user.name, email: user.email } : null;
+  const claudeStatus = user ? await getUserClaudeStatus(user) : "none";
+  const navUser = user ? { id: user.id, name: user.name, email: user.email, claudeStatus } : null;
 
   return (
     <html

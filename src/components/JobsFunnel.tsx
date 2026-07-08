@@ -3,40 +3,91 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
+import { STATUS_OPTIONS, STATUS_DOT_COLORS } from "@/lib/status";
+import { formatDate } from "@/lib/format";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
-import { Spinner } from "@astryxdesign/core/Spinner";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
+import { Badge } from "@astryxdesign/core/Badge";
+import { HStack } from "@astryxdesign/core/Stack";
 
 const PIPELINE = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
 const TERMINAL_LINES = [
-  { status: "rejected", label: "Rejected", color: "text-rose-500", stages: ["applied", "interview", "interview2", "onsite"] },
-  { status: "abandoned", label: "Abandoned", color: "text-stone-500", stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
-  { status: "closed", label: "Closed", color: "text-slate-400", stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
+  { status: "rejected", label: "Rejected", color: STATUS_DOT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
+  { status: "abandoned", label: "Abandoned", color: STATUS_DOT_COLORS.abandoned, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
+  { status: "closed", label: "Closed", color: STATUS_DOT_COLORS.closed, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
 ];
 
-const DOT_COLORS: Record<string, string> = {
-  total: "#1e293b", saved: "#94a3b8", applying: "#f59e0b", applied: "#3b82f6",
-  interview: "#10b981", interview2: "#06b6d4", onsite: "#14b8a6", offer: "#8b5cf6", accepted: "#22c55e",
-};
+const DOT_COLORS: Record<string, string> = { total: "#1e293b", ...STATUS_DOT_COLORS };
+
+// The 5 gates shown per job row in the selected-jobs list — a simplified
+// view of the pipeline (skips "applying", stops at Onsite since Offer/
+// Accepted are rare terminal-ish states better read from the status pill).
+const GATES = [
+  { key: "saved", label: "Saved" },
+  { key: "applied", label: "Applied" },
+  { key: "interview", label: "Recruiter" },
+  { key: "interview2", label: "Interview" },
+  { key: "onsite", label: "Onsite" },
+];
 
 function labelFor(status: string): string {
   return STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
 }
 
-export function JobsFunnel() {
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [loading, setLoading] = useState(true);
+/** How many of the 5 GATES a job has reached, based on its furthest pipeline
+ * stage — for terminal statuses (rejected/withdrawn/etc.), that's wherever
+ * previous_status left off, matching the terminal-rows breakdown above. */
+function gatesReached(job: JobRow): number {
+  const effective = PIPELINE.includes(job.status) ? job.status : (job.previous_status ?? "saved");
+  const rank = PIPELINE.indexOf(effective);
+  if (rank === -1) return 0;
+  return GATES.filter((g) => PIPELINE.indexOf(g.key) <= rank).length;
+}
+
+function GateStepper({ job }: { job: JobRow }) {
+  const reached = gatesReached(job);
+  return (
+    <HStack gap={0} className="items-center">
+      {GATES.map((g, i) => (
+        <HStack key={g.key} gap={0} className="items-center">
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: i < reached ? STATUS_DOT_COLORS[g.key] : "#e2e8f0" }}
+            title={g.label}
+          />
+          <Text
+            type="supporting"
+            className="mr-2 ml-1 whitespace-nowrap"
+            style={{ color: i < reached ? STATUS_DOT_COLORS[g.key] : "#cbd5e1" }}
+          >
+            {g.label}
+          </Text>
+          {i < GATES.length - 1 && (
+            <span
+              className="mr-2 h-px w-4 shrink-0"
+              style={{ backgroundColor: i + 1 < reached ? STATUS_DOT_COLORS[g.key] : "#e2e8f0" }}
+            />
+          )}
+        </HStack>
+      ))}
+    </HStack>
+  );
+}
+
+export function JobsFunnel({ initialJobs }: { initialJobs: JobRow[] }) {
+  const [jobs, setJobs] = useState<JobRow[]>(initialJobs);
   const [selected, setSelected] = useState<{ status: string; stage?: string } | null>(null);
 
+  // Seeded from the page's server-rendered snapshot for an instant first paint,
+  // then refreshed here in case a job was edited elsewhere since that load.
   useEffect(() => {
     fetch("/api/jobs?sort=created_at&order=desc")
       .then((r) => r.json())
-      .then((d) => { setJobs(d.jobs ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((d) => setJobs(d.jobs ?? []))
+      .catch(() => {});
   }, []);
-
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
 
   const counts: Record<string, number> = {};
   for (const j of jobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
@@ -101,8 +152,8 @@ export function JobsFunnel() {
   return (
     <div>
       <Card className="mb-6 p-6">
-        <h2 className="mb-1 text-lg font-bold text-slate-900">Application Pipeline</h2>
-        <p className="mb-4 text-xs text-slate-400">{jobs.length} total jobs tracked</p>
+        <Heading level={2} className="mb-1">Application Pipeline</Heading>
+        <Text type="supporting" display="block" className="mb-4">{jobs.length} total jobs tracked</Text>
 
         {/* Main pipeline chart */}
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }}>
@@ -147,8 +198,8 @@ export function JobsFunnel() {
             const total = stageCounts.reduce((s, c) => s + c.count, 0);
             return (
               <div key={tl.status} className="flex items-center gap-0 py-1.5">
-                <div className={`w-[72px] shrink-0 text-right pr-3 text-[11px] font-semibold ${tl.color}`}>
-                  {tl.label}
+                <div className="w-[72px] shrink-0 text-right pr-3">
+                  <Text type="supporting" weight="semibold" style={{ color: tl.color }}>{tl.label}</Text>
                 </div>
                 <div className="flex flex-1 items-center">
                   {pipelineStages.map((ps, pi) => {
@@ -162,9 +213,10 @@ export function JobsFunnel() {
                               isSel(tl.status, entry.stage)
                                 ? "bg-slate-800 text-white"
                                 : entry.count > 0
-                                  ? `${tl.color} hover:bg-slate-100`
+                                  ? "hover:bg-slate-100"
                                   : "text-slate-200"
                             }`}
+                            style={!isSel(tl.status, entry.stage) && entry.count > 0 ? { color: tl.color } : undefined}
                           >
                             {entry.count}
                           </button>
@@ -175,7 +227,9 @@ export function JobsFunnel() {
                     );
                   })}
                 </div>
-                <div className="w-10 shrink-0 text-center text-[11px] font-semibold text-slate-400">{total}</div>
+                <div className="w-10 shrink-0 text-center">
+                  <Text type="supporting" weight="semibold">{total}</Text>
+                </div>
               </div>
             );
           })}
@@ -184,23 +238,26 @@ export function JobsFunnel() {
         {/* Selected jobs list */}
         {selected && (
           <div className="mt-4 border-t border-slate-100 pt-4">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-700">{selectedLabel}</span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">{selectedJobs.length}</span>
+            <HStack gap={2} className="mb-3 items-center">
+              <Text type="label" weight="semibold">{selectedLabel}</Text>
+              <Badge label={selectedJobs.length} variant="neutral" />
               <Button label="Clear" variant="ghost" size="sm" onClick={() => setSelected(null)} />
-            </div>
+            </HStack>
             {selectedJobs.length === 0 ? (
-              <p className="text-xs text-slate-400">No jobs in this stage.</p>
+              <Text type="supporting">No jobs in this stage.</Text>
             ) : (
               <Card className="divide-y divide-slate-100">
                 {selectedJobs.map((j) => (
-                  <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50">
-                    <div>
-                      <span className="text-xs font-medium text-slate-800">{j.company || "—"}</span>
+                  <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between gap-4 px-3 py-2 hover:bg-slate-50">
+                    <div className="min-w-0 flex-1 truncate">
+                      <Text weight="semibold">{j.company || "—"}</Text>
                       <span className="mx-1.5 text-slate-300">·</span>
-                      <span className="text-xs text-slate-500">{j.title || "—"}</span>
+                      <Text type="supporting">{j.title || "—"}</Text>
                     </div>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${STATUS_COLORS[j.status] ?? ""}`}>{j.status}</span>
+                    <div className="hidden shrink-0 lg:block">
+                      <GateStepper job={j} />
+                    </div>
+                    <Text type="supporting" className="shrink-0">{formatDate(j.created_at)}</Text>
                   </Link>
                 ))}
               </Card>

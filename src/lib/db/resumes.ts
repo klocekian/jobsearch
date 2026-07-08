@@ -12,8 +12,10 @@ export interface ResumeRow {
   updated_at: string;
 }
 
+// See rowToJob in jobs.ts for why the spread is needed — libsql's Row isn't
+// actually a plain object (it carries hidden array-index own properties).
 function rowToResume(row: Row): ResumeRow {
-  return row as unknown as ResumeRow;
+  return { ...row } as unknown as ResumeRow;
 }
 
 export async function listResumes(userId: number | null): Promise<ResumeRow[]> {

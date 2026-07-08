@@ -1,4 +1,7 @@
 import { SKILL_TAXONOMY } from "@/lib/analysis/taxonomy";
+import { Text } from "@astryxdesign/core/Text";
+import { HStack } from "@astryxdesign/core/Stack";
+import { Card } from "@astryxdesign/core/Card";
 
 interface JobDescriptionViewProps {
   jobText: string;
@@ -12,13 +15,7 @@ interface Token {
   state: "matched" | "missing" | null;
 }
 
-/**
- * Highlights skill terms in the job description: matched skills get a green
- * underline, missing skills a red one — mirroring the reference report's
- * "Job Description" tab.
- */
 function highlight(text: string, matched: Set<string>, missing: Set<string>): Token[] {
-  // Build a regex of all variants for skills we care about.
   const relevant = SKILL_TAXONOMY.filter((d) => matched.has(d.name) || missing.has(d.name));
   const variantToState = new Map<string, "matched" | "missing">();
   for (const d of relevant) {
@@ -49,16 +46,18 @@ export function JobDescriptionView({ jobText, jobTitle, matched, missing }: JobD
   const tokens = highlight(jobText, new Set(matched), new Set(missing));
   return (
     <div>
-      <div className="mb-4 flex gap-6 text-sm">
-        <span className="flex items-center gap-2 text-slate-600">
-          <span className="inline-block h-1 w-5 rounded bg-rose-400" /> Missing Skills
-        </span>
-        <span className="flex items-center gap-2 text-slate-600">
-          <span className="inline-block h-1 w-5 rounded bg-emerald-400" /> Matched Skills
-        </span>
-      </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm leading-7 text-slate-700">
-        <pre className="whitespace-pre-wrap font-sans">
+      <HStack gap={4} className="mb-4">
+        <HStack gap={2} className="items-center">
+          <span className="inline-block h-1 w-5 rounded bg-rose-400" />
+          <Text type="supporting">Missing Skills</Text>
+        </HStack>
+        <HStack gap={2} className="items-center">
+          <span className="inline-block h-1 w-5 rounded bg-emerald-400" />
+          <Text type="supporting">Matched Skills</Text>
+        </HStack>
+      </HStack>
+      <Card className="p-6">
+        <pre className="whitespace-pre-wrap font-sans leading-7">
           {tokens.map((t, i) =>
             t.state ? (
               <span
@@ -76,7 +75,7 @@ export function JobDescriptionView({ jobText, jobTitle, matched, missing }: JobD
             )
           )}
         </pre>
-      </div>
+      </Card>
     </div>
   );
 }

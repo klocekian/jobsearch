@@ -1,4 +1,15 @@
 import type { CheckStatus } from "@/lib/analysis/types";
+import { STATUS_DOT_COLORS } from "@/lib/status";
+
+/** Matches the funnel chart's per-status color — same palette, ties the job status Selector to the Funnel view. */
+export function JobStatusDot({ status }: { status: string }) {
+  return (
+    <span
+      className="inline-block h-2 w-2 shrink-0 rounded-full"
+      style={{ backgroundColor: STATUS_DOT_COLORS[status] ?? STATUS_DOT_COLORS.saved }}
+    />
+  );
+}
 
 interface StatusIconProps {
   status: CheckStatus;
