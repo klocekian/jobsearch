@@ -328,7 +328,9 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
 
       <div className="mt-3 flex min-h-0 flex-1 flex-col">
         {loading ? (
-          <Spinner label="Loading jobs…" />
+          <div className="flex flex-1 items-center justify-center">
+            <Spinner label="Loading jobs…" />
+          </div>
         ) : jobs.length === 0 ? (
           <Stack gap={1} className="py-12 text-center">
             <Text type="body">No jobs tracked yet.</Text>

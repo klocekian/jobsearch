@@ -28,9 +28,6 @@ export async function getDb(): Promise<Client> {
       refresh_token   TEXT,
       token_expires   INTEGER,
       profile_data    TEXT,
-      google_access_token TEXT,
-      google_refresh_token TEXT,
-      google_token_expires INTEGER,
       created_at      TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
     );

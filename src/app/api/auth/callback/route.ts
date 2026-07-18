@@ -45,8 +45,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/profile?error=token_failed", url.origin));
     }
 
-    const tokens = (await tokenRes.json()) as { access_token: string; refresh_token?: string; expires_in?: number };
-    console.log("Google OAuth tokens received:", { hasAccessToken: !!tokens.access_token, hasRefreshToken: !!tokens.refresh_token, expiresIn: tokens.expires_in });
+    const tokens = (await tokenRes.json()) as { access_token: string };
 
     // Get user info from Google
     const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -66,9 +65,6 @@ export async function GET(request: Request) {
     const user = await upsertUser({
       email: profile.email,
       name: profile.name ?? profile.email.split("@")[0],
-      google_access_token: tokens.access_token,
-      google_refresh_token: tokens.refresh_token,
-      google_token_expires: tokens.expires_in ? Math.floor(Date.now() / 1000) + tokens.expires_in : undefined,
     });
 
     await setSession(user.id);

@@ -21,10 +21,8 @@ export async function GET(request: Request) {
     client_id: CLIENT_ID,
     redirect_uri: `${origin}/api/auth/callback`,
     response_type: "code",
-    scope: "openid email profile https://www.googleapis.com/auth/calendar.readonly",
+    scope: "openid email profile",
     state,
-    access_type: "offline",
-    prompt: "consent",
   });
 
   return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
