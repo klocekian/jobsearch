@@ -23,8 +23,8 @@ async function ProfileData() {
 export default function ProfilePage() {
   return (
     <main className="mx-auto w-full max-w-4xl px-5 py-8">
-      <Text type="display-3" as="h1" className="mb-6">Profile</Text>
-      <Suspense fallback={<Spinner label="Loading profile…" />}>
+      <Text type="display-3" as="h1" display="block" className="mb-6">Profile</Text>
+      <Suspense fallback={<div className="flex justify-center py-12"><Spinner label="Loading profile…" /></div>}>
         <ProfileData />
       </Suspense>
     </main>
