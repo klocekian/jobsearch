@@ -112,6 +112,27 @@
     <div id="fillStatus" style="display:none"></div>
   </div>
 
+  <!-- Server setting. Collapsed by default and quiet unless pointed away from
+       production, so the normal case is unchanged. -->
+  <div id="serverFooter" style="margin-top:14px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8">
+    <button type="button" id="serverToggle"
+            style="background:none;border:none;padding:0;font:inherit;color:#94a3b8;cursor:pointer;text-decoration:underline">
+      Server: <span id="serverLabel">jobs.fieldlines.org</span>
+    </button>
+    <span id="serverBadge"
+          style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:600">dev</span>
+
+    <div id="serverRow" style="display:none;margin-top:8px">
+      <input type="text" id="serverInput" placeholder="https://jobs.fieldlines.org"
+             style="width:100%;box-sizing:border-box;padding:5px 7px;border:1px solid #cbd5e1;border-radius:5px;font-size:11px" />
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn-secondary" id="serverSave" style="font-size:11px;padding:4px 9px">Save</button>
+        <button type="button" class="btn-secondary" id="serverLocal" style="font-size:11px;padding:4px 9px">Use localhost:3000</button>
+        <button type="button" class="btn-secondary" id="serverReset" style="font-size:11px;padding:4px 9px">Use production</button>
+      </div>
+      <div id="serverStatus" style="display:none;margin-top:6px;color:#64748b"></div>
+    </div>
+  </div>
 
   <script src="popup.js"></script>
 </body>
