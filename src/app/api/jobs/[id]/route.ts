@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getJob, updateJob, deleteJob } from "@/lib/db/jobs";
 import { listSubmissions } from "@/lib/db/submissions";
+import { normalizePostingText } from "@/lib/html-text";
 
 export const runtime = "nodejs";
 
@@ -42,6 +43,11 @@ export async function PATCH(request: Request, ctx: Params) {
     const updates: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(data)) {
       if (v !== undefined) updates[k] = v;
+    }
+    // Postings arrive from several capture routes and any of them can let rich
+    // text markup through. Normalizing here covers all of them at once.
+    if (typeof updates.posting_text === "string") {
+      updates.posting_text = normalizePostingText(updates.posting_text);
     }
     if (data.status === "applied" && !data.applied_at) {
       updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });

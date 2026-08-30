@@ -1,5 +1,6 @@
 import { getDb } from "./index";
 import type { Row, InValue } from "@libsql/client";
+import { looksLikeHtml } from "../html-text";
 
 export interface JobRow {
   id: number;
@@ -168,6 +169,15 @@ export async function mergeJob(existing: JobRow, incoming: JobInsert): Promise<J
     const newVal = incoming[key];
     if (!newVal) continue;
     const oldVal = existing[key as keyof JobRow];
+
+    // posting_text is judged on quality, not just length. Incoming text is
+    // normalized on write, so a clean capture is usually SHORTER than a stored
+    // one full of markup — under the longer-wins rule below, re-clipping could
+    // never repair a job whose text came in as HTML.
+    if (key === "posting_text" && typeof oldVal === "string" && looksLikeHtml(oldVal)) {
+      updates[key] = newVal;
+      continue;
+    }
     if (!oldVal || (typeof oldVal === "string" && oldVal.length < (newVal as string).length)) {
       updates[key] = newVal;
     }
