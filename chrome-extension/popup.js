@@ -1,4 +1,105 @@
-const API_BASE = "https://jobs.fieldlines.org";
+/**
+ * Server the extension talks to.
+ *
+ * Previously a hardcoded constant, which meant testing against a local dev
+ * server required editing this line and remembering to revert it before
+ * committing. The manifest already grants localhost host permissions and the
+ * server already allows CORS from localhost origins, so local development was
+ * always intended — only the switch was missing.
+ *
+ * Stored per-browser in chrome.storage.local. Defaults to production, so an
+ * existing install behaves exactly as before until someone changes it.
+ */
+const DEFAULT_API_BASE = "https://jobs.fieldlines.org";
+const DEFAULT_LOCAL_BASE = "http://localhost:3000";
+const API_BASE_KEY = "apiBase";
+const LAST_LOCAL_KEY = "apiBaseLastLocal";
+const RECENT_COLLAPSED_KEY = "recentCollapsed";
+// Collapsed by default: the panel's job is clipping the current page, and the
+// recent list is reference material. The "already saved" warning above it is
+// never collapsed, so nothing load-bearing is hidden.
+let recentCollapsed = true;
+let API_BASE = DEFAULT_API_BASE;
+// The last local server actually used, so someone on :3001 (because :3000 was
+// taken) types it once and the Local button remembers it from then on.
+let lastLocalBase = DEFAULT_LOCAL_BASE;
+
+function isLocalBase(url) {
+  try {
+    const h = new URL(url).hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "0.0.0.0";
+  } catch {
+    return false;
+  }
+}
+
+/** Trim, drop any trailing slash, and reject anything that isn't a valid http(s) origin. */
+function normalizeApiBase(value) {
+  const raw = (value || "").trim().replace(/\/+$/, "");
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
+async function loadApiBase() {
+  try {
+    const stored = await chrome.storage.local.get([API_BASE_KEY, LAST_LOCAL_KEY, RECENT_COLLAPSED_KEY]);
+    if (typeof stored?.[RECENT_COLLAPSED_KEY] === "boolean") {
+      recentCollapsed = stored[RECENT_COLLAPSED_KEY];
+    }
+    const normalized = normalizeApiBase(stored?.[API_BASE_KEY]);
+    if (normalized) API_BASE = normalized;
+    const rememberedLocal = normalizeApiBase(stored?.[LAST_LOCAL_KEY]);
+    if (rememberedLocal) lastLocalBase = rememberedLocal;
+  } catch {
+    // Storage unavailable — fall back to the default rather than failing to start.
+  }
+  renderApiBase();
+}
+
+async function saveApiBase(value) {
+  const normalized = normalizeApiBase(value);
+  if (!normalized) return { ok: false, error: "Enter a full URL, e.g. http://localhost:3000" };
+  API_BASE = normalized;
+  const toStore = { [API_BASE_KEY]: normalized };
+  if (isLocalBase(normalized)) {
+    lastLocalBase = normalized;
+    toStore[LAST_LOCAL_KEY] = normalized;
+  }
+  try {
+    await chrome.storage.local.set(toStore);
+  } catch (err) {
+    const detail = err && err.message ? ` (${err.message})` : "";
+    return { ok: false, error: `Couldn't save the setting${detail}.` };
+  }
+  renderApiBase();
+  return { ok: true };
+}
+
+function renderApiBase() {
+  const label = $("serverLabel");
+  if (label) {
+    label.textContent = API_BASE.replace(/^https?:\/\//, "");
+    label.title = API_BASE;
+  }
+  const input = $("serverInput");
+  if (input && !input.value) input.value = API_BASE;
+  const localBtn = $("serverLocal");
+  if (localBtn) {
+    localBtn.textContent = `Use ${lastLocalBase.replace(/^https?:\/\//, "")}`;
+    localBtn.style.display = API_BASE === lastLocalBase ? "none" : "inline-block";
+  }
+  const prodBtn = $("serverReset");
+  if (prodBtn) prodBtn.style.display = API_BASE === DEFAULT_API_BASE ? "none" : "inline-block";
+  const badge = $("serverBadge");
+  if (badge) badge.style.display = API_BASE === DEFAULT_API_BASE ? "none" : "inline-block";
+}
+
 
 const $ = (id) => document.getElementById(id);
 let pageData = null;
@@ -21,8 +122,14 @@ async function clipPage() {
     if (!pageData?.text) throw new Error("No content extracted");
 
     if (pageData.hasSelection) {
-      // Selected text — always use AI extraction since page structure isn't available
-      fillForm({ company: "", title: "", location: "", remoteType: "", salary: "", url: pageData.url });
+      // Selected text — always use AI extraction since page structure isn't
+      // available. Show the selection right away: it is the content the user
+      // deliberately chose, and leaving the box empty while the AI call runs
+      // (or silently fails) looks like the capture didn't work at all.
+      fillForm({
+        company: "", title: "", location: "", remoteType: "", salary: "",
+        url: pageData.url, postingText: pageData.text,
+      });
       $("loading").style.display = "none";
       $("form").style.display = "block";
       extractWithAI(pageData);
@@ -75,9 +182,34 @@ async function loadRecentJobs() {
     }
 
     const recent = allJobs.slice(0, 5);
+    const caret = recentCollapsed ? "▸" : "▾";
+    // The "already saved" warning is never collapsed — it is the one thing here
+    // that changes what you do next. Only the recent list folds away.
     list.innerHTML = matchHtml +
-      `<div style="font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:6px">Recent clips</div>` +
-      recent.map((j) => `<a href="${API_BASE}/jobs/${j.id}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${j.company || "—"}</strong> · ${j.title || "—"}</a>`).join("");
+      `<button type="button" id="recentToggle" aria-expanded="${!recentCollapsed}"` +
+      ` style="display:flex;align-items:center;gap:4px;width:100%;background:none;border:none;padding:0;` +
+      `font:inherit;font-size:11px;font-weight:600;color:#94a3b8;cursor:pointer;margin-bottom:6px;text-align:left">` +
+      `<span id="recentCaret">${caret}</span> Recent clips` +
+      `<span style="font-weight:400;color:#cbd5e1">(${recent.length})</span></button>` +
+      `<div id="recentList" style="display:${recentCollapsed ? "none" : "block"}">` +
+      recent.map((j) => `<a href="${API_BASE}/jobs/${j.id}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${j.company || "—"}</strong> · ${j.title || "—"}</a>`).join("") +
+      `</div>`;
+
+    // innerHTML was just replaced, so the listener is attached fresh each load.
+    const toggle = $("recentToggle");
+    if (toggle) {
+      toggle.addEventListener("click", async () => {
+        recentCollapsed = !recentCollapsed;
+        const listEl = $("recentList");
+        const caretEl = $("recentCaret");
+        if (listEl) listEl.style.display = recentCollapsed ? "none" : "block";
+        if (caretEl) caretEl.textContent = recentCollapsed ? "▸" : "▾";
+        toggle.setAttribute("aria-expanded", String(!recentCollapsed));
+        try {
+          await chrome.storage.local.set({ [RECENT_COLLAPSED_KEY]: recentCollapsed });
+        } catch { /* preference is a convenience; failing to persist is not worth an error */ }
+      });
+    }
   } catch { /* ignore */ }
 }
 
@@ -124,6 +256,11 @@ async function loadFillFields() {
 }
 
 async function init() {
+  // Must complete before loadRecentJobs() or any clip: every request is built
+  // from API_BASE.
+  await loadApiBase();
+  wireServerSetting();
+
   const clipBtn = $("clipBtn");
   if (clipBtn) {
     clipBtn.addEventListener("click", clipPage);
@@ -220,6 +357,11 @@ function extractLocally(data) {
   }
 
   // Company: og:site_name is very reliable
+  // A site extractor's company reading beats og:site_name, which on job-board
+  // apps is the board itself ("LinkedIn") rather than the hiring company.
+  if (!result.company && data.siteCompany) {
+    result.company = data.siteCompany;
+  }
   if (!result.company && data.ogCompany) {
     result.company = data.ogCompany;
   }
@@ -296,6 +438,16 @@ async function extractWithAI(data) {
       body: JSON.stringify({ text: data.text, url: data.url }),
     });
     if (!res.ok) {
+      let msg = `AI extraction failed (${res.status}).`;
+      try {
+        const e = await res.json();
+        if (e && e.error) msg = e.error;
+      } catch {}
+      const status = $("statusMsg");
+      if (status) {
+        status.textContent = `${msg} The captured text is still below — you can save it as is.`;
+        status.style.display = "block";
+      }
       $("extractBtn").textContent = "Re-extract with AI";
       $("extractBtn").disabled = false;
       return;
@@ -307,7 +459,9 @@ async function extractWithAI(data) {
     if (result.location && !$("location").value) $("location").value = result.location;
     if (result.remoteType && !$("remoteType").value) $("remoteType").value = result.remoteType;
     if (result.salaryText && !$("salary").value) $("salary").value = trimSalary(result.salaryText);
-    if (result.jobDescription) {
+    // Only replace the preview if the user hasn't edited it — same rule the
+    // other fields already follow.
+    if (result.jobDescription && $("postingPreview").value === fullPostingText) {
       fullPostingText = result.jobDescription;
       $("postingPreview").value = fullPostingText;
       $("charCount").textContent = `${fullPostingText.length.toLocaleString()} chars`;
@@ -525,6 +679,49 @@ function showStatus(type, msg) {
     fillStatus.className = `status ${type}`;
     fillStatus.innerHTML = msg;
     fillStatus.style.display = "block";
+  }
+}
+
+function wireServerSetting() {
+  const toggle = $("serverToggle");
+  const row = $("serverRow");
+  const input = $("serverInput");
+  const saveBtn = $("serverSave");
+  const resetBtn = $("serverReset");
+  const status = $("serverStatus");
+  if (!toggle || !row) return;
+
+  toggle.addEventListener("click", () => {
+    row.style.display = row.style.display === "none" ? "block" : "none";
+  });
+
+  const apply = async (value) => {
+    const result = await saveApiBase(value);
+    if (status) {
+      status.textContent = result.ok ? "Saved. Reload the panel to reconnect." : result.error;
+      status.style.display = "block";
+    }
+    if (result.ok) loadRecentJobs();
+  };
+
+  if (saveBtn && input) saveBtn.addEventListener("click", () => apply(input.value));
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); apply(input.value); }
+    });
+  }
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      if (input) input.value = DEFAULT_API_BASE;
+      apply(DEFAULT_API_BASE);
+    });
+  }
+  const localBtn = $("serverLocal");
+  if (localBtn) {
+    localBtn.addEventListener("click", () => {
+      if (input) input.value = lastLocalBase;
+      apply(lastLocalBase);
+    });
   }
 }
 
