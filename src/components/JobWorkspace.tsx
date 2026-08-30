@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import Markdown from "react-markdown";
@@ -8,6 +8,9 @@ import { analyze } from "@/lib/analysis/analyze";
 import type { MatchReport } from "@/lib/analysis/types";
 import type { ContextMaterial } from "@/lib/context";
 import { MatchReportView, type AiDetectionState } from "./MatchReportView";
+import { FitnessReportView } from "./FitnessReportView";
+import type { FitnessResult } from "@/lib/fitness/schema";
+import { renderFitnessText } from "@/lib/fitness/render";
 import { JobDescriptionView } from "./JobDescriptionView";
 import { ResumeView } from "./ResumeView";
 import { CoverLetterView } from "./CoverLetterView";
@@ -38,11 +41,12 @@ import { Link as AstryxLink } from "@astryxdesign/core/Link";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Card } from "@astryxdesign/core/Card";
+import { Badge } from "@astryxdesign/core/Badge";
 import { Stack, HStack } from "@astryxdesign/core/Stack";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 
 type LeftTab = "posting" | "apply" | "submissions" | "notes";
-type RightTab = "report" | "resume" | "cover";
+type RightTab = "fitness" | "report" | "resume" | "cover";
 type MobilePane = "posting" | "analysis";
 
 interface SavedResume { id: number; name: string; content: string; is_default: number }
@@ -53,7 +57,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
-  const [rightTab, setRightTab] = useState<RightTab>("report");
+  const [rightTab, setRightTab] = useState<RightTab>("fitness");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
 
@@ -74,6 +78,21 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [resumeText, setResumeText] = useState("");
   const [analyzed, setAnalyzed] = useState<{ report: MatchReport; resumeText: string; jobText: string } | null>(null);
   const [aiDetection, setAiDetection] = useState<AiDetectionState>({ status: "loading", data: null });
+  // Fitness check. `saved` is the report already written to the job; `pending`
+  // is a fresh run that has NOT been written yet — the panel renders and waits
+  // for an explicit Save, so a run never mutates the job on its own.
+  const [fitnessRunModel, setFitnessRunModel] = useState<string | null>(null);
+  const [fitnessRunning, setFitnessRunning] = useState(false);
+  const [fitnessSaving, setFitnessSaving] = useState(false);
+  const [fitnessError, setFitnessError] = useState<string | null>(null);
+  const [notesFlash, setNotesFlash] = useState(false);
+  // Derived, not stored: the job row is the source of truth for a saved
+  // report, so a re-fetch after saving updates this with no extra state.
+  const fitnessReportJson = job?.fitness_report ?? null;
+  const fitnessSaved = useMemo<FitnessResult | null>(() => {
+    if (!fitnessReportJson) return null;
+    try { return JSON.parse(fitnessReportJson) as FitnessResult; } catch { return null; }
+  }, [fitnessReportJson]);
   const [materials, setMaterials] = useState<ContextMaterial[]>(() => loadContextMaterials());
   const fileRef = useRef<HTMLInputElement>(null);
   const resumeFileRef = useRef<HTMLInputElement>(null);
@@ -158,18 +177,106 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     });
     setAnalyzed({ report, resumeText, jobText: job.posting_text });
     setRightTab("report");
+    const selectedResume = savedResumes.find(r => r.content === resumeText);
     fetch(`/api/jobs/${jobId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ match_score: report.score, match_report: JSON.stringify(report) }),
+      body: JSON.stringify({
+        match_score: report.score,
+        match_report: JSON.stringify(report),
+        // Record which resume produced the score, so the ATS number reads as a
+        // fact about a document rather than a verdict on the job.
+        match_resume_name: selectedResume?.name ?? null,
+      }),
     }).catch(() => {});
-    const selectedResume = savedResumes.find(r => r.content === resumeText);
     if (selectedResume && job.company) {
       fetch(`/api/resumes/${selectedResume.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ add_tag: job.company }),
       }).catch(() => {});
+    }
+  };
+
+  const runFitnessCheck = async () => {
+    if (!job || !job.posting_text.trim()) return;
+    setFitnessRunning(true);
+    setFitnessError(null);
+    setNotesFlash(false);
+    setRightTab("fitness");
+    try {
+      const res = await fetch("/api/fitness-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      const data = await res.json() as {
+        result?: FitnessResult; text?: string; model?: string; run_at?: string; error?: string;
+      };
+      if (!res.ok || !data.result) {
+        setFitnessError(data.error ?? "Fitness check failed.");
+        return;
+      }
+      setFitnessRunModel(data.model ?? null);
+
+      // Persist on completion, the same way runAnalysis persists the ATS
+      // report: the run is paid for, so it is kept. Re-running overwrites,
+      // which is what you want when checking against a different resume.
+      // The DECISION stays manual — notes and status still need a button.
+      const runAt = data.run_at ?? new Date().toISOString();
+      const saveRes = await fetch(`/api/jobs/${jobId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fitness_score: data.result.score,
+          fitness_report: JSON.stringify(data.result),
+          fitness_run_at: runAt,
+        }),
+      });
+      if (!saveRes.ok) {
+        const d = await saveRes.json().catch(() => ({})) as { error?: string };
+        setFitnessError(d.error ?? `Report ran but could not be saved (${saveRes.status}).`);
+      }
+      await fetchJob();
+    } catch {
+      setFitnessError("Fitness check failed.");
+    } finally {
+      setFitnessRunning(false);
+    }
+  };
+
+  /**
+   * Writing the report into the job's notes, and abandoning the job, stay
+   * behind explicit presses. Persisting the report is bookkeeping; these two
+   * are decisions, and automating a decision is how you stop reading the
+   * report that informs it.
+   */
+  const addFitnessToNotes = async (alsoAbandon: boolean) => {
+    if (!job || !fitnessSaved) return;
+    setFitnessSaving(true);
+    const stamp = job.fitness_run_at ? new Date(job.fitness_run_at).toLocaleString() : new Date().toLocaleString();
+    const header = `--- Fitness check · ${stamp}` +
+      `${fitnessRunModel ? ` · ${fitnessRunModel}` : ""} ---`;
+    const body = [header, renderFitnessText(fitnessSaved)].filter(Boolean).join("\n");
+    const notes = job.notes?.trim() ? `${body}\n\n${job.notes}` : body;
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes, ...(alsoAbandon ? { status: "abandoned" } : {}) }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        setFitnessError(d.error ?? `Could not write to notes (${res.status}).`);
+        return;
+      }
+      setFitnessError(null);
+      setNotesFlash(true);
+      await fetchJob();
+    } catch {
+      setFitnessError("Could not write to notes — no response from the server.");
+    } finally {
+      setFitnessSaving(false);
     }
   };
 
@@ -546,7 +653,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   const rightTabBar = (
     <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
-      <Tab value="report" label="Report" />
+      <Tab value="fitness" label={fitnessSaved ? `Fitness (${fitnessSaved.score}/10)` : "Fitness"} />
+      <Tab value="report" label="ATS Report" />
       <Tab value="resume" label="Resume" />
       <Tab value="cover" label="Cover Letter" />
     </TabList>
@@ -554,12 +662,66 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   const rightPaneBody = (
     <>
-          {!analyzed && !job.posting_text && (
+          {rightTab === "fitness" && (
+            <div className="py-4">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <Button
+                  label={fitnessRunning ? "Running…" : fitnessSaved ? "Re-run fitness check" : "Run fitness check"}
+                  variant="primary"
+                  size="sm"
+                  onClick={runFitnessCheck}
+                  isDisabled={fitnessRunning || !job.posting_text.trim()}
+                />
+                {job.fitness_run_at && !fitnessRunning && (
+                  <Text type="supporting" color="secondary">
+                    Last run {new Date(job.fitness_run_at).toLocaleString()}
+                  </Text>
+                )}
+                {notesFlash && <Badge variant="success" label="Added to notes" />}
+              </div>
+
+              {fitnessError && (
+                <div className="mb-4">
+                  <Banner status="error" title={fitnessError} />
+                </div>
+              )}
+              {fitnessRunning && (
+                <div className="flex items-center gap-2 py-8">
+                  <Spinner />
+                  <Text type="supporting" color="secondary">
+                    Scoring against your profile and gaps…
+                  </Text>
+                </div>
+              )}
+
+              {!fitnessRunning && !fitnessSaved && !fitnessError && (
+                <Banner
+                  status="info"
+                  title={job.posting_text.trim()
+                    ? "Run a fitness check to score this posting against your profile."
+                    : "Add the posting text first — the fitness check reads the posting, not the resume."}
+                />
+              )}
+
+              {!fitnessRunning && fitnessSaved && (
+                <FitnessReportView
+                  result={fitnessSaved}
+                  runAt={job.fitness_run_at}
+                  model={fitnessRunModel}
+                  busy={fitnessSaving}
+                  onAddToNotes={() => addFitnessToNotes(false)}
+                  onAbandon={() => addFitnessToNotes(true)}
+                />
+              )}
+            </div>
+          )}
+
+          {rightTab !== "fitness" && !analyzed && !job.posting_text && (
             <div className="py-12">
               <Banner status="info" title="Add a job posting and run analysis to see results here." />
             </div>
           )}
-          {!analyzed && job.posting_text && (
+          {rightTab !== "fitness" && !analyzed && job.posting_text && (
             <div className="py-12">
               <Banner status="info" title={'Click "Run analysis" to match your resume against this posting.'} />
             </div>

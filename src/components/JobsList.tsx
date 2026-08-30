@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import { STATUS_OPTIONS } from "@/lib/status";
+import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
 import { formatDate } from "@/lib/format";
 import { JobStatusDot } from "./icons";
 import { Button } from "@astryxdesign/core/Button";
@@ -19,7 +20,7 @@ import { Table, useTableSortable, proportional, pixel } from "@astryxdesign/core
 import type { TableColumn, TableSortState } from "@astryxdesign/core/Table";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 
-type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "created_at" | "applied_at";
+type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
 
 function formatSalary(job: JobRow): string {
   if (job.salary_text) return job.salary_text;
@@ -256,13 +257,33 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
       renderCell: (job) => <Text>{job.location || "—"}</Text>,
     },
     {
+      // The pursuit score. Carries the color, because it is the number that
+      // makes a recommendation.
+      key: "fitness_score",
+      header: "Fitness",
+      width: pixel(90),
+      sortable: true,
+      renderCell: (job) =>
+        job.fitness_score != null
+          ? <Badge variant={BAND_VARIANTS[bandForScore(job.fitness_score)] ?? "neutral"} label={`${job.fitness_score}/10`} />
+          : <Text>—</Text>,
+    },
+    {
+      // Keyword similarity against one resume — a fact about a document, not a
+      // verdict on the job. Rendered plain on purpose: a green badge here reads
+      // as "good, apply", which is exactly the misread this column invites.
       key: "match_score",
-      header: "Score",
-      width: pixel(80),
+      header: "ATS Match",
+      width: pixel(110),
       sortable: true,
       renderCell: (job) =>
         job.match_score != null
-          ? <Badge variant={job.match_score >= 80 ? "success" : job.match_score >= 60 ? "warning" : "neutral"} label={`${job.match_score}%`} />
+          ? (
+            <Text>
+              {job.match_score}%
+              {job.match_resume_name ? ` · ${job.match_resume_name}` : ""}
+            </Text>
+          )
           : <Text>—</Text>,
     },
     {
@@ -283,7 +304,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
 
   // On mobile, keep only what's useful at a glance — Company/Title/Status —
   // so the table fits a phone width without horizontal scrolling.
-  const MOBILE_HIDDEN_COLUMNS = new Set(["salary_max", "location", "match_score", "created_at", "applied_at"]);
+  const MOBILE_HIDDEN_COLUMNS = new Set(["salary_max", "location", "match_score", "fitness_score", "created_at", "applied_at"]);
   const columns = isMobile ? allColumns.filter((c) => !MOBILE_HIDDEN_COLUMNS.has(c.key)) : allColumns;
 
   const statusOptions = [
