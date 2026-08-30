@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { listJobs, createJob, findMatchingJob, mergeJob, type JobInsert } from "@/lib/db/jobs";
+import { normalizePostingText } from "@/lib/html-text";
 import { getCurrentUserId } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
@@ -42,6 +43,11 @@ export async function POST(request: Request) {
     const insert: JobInsert = {};
     for (const [k, v] of Object.entries(data)) {
       if (v !== undefined) (insert as Record<string, unknown>)[k] = v;
+    }
+    // Same normalization as PATCH — the extension, /api/fetch-job and
+    // /api/jobs/extract can each let rich-text markup through.
+    if (typeof insert.posting_text === "string") {
+      insert.posting_text = normalizePostingText(insert.posting_text);
     }
 
     const userId = await getCurrentUserId();
