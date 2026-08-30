@@ -414,7 +414,13 @@ export function JobDetail({ jobId }: { jobId: number }) {
       <div className="mt-6 flex gap-4 text-xs text-slate-400">
         <span>Added {new Date(job.created_at).toLocaleDateString()}</span>
         {job.applied_at && <span>Applied {new Date(job.applied_at).toLocaleDateString()}</span>}
-        {job.match_score != null && <span>Match score: {job.match_score}%</span>}
+        {job.fitness_score != null && <span>Fitness: {job.fitness_score}/10</span>}
+        {job.match_score != null && (
+          <span>
+            ATS match: {job.match_score}%
+            {job.match_resume_name ? ` · ${job.match_resume_name}` : ""}
+          </span>
+        )}
         <span>Source: {job.source}</span>
       </div>
     </div>

@@ -234,7 +234,7 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
     <div>
       <div className="mb-4 flex items-center justify-between gap-4">
         <SegmentedControl value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)} label="Report view">
-          <SegmentedControlItem value="match" label="Match" />
+          <SegmentedControlItem value="match" label="ATS Match" />
           <SegmentedControlItem value="ai" label="AI Detection" />
         </SegmentedControl>
         {onRunAnalysis && (
@@ -250,7 +250,7 @@ export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDi
 
       {subTab === "match" && (
         <>
-          <Heading level={1} className="mb-5">Match Report</Heading>
+          <Heading level={1} className="mb-5">ATS Match Report</Heading>
 
           <SummaryCards report={report} />
 

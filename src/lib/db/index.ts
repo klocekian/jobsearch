@@ -84,16 +84,40 @@ export async function getDb(): Promise<Client> {
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- The candidate's positive profile (the fact canon) and negative profile
+    -- (what they do not have, with standing reframes). Grounding for the
+    -- fitness check: without the negative profile the check degrades into a
+    -- keyword matcher, which is the failure it exists to prevent.
+    CREATE TABLE IF NOT EXISTS candidate_docs (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      kind        TEXT NOT NULL,
+      content     TEXT NOT NULL DEFAULT '',
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
     CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id);
     CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_candidate_docs_user_kind ON candidate_docs(user_id, kind);
   `);
 
   await client.execute("ALTER TABLE jobs ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0").catch(() => {});
   await client.execute("CREATE INDEX IF NOT EXISTS idx_jobs_starred ON jobs(is_starred)").catch(() => {});
+
+  // Fitness check (1-10 pursuit score) — distinct from match_score, which is
+  // the ATS keyword similarity measure. Both are kept: they answer different
+  // questions (see docs/FITNESS_CHECK_PLAN.md).
+  await client.execute("ALTER TABLE jobs ADD COLUMN fitness_score INTEGER").catch(() => {});
+  await client.execute("ALTER TABLE jobs ADD COLUMN fitness_report TEXT").catch(() => {});
+  await client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_at TEXT").catch(() => {});
+  // Which resume produced match_score, so the ATS number reads as a fact about
+  // a document rather than a verdict on the job.
+  await client.execute("ALTER TABLE jobs ADD COLUMN match_resume_name TEXT").catch(() => {});
 
   _initialized = true;
   return client;
