@@ -19,6 +19,12 @@ export interface JobRow {
   source: string;
   match_score: number | null;
   match_report: string | null;
+  /** Name of the resume that produced match_score, so the ATS number reads as a fact about a document. */
+  match_resume_name: string | null;
+  /** Fitness check: 1-10 pursuit score. Distinct from match_score — see docs/FITNESS_CHECK_PLAN.md. */
+  fitness_score: number | null;
+  fitness_report: string | null;
+  fitness_run_at: string | null;
   created_at: string;
   updated_at: string;
   applied_at: string | null;
@@ -53,6 +59,7 @@ export async function listJobs(userId: number | null, opts?: {
     salary_max: "salary_max",
     location: "location COLLATE NOCASE",
     match_score: "match_score",
+    fitness_score: "fitness_score",
     created_at: "created_at",
     updated_at: "updated_at",
     applied_at: "applied_at",
@@ -85,7 +92,7 @@ export async function listJobs(userId: number | null, opts?: {
   }
   const where = `WHERE ${conditions.join(" AND ")}`;
 
-  const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, notes, source, match_score, is_starred, created_at, updated_at, applied_at";
+  const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, notes, source, match_score, match_resume_name, fitness_score, fitness_run_at, is_starred, created_at, updated_at, applied_at";
   const result = await db.execute({ sql: `SELECT ${listCols} FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });
   return result.rows.map(rowToJob);
 }

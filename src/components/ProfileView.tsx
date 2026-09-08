@@ -13,6 +13,7 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Code } from "@astryxdesign/core/Code";
 import { Link } from "@astryxdesign/core/Link";
+import { CandidateProfilePanel } from "./CandidateProfilePanel";
 
 type ClaudeStatus = "connected" | "expired" | "none";
 interface AuthUser { id: number; name: string; email: string; claudeStatus: ClaudeStatus }
@@ -45,7 +46,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
-  const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes">("account");
+  const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes" | "candidate">("account");
 
   const refetchUser = useCallback(() => {
     fetch("/api/auth/me").then(r => r.json())
@@ -121,6 +122,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
           <Tab value="ai" label="AI" />
           <Tab value="extension" label="Extension" />
           <Tab value="resumes" label="Resumes" />
+          <Tab value="candidate" label="Candidate Profile" />
         </TabList>
       </div>
 
@@ -184,6 +186,8 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
         </div>
       </Card>
       </>}
+
+      {profileTab === "candidate" && <CandidateProfilePanel />}
 
       {profileTab === "resumes" && <>
       <Card>
