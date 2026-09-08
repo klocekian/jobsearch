@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getJob, updateJob, deleteJob } from "@/lib/db/jobs";
 import { listSubmissions } from "@/lib/db/submissions";
+import { normalizePostingText } from "@/lib/html-text";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,10 @@ const UpdateSchema = z.object({
   notes: z.string().optional(),
   match_score: z.number().int().nullable().optional(),
   match_report: z.string().nullable().optional(),
+  match_resume_name: z.string().max(500).nullable().optional(),
+  fitness_score: z.number().int().min(1).max(10).nullable().optional(),
+  fitness_report: z.string().nullable().optional(),
+  fitness_run_at: z.string().max(50).nullable().optional(),
   applied_at: z.string().nullable().optional(),
   previous_status: z.string().max(50).nullable().optional(),
   is_starred: z.number().int().min(0).max(1).optional(),
@@ -42,6 +47,11 @@ export async function PATCH(request: Request, ctx: Params) {
     const updates: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(data)) {
       if (v !== undefined) updates[k] = v;
+    }
+    // Postings arrive from several capture routes and any of them can let rich
+    // text markup through. Normalizing here covers all of them at once.
+    if (typeof updates.posting_text === "string") {
+      updates.posting_text = normalizePostingText(updates.posting_text);
     }
     if (data.status === "applied" && !data.applied_at) {
       updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
