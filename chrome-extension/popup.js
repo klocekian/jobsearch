@@ -289,9 +289,16 @@ async function init() {
 
   const refreshBtn = $("refreshBtn");
   if (refreshBtn) {
-    refreshBtn.addEventListener("click", () => {
-      loadRecentJobs();
-      if ($("fillContent")?.style.display !== "none") loadFillFields();
+    refreshBtn.addEventListener("click", async () => {
+      refreshBtn.disabled = true;
+      refreshBtn.style.transition = "transform 0.5s";
+      refreshBtn.style.transform = "rotate(360deg)";
+      await Promise.all([
+        loadRecentJobs(),
+        $("fillContent")?.style.display !== "none" ? loadFillFields() : Promise.resolve(),
+      ]);
+      refreshBtn.disabled = false;
+      setTimeout(() => { refreshBtn.style.transition = "none"; refreshBtn.style.transform = ""; }, 500);
     });
   }
 }
