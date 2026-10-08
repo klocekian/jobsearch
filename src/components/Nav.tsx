@@ -46,8 +46,22 @@ export function Nav({ user }: { user: NavUser | null }) {
   const providerLabel = aiStatus?.providerName ? `${aiStatus.providerName} connected` : isConnected ? "AI connected" : "AI not connected";
   const dotVariant = isConnected ? "success" : "neutral";
 
-  const isSubPage = pathname.startsWith("/profile") || pathname.startsWith("/jobs/") || (pathname === "/jobs" && searchParams.get("add") === "1");
+  const isAdding = pathname === "/jobs" && searchParams.get("add") === "1";
+  const isSubPage = pathname.startsWith("/profile") || pathname.startsWith("/jobs/") || isAdding || (pathname !== "/" && pathname !== "/jobs");
   const headingText = isSubPage ? "← All jobs" : "Job Search";
+
+  const [actionState, setActionState] = useState<{ importing: boolean; checking: boolean }>({ importing: false, checking: false });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ importing?: boolean; checking?: boolean }>;
+      if (custom.detail) {
+        setActionState((prev) => ({ ...prev, ...custom.detail }));
+      }
+    };
+    window.addEventListener("jobs-action-status", handler);
+    return () => window.removeEventListener("jobs-action-status", handler);
+  }, []);
 
   return (
     <header className="sticky top-0 z-30 bg-surface border-b border-border">
@@ -56,12 +70,33 @@ export function Nav({ user }: { user: NavUser | null }) {
         heading={<TopNavHeading heading={headingText} headingHref="/jobs" />}
         endContent={
           user ? (
-            <TopNavItem
-              label={user.name || user.email || "Profile"}
-              href="/profile"
-              isSelected={pathname.startsWith("/profile")}
-              icon={<StatusDot variant={dotVariant} label={providerLabel} tooltip={providerLabel} />}
-            />
+            <HStack gap={3} className="items-center">
+              {!isSubPage && (
+                <HStack gap={2} className="items-center mr-2">
+                  <Button
+                    label={actionState.checking ? "Checking…" : "Check closed"}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.dispatchEvent(new CustomEvent("jobs-action-check-closed"))}
+                    isDisabled={actionState.checking}
+                  />
+                  <Button
+                    label={actionState.importing ? "Importing…" : "Import from Google Sheet"}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.dispatchEvent(new CustomEvent("jobs-action-import"))}
+                    isDisabled={actionState.importing}
+                  />
+                  <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
+                </HStack>
+              )}
+              <TopNavItem
+                label={user.name || user.email || "Profile"}
+                href="/profile"
+                isSelected={pathname.startsWith("/profile")}
+                icon={<StatusDot variant={dotVariant} label={providerLabel} tooltip={providerLabel} />}
+              />
+            </HStack>
           ) : (
             <HStack gap={2} className="items-center">
               <TopNavItem label="Profile" href="/profile" isSelected={pathname.startsWith("/profile")} />
