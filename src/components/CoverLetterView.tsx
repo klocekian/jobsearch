@@ -192,7 +192,7 @@ export function CoverLetterView({
           </Card>
 
           <Card className="mt-4">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-2.5">
+            <div className="flex items-center justify-between border-b border-border px-5 py-2.5">
               <Text type="supporting">Draft — edit as needed</Text>
               <div className="flex gap-2">
                 <Button

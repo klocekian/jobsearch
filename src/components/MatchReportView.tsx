@@ -75,7 +75,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
   return (
-    <div className="divide-y divide-slate-100">
+    <div className="divide-y divide-border">
       {groups.map((g) => (
         <div key={g.label} className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-[160px_1fr]">
           <Text type="label" weight="semibold" display="block">{g.label}</Text>
@@ -96,13 +96,13 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
 function SkillsTable({ section, title }: { section: SkillSection; title: string }) {
   return (
     <div>
-      <div className="flex items-center gap-4 border-b border-slate-100 px-5 py-3">
+      <div className="flex items-center gap-4 border-b border-border px-5 py-3">
         <Text type="label" weight="semibold">{title}</Text>
         <Text color="secondary">
-          Matched <Text weight="semibold" className="text-emerald-600">{section.matched}</Text>
+          Matched <Text weight="semibold" className="text-emerald-600 dark:text-emerald-400">{section.matched}</Text>
         </Text>
         <Text color="secondary">
-          Missing <Text weight="semibold" className="text-rose-500">{section.missing}</Text>
+          Missing <Text weight="semibold" className="text-rose-500 dark:text-rose-400">{section.missing}</Text>
         </Text>
       </div>
       {section.rows.length === 0 ? (
@@ -116,7 +116,7 @@ function SkillsTable({ section, title }: { section: SkillSection; title: string 
               <th className="px-5 py-2 text-right"><Text type="supporting" color="secondary" weight="semibold">Job Description</Text></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-border">
             {section.rows.map((row) => (
               <tr key={row.skill}>
                 <td className="px-5 py-2.5">
@@ -143,7 +143,7 @@ function SkillsTable({ section, title }: { section: SkillSection; title: string 
 
 function RecruiterTable({ tips }: { tips: RecruiterTip[] }) {
   return (
-    <div className="divide-y divide-slate-100">
+    <div className="divide-y divide-border">
       {tips.map((t) => (
         <div key={t.label} className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-[160px_1fr]">
           <Text type="label" weight="semibold" display="block">{t.label}</Text>
@@ -153,7 +153,7 @@ function RecruiterTable({ tips }: { tips: RecruiterTip[] }) {
               <Text color="secondary">{t.message}</Text>
             </div>
             {t.evidence && t.evidence.length > 0 && (
-              <div className="ml-8 rounded-lg bg-slate-50 px-3 py-2">
+              <div className="ml-8 rounded-lg bg-muted px-3 py-2">
                 <Text type="supporting" weight="semibold" display="block" className="mb-1 uppercase tracking-wide">
                   Evidence
                 </Text>

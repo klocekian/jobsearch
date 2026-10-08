@@ -77,7 +77,7 @@ function RewriteEditorInner({ rewrite, initialResult, initialDismissed, onChange
       suppressContentEditableWarning
       onBlur={handleBlur}
       spellCheck={false}
-      className="min-h-[28rem] w-full whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-white p-4 font-mono text-xs leading-relaxed text-slate-700 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+      className="min-h-[28rem] w-full whitespace-pre-wrap break-words rounded-xl border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
     >
       {nodes.map((n, i) =>
         n.kind === "text" ? (
@@ -111,15 +111,15 @@ function ChangeWidget({
     <span
       contentEditable={false}
       data-del={del}
-      className="mx-0.5 inline rounded border border-slate-200 bg-slate-50 px-0.5 align-baseline"
+      className="mx-0.5 inline rounded border border-border bg-muted px-0.5 align-baseline"
     >
-      {del && <span className="text-rose-700 line-through">{del}</span>}
+      {del && <span className="text-rose-700 dark:text-rose-400 line-through">{del}</span>}
       {ins ? (
         <button
           type="button"
           onMouseDown={click(onAccept)}
           title="Accept this suggestion"
-          className="rounded bg-emerald-100 px-0.5 text-emerald-900 hover:bg-emerald-200"
+          className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-0.5 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-900"
         >
           {ins}
         </button>
@@ -128,7 +128,7 @@ function ChangeWidget({
           type="button"
           onMouseDown={click(onAccept)}
           title="Remove this text"
-          className="rounded px-0.5 text-rose-700 hover:bg-rose-100"
+          className="rounded px-0.5 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50"
         >
           ⌫
         </button>
@@ -137,7 +137,7 @@ function ChangeWidget({
         type="button"
         onMouseDown={click(onDismiss)}
         title="Dismiss (keep current)"
-        className="ml-0.5 rounded px-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+        className="ml-0.5 rounded px-0.5 text-secondary hover:bg-card hover:text-primary"
       >
         ×
       </button>

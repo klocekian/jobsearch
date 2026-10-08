@@ -19,7 +19,7 @@ const TERMINAL_LINES = [
   { status: "closed", label: "Closed", color: STATUS_DOT_COLORS.closed, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
 ];
 
-const DOT_COLORS: Record<string, string> = { total: "#1e293b", ...STATUS_DOT_COLORS };
+const DOT_COLORS: Record<string, string> = { total: "var(--color-text-primary)", ...STATUS_DOT_COLORS };
 
 // The 5 gates shown per job row in the selected-jobs list — a simplified
 // view of the pipeline (skips "applying", stops at Onsite since Offer/
@@ -54,20 +54,20 @@ function GateStepper({ job }: { job: JobRow }) {
         <HStack key={g.key} gap={0} className="items-center">
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: i < reached ? STATUS_DOT_COLORS[g.key] : "#e2e8f0" }}
+            style={{ backgroundColor: i < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-border-strong, #cbd5e1)" }}
             title={g.label}
           />
           <Text
             type="supporting"
             className="mr-2 ml-1 whitespace-nowrap"
-            style={{ color: i < reached ? STATUS_DOT_COLORS[g.key] : "#cbd5e1" }}
+            style={{ color: i < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-text-disabled, #94a3b8)" }}
           >
             {g.label}
           </Text>
           {i < GATES.length - 1 && (
             <span
               className="mr-2 h-px w-4 shrink-0"
-              style={{ backgroundColor: i + 1 < reached ? STATUS_DOT_COLORS[g.key] : "#e2e8f0" }}
+              style={{ backgroundColor: i + 1 < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-border, #e2e8f0)" }}
             />
           )}
         </HStack>
@@ -166,15 +166,14 @@ export function JobsFunnel() {
             const y = padTop + chartH - (t / max) * chartH;
             return (
               <g key={t}>
-                <line x1={padX} y1={y} x2={W - padX} y2={y} stroke="#f1f5f9" strokeWidth={1} />
-                <text x={padX - 8} y={y + 4} textAnchor="end" fontSize={10} fill="#94a3b8">{t}</text>
+                <line x1={padX} y1={y} x2={W - padX} y2={y} stroke="var(--color-border, #f1f5f9)" strokeWidth={1} />
+                <text x={padX - 8} y={y + 4} textAnchor="end" fontSize={10} fill="var(--color-text-secondary, #94a3b8)">{t}</text>
               </g>
             );
           })}
           <defs>
             <linearGradient id="aGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#1e293b" />
-              <stop offset="30%" stopColor="#3b82f6" />
+              <stop offset="0%" stopColor="#3b82f6" />
               <stop offset="100%" stopColor="#22c55e" />
             </linearGradient>
           </defs>
@@ -185,15 +184,15 @@ export function JobsFunnel() {
           <path d={mainPath} fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" />
           {mainPoints.map((p) => (
             <g key={p.status} onClick={() => setSelected(isSel(p.status) ? null : { status: p.status })} className="cursor-pointer">
-              <circle cx={p.x} cy={p.y} r={isSel(p.status) ? 8 : 6} fill={DOT_COLORS[p.status] ?? "#94a3b8"} stroke="white" strokeWidth={2} />
-              {p.count > 0 && <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize={11} fill="#1e293b" fontWeight={600}>{p.count}</text>}
-              <text x={p.x} y={padTop + chartH + 16} textAnchor="middle" fontSize={10} fill="#64748b">{p.label}</text>
+              <circle cx={p.x} cy={p.y} r={isSel(p.status) ? 8 : 6} fill={DOT_COLORS[p.status] ?? "var(--color-text-secondary, #94a3b8)"} stroke="var(--color-background-surface, white)" strokeWidth={2} />
+              {p.count > 0 && <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize={11} fill="var(--color-text-primary, #1e293b)" fontWeight={600}>{p.count}</text>}
+              <text x={p.x} y={padTop + chartH + 16} textAnchor="middle" fontSize={10} fill="var(--color-text-secondary, #64748b)">{p.label}</text>
             </g>
           ))}
         </svg>
 
         {/* Terminal rows */}
-        <div className="mt-4 border-t border-slate-100 pt-3">
+        <div className="mt-4 border-t border-border pt-3">
           {TERMINAL_LINES.map((tl) => {
             const stageCounts = tl.stages.map((stage) => ({
               stage,
@@ -216,17 +215,17 @@ export function JobsFunnel() {
                             onClick={() => setSelected(isSel(tl.status, entry.stage) ? null : { status: tl.status, stage: entry.stage })}
                             className={`inline-block min-w-[24px] rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition ${
                               isSel(tl.status, entry.stage)
-                                ? "bg-slate-800 text-white"
+                                ? "bg-primary text-body"
                                 : entry.count > 0
-                                  ? "hover:bg-slate-100"
-                                  : "text-slate-200"
+                                  ? "hover:bg-muted text-primary"
+                                  : "text-disabled"
                             }`}
                             style={!isSel(tl.status, entry.stage) && entry.count > 0 ? { color: tl.color } : undefined}
                           >
                             {entry.count}
                           </button>
                         ) : (
-                          <span className="text-[11px] text-slate-100">·</span>
+                          <span className="text-[11px] text-disabled">·</span>
                         )}
                       </div>
                     );
@@ -242,7 +241,7 @@ export function JobsFunnel() {
 
         {/* Selected jobs list */}
         {selected && (
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          <div className="mt-4 border-t border-border pt-4">
             <HStack gap={2} className="mb-3 items-center">
               <Text type="label" weight="semibold">{selectedLabel}</Text>
               <Badge label={selectedJobs.length} variant="neutral" />
@@ -251,12 +250,12 @@ export function JobsFunnel() {
             {selectedJobs.length === 0 ? (
               <Text type="supporting">No jobs in this stage.</Text>
             ) : (
-              <Card className="divide-y divide-slate-100">
+              <Card className="divide-y divide-border">
                 {selectedJobs.map((j) => (
-                  <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between gap-4 px-3 py-2 hover:bg-slate-50">
+                  <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between gap-4 px-3 py-2 hover:bg-muted transition-colors">
                     <div className="min-w-0 flex-1 truncate">
                       <Text weight="semibold">{j.company || "—"}</Text>
-                      <span className="mx-1.5 text-slate-300">·</span>
+                      <span className="mx-1.5 text-secondary">·</span>
                       <Text type="supporting">{j.title || "—"}</Text>
                     </div>
                     <div className="hidden shrink-0 lg:block">
