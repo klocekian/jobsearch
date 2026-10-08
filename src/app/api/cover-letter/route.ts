@@ -35,16 +35,7 @@ function buildSystemPrompt(): string {
   ].join("\n");
 }
 
-// Safety net: the model occasionally emits em/en dashes despite the prompt.
-// Replace any used as punctuation with a comma so the output never contains one.
-function stripDashes(text: string): string {
-  return text
-    .replace(/\s*[—–]\s*/g, ", ") // em/en dash, with any surrounding spaces
-    .replace(/\s+,/g, ",") // tidy " ," produced above
-    .replace(/,\s*,/g, ",") // collapse any doubled commas
-    .replace(/,\s*\./g, ".") // ", ." -> "."
-    .replace(/[ \t]{2,}/g, " ");
-}
+
 
 function buildUserPrompt(input: z.infer<typeof RequestSchema>): string {
   const { company, jobTitle, jobText, resumeText, interests, context } = input;
@@ -78,7 +69,7 @@ export async function POST(request: Request) {
 
   try {
     const client = await getAnthropicClient();
-    const response = await client.messages.create({
+    const stream = client.messages.stream({
       model: "claude-opus-4-8",
       max_tokens: 2048,
       thinking: { type: "adaptive" },
@@ -86,22 +77,28 @@ export async function POST(request: Request) {
       messages: [{ role: "user", content: buildUserPrompt(parsed) }],
     });
 
-    const letter = stripDashes(
-      response.content
-        .filter((block): block is Anthropic.TextBlock => block.type === "text")
-        .map((block) => block.text)
-        .join("")
-        .trim()
-    );
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
 
-    if (!letter) {
-      return NextResponse.json(
-        { error: "The model returned an empty response. Please try again." },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({ letter });
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+      },
+    });
   } catch (err: unknown) {
     if (err instanceof Anthropic.AuthenticationError) {
       return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });

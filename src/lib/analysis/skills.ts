@@ -25,6 +25,20 @@ function variantPattern(v: string): string {
   return `${esc(stem)}(?:${INFLECTIONS})?`;
 }
 
+const _skillRegexCache = new WeakMap<SkillDef, RegExp>();
+
+function getSkillRegex(def: SkillDef): RegExp {
+  const cached = _skillRegexCache.get(def);
+  if (cached) return cached;
+  const alternation = [...def.variants]
+    .sort((a, b) => b.length - a.length)
+    .map(variantPattern)
+    .join("|");
+  const re = new RegExp(`(?<![A-Za-z0-9])(?:${alternation})(?![A-Za-z0-9])`, "gi");
+  _skillRegexCache.set(def, re);
+  return re;
+}
+
 /**
  * Occurrences of a skill in the text. Variants are combined into a single
  * longest-first alternation so overlapping forms are counted once — e.g.
@@ -33,11 +47,9 @@ function variantPattern(v: string): string {
  * common inflections (advocate -> advocated, mentor -> mentored).
  */
 function skillCount(text: string, def: SkillDef): number {
-  const alternation = [...def.variants]
-    .sort((a, b) => b.length - a.length)
-    .map(variantPattern)
-    .join("|");
-  const re = new RegExp(`(?<![A-Za-z0-9])(?:${alternation})(?![A-Za-z0-9])`, "gi");
+  const re = getSkillRegex(def);
+  // Reset lastIndex in case of global flag reuse
+  re.lastIndex = 0;
   return (text.match(re) ?? []).length;
 }
 

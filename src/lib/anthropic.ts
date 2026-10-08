@@ -108,8 +108,8 @@ async function isTokenLive(token: string): Promise<boolean> {
   let valid: boolean;
   try {
     const client = token.startsWith("sk-ant-oat")
-      ? new Anthropic({ authToken: token, apiKey: undefined })
-      : new Anthropic({ apiKey: token });
+      ? new Anthropic({ authToken: token, apiKey: undefined, timeout: 3000 })
+      : new Anthropic({ apiKey: token, timeout: 3000 });
     await client.models.list({ limit: 1 });
     valid = true;
   } catch {

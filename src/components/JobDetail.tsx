@@ -48,7 +48,24 @@ export function JobDetail({ jobId }: { jobId: number }) {
     setLoading(false);
   }, [jobId]);
 
-  useEffect(() => { fetchJob(); }, [fetchJob]);
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/jobs/${jobId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { job: JobRow; submissions: SubmissionRow[] } | null) => {
+        if (!ignore && data) {
+          setJob(data.job);
+          setSubmissions(data.submissions);
+        }
+        if (!ignore) setLoading(false);
+      })
+      .catch(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [jobId]);
 
   const startEdit = () => {
     if (!job) return;

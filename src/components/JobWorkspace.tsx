@@ -23,7 +23,6 @@ import {
   loadContextMaterials,
   saveContextMaterials,
   loadAiDetection,
-  saveAiDetection,
 } from "@/lib/storage";
 import { buildPackageMarkdown } from "@/lib/package";
 import type { JobRow } from "@/lib/db/jobs";
@@ -64,7 +63,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   // Editing
   const [editing, setEditing] = useState(false);
   const [editNotes, setEditNotes] = useState("");
-  const [editPostingText, setEditPostingText] = useState("");
   const [editingHeader, setEditingHeader] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState<number | null>(null);
   const [headerFields, setHeaderFields] = useState({ title: "", company: "", location: "", salary_text: "", url: "" });
@@ -76,8 +74,29 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   // Resume / Analysis state
   const [savedResumes, setSavedResumes] = useState<SavedResume[]>([]);
   const [resumeText, setResumeText] = useState("");
-  const [analyzed, setAnalyzed] = useState<{ report: MatchReport; resumeText: string; jobText: string } | null>(null);
-  const [aiDetection, setAiDetection] = useState<AiDetectionState>({ status: "loading", data: null });
+  const [userAnalysis, setUserAnalysis] = useState<{ report: MatchReport; resumeText: string; jobText: string } | null>(null);
+
+  // Derived match report (from user trigger or stored in job row)
+  const analyzed = useMemo(() => {
+    if (userAnalysis) return userAnalysis;
+    if (!job || !resumeText || !job.match_report || !job.posting_text) return null;
+    try {
+      const report = JSON.parse(job.match_report) as MatchReport;
+      return { report, resumeText, jobText: job.posting_text };
+    } catch {
+      return null;
+    }
+  }, [userAnalysis, job, resumeText]);
+
+  // Derived AI detection: cached result if present, otherwise instant heuristic
+  const aiDetection = useMemo<AiDetectionState>(() => {
+    if (!analyzed) return { status: "loading", data: null };
+    const text = analyzed.resumeText;
+    const fallback = analyzed.report.aiDetection;
+    const cached = typeof window !== "undefined" ? loadAiDetection(text) : null;
+    return { status: "done", data: cached ?? fallback };
+  }, [analyzed]);
+
   // Fitness check. `saved` is the report already written to the job; `pending`
   // is a fresh run that has NOT been written yet — the panel renders and waits
   // for an explicit Save, so a run never mutates the job on its own.
@@ -111,7 +130,25 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     setLoading(false);
   }, [jobId]);
 
-  useEffect(() => { fetchJob(); }, [fetchJob]);
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/jobs/${jobId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { job: JobRow; submissions: SubmissionRow[] } | null) => {
+        if (ignore) return;
+        if (data) {
+          setJob(data.job);
+          setSubmissions(data.submissions);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [jobId]);
 
   // Load saved resumes and auto-select default
   useEffect(() => {
@@ -125,46 +162,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load existing match report if available (wait for resumeText to load)
-  useEffect(() => {
-    if (!job || !resumeText) return;
-    if (job.match_report && job.posting_text) {
-      setAnalyzed(prev => {
-        if (prev) return prev;
-        try {
-          const report = JSON.parse(job.match_report!) as MatchReport;
-          return { report, resumeText, jobText: job.posting_text! };
-        } catch { return prev; }
-      });
-    }
-  }, [job?.id, resumeText]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // AI detection
-  useEffect(() => {
-    if (!analyzed) return;
-    const text = analyzed.resumeText;
-    const fallback = analyzed.report.aiDetection;
-    const cached = loadAiDetection(text);
-    if (cached) { setAiDetection({ status: "done", data: cached }); return; }
-    setAiDetection({ status: "loading", data: fallback });
-    let active = true;
-    fetch("/api/ai-detection", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resumeText: text }),
-    }).then(r => r.json()).then((d: { confidence?: number; patterns?: unknown }) => {
-      if (!active) return;
-      if (typeof d.confidence === "number" && Array.isArray(d.patterns)) {
-        const det = d as unknown as import("@/lib/analysis/types").AiDetection;
-        saveAiDetection(text, det);
-        setAiDetection({ status: "done", data: det });
-      } else {
-        setAiDetection({ status: "error", data: fallback });
-      }
-    }).catch(() => { if (active) setAiDetection({ status: "error", data: fallback }); });
-    return () => { active = false; };
-  }, [analyzed]);
-
   const runAnalysis = () => {
     if (!job || !resumeText.trim() || !job.posting_text.trim()) return;
     if (!analyzed || analyzed.jobText !== job.posting_text) {
@@ -175,7 +172,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       resumeText, jobText: job.posting_text,
       company: job.company, jobTitle: job.title, jobUrl: job.url, fileName: "",
     });
-    setAnalyzed({ report, resumeText, jobText: job.posting_text });
+    setUserAnalysis({ report, resumeText, jobText: job.posting_text });
     setRightTab("report");
     const selectedResume = savedResumes.find(r => r.content === resumeText);
     fetch(`/api/jobs/${jobId}`, {

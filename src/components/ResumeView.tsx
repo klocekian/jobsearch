@@ -70,6 +70,7 @@ export function ResumeView({
 
   const generate = async () => {
     setGen({ kind: "loading" });
+    setRewrite("");
     try {
       const res = await fetch("/api/rewrite-resume", {
         method: "POST",
@@ -86,13 +87,33 @@ export function ResumeView({
             .map((p) => ({ label: p.label, examples: p.examples.slice(0, 6) })),
         }),
       });
-      let data: { resume?: string; error?: string };
-      try { data = await res.json(); } catch { throw new Error(`Server error (${res.status}). Try again.`); }
-      if (!res.ok || !data.resume) throw new Error(data.error ?? `Request failed (${res.status}).`);
-      rewriteRef.current = data.resume;
-      setRewrite(data.resume);
+      if (!res.ok) {
+        let errMsg = `Request failed (${res.status}).`;
+        try {
+          const d = await res.json();
+          if (d.error) errMsg = d.error;
+        } catch {
+          const t = await res.text().catch(() => "");
+          if (t) errMsg = t;
+        }
+        throw new Error(errMsg);
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No readable stream received.");
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setRewrite(accumulated);
+      }
+
+      rewriteRef.current = accumulated;
       setDismissed([]);
-      saveRewriteState({ rewrite: data.resume, result: resultRef.current, dismissed: [] });
+      saveRewriteState({ rewrite: accumulated, result: resultRef.current, dismissed: [] });
       setEditorKey((k) => k + 1);
       setGen({ kind: "idle" });
     } catch (err: unknown) {
@@ -218,10 +239,18 @@ export function ResumeView({
       )}
 
       {gen.kind === "loading" ? (
-        <div className="space-y-2" aria-hidden>
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-4 animate-pulse rounded bg-slate-100" style={{ width: `${95 - (i % 4) * 12}%` }} />
-          ))}
+        <div className="space-y-3">
+          {rewrite ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 font-mono text-xs whitespace-pre-wrap text-slate-800 animate-pulse">
+              {rewrite}
+            </div>
+          ) : (
+            <div className="space-y-2" aria-hidden>
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-4 animate-pulse rounded bg-slate-100" style={{ width: `${95 - (i % 4) * 12}%` }} />
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <RewriteEditor
