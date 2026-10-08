@@ -41,21 +41,23 @@ export function Nav({ user }: { user: NavUser | null }) {
       label="Main navigation"
       heading={<TopNavHeading heading="Job Search" headingHref="/jobs" />}
       startContent={
-        <>
-          <TopNavItem label="Jobs" href="/jobs" isSelected={pathname.startsWith("/jobs")} />
-          <TopNavItem label="Profile" href="/profile" isSelected={pathname.startsWith("/profile")} />
-        </>
+        <TopNavItem label="Jobs" href="/jobs" isSelected={pathname.startsWith("/jobs")} />
       }
       endContent={
         user ? (
-          <HStack gap={2} className="items-center">
-            <StatusDot {...CLAUDE_STATUS_DOT[claudeStatus]} tooltip={CLAUDE_STATUS_DOT[claudeStatus].label} />
-            <span className="hidden sm:inline">{user.name || user.email}</span>
-          </HStack>
+          <TopNavItem
+            label={user.name || user.email || "Profile"}
+            href="/profile"
+            isSelected={pathname.startsWith("/profile")}
+            icon={<StatusDot {...CLAUDE_STATUS_DOT[claudeStatus]} tooltip={CLAUDE_STATUS_DOT[claudeStatus].label} />}
+          />
         ) : (
-          <a href="/api/auth/login">
-            <Button label="Sign in with Google" variant="ghost" size="sm" />
-          </a>
+          <HStack gap={2} className="items-center">
+            <TopNavItem label="Profile" href="/profile" isSelected={pathname.startsWith("/profile")} />
+            <a href="/api/auth/login">
+              <Button label="Sign in with Google" variant="ghost" size="sm" />
+            </a>
+          </HStack>
         )
       }
     />
