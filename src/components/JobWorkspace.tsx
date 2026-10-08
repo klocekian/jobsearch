@@ -43,9 +43,9 @@ import { Stack, HStack } from "@astryxdesign/core/Stack";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 
 type LeftTab = "posting" | "apply" | "submissions" | "notes";
-type RightTab = "fitness" | "resume" | "cover";
+type RightTab = "reports" | "resume" | "cover";
 type MobilePane = "posting" | "analysis";
-type ResumeSubTab = "editor" | "report" | "ai";
+type ReportSubTab = "fitness" | "ats" | "slop";
 
 interface SavedResume { id: number; name: string; content: string; is_default: number }
 
@@ -55,8 +55,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
-  const [rightTab, setRightTab] = useState<RightTab>("fitness");
-  const [resumeSubTab, setResumeSubTab] = useState<ResumeSubTab>("editor");
+  const [rightTab, setRightTab] = useState<RightTab>("reports");
+  const [reportSubTab, setReportSubTab] = useState<ReportSubTab>("fitness");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
 
@@ -183,7 +183,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       company: job.company, jobTitle: job.title, jobUrl: job.url, fileName: "",
     });
     setUserAnalysis({ report, resumeText, jobText: job.posting_text });
-    setRightTab("resume");
+    setRightTab("reports");
+    setReportSubTab("ats");
     const selectedResume = savedResumes.find(r => r.content === resumeText);
     fetch(`/api/jobs/${jobId}`, {
       method: "PATCH",
@@ -671,16 +672,39 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   const rightTabBar = (
     <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
-      <Tab value="fitness" label={fitnessSaved ? `Fitness (${fitnessSaved.score}/10)` : "Fitness"} />
-      <Tab value="resume" label={analyzed ? `Resume (${analyzed.report.score}/100)` : "Resume"} />
-      <Tab value="cover" label="Cover Letter" />
+      <Tab value="reports" label="Reports" />
+      <Tab value="resume" label="Resume" />
+      <Tab value="cover" label="Cover letter" />
     </TabList>
   );
 
   const rightPaneBody = (
     <>
-          {rightTab === "fitness" && (
-            <div className="py-4">
+      {rightTab === "reports" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <SegmentedControl
+              value={reportSubTab}
+              onChange={(v) => setReportSubTab(v as ReportSubTab)}
+              label="Report view"
+            >
+              <SegmentedControlItem
+                value="fitness"
+                label={fitnessSaved ? `Fitness (${fitnessSaved.score}/10)` : "Fitness"}
+              />
+              <SegmentedControlItem
+                value="ats"
+                label={analyzed ? `ATS pass (${analyzed.report.score}/100)` : "ATS pass"}
+              />
+              <SegmentedControlItem
+                value="slop"
+                label="AI slop"
+              />
+            </SegmentedControl>
+          </div>
+
+          {reportSubTab === "fitness" && (
+            <div className="py-2">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Button
                   label={analyzing || fitnessRunning ? "Analyzing…" : fitnessSaved ? "Re-run analysis" : "Analyze"}
@@ -733,79 +757,99 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             </div>
           )}
 
-          {rightTab !== "fitness" && !analyzed && !job.posting_text && (
-            <div className="py-12">
-              <Banner status="info" title="Add a job posting and run analysis to see results here." />
-            </div>
-          )}
-          {rightTab !== "fitness" && !analyzed && job.posting_text && (
-            <div className="py-12">
-              <Banner status="info" title={'Click "Analyze" to match your resume and evaluate fitness.'} />
-            </div>
-          )}
-
-          {analyzed && rightTab === "resume" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <SegmentedControl
-                  value={resumeSubTab}
-                  onChange={(v) => setResumeSubTab(v as ResumeSubTab)}
-                  label="Resume view"
-                >
-                  <SegmentedControlItem value="editor" label="Resume & Tailor" />
-                  <SegmentedControlItem value="report" label={`ATS Match (${analyzed.report.score}/100)`} />
-                  <SegmentedControlItem value="ai" label="AI Detection" />
-                </SegmentedControl>
+          {reportSubTab === "ats" && (
+            analyzed ? (
+              <MatchReportView
+                report={analyzed.report}
+                aiDetection={aiDetection}
+                onRunAnalysis={() => runUnifiedAnalysis(false)}
+                analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
+                hasAnalysis={!!analyzed}
+                hideSegmentedControl
+                subTab="match"
+              />
+            ) : (
+              <div className="py-8">
+                <Banner
+                  status="info"
+                  title={job.posting_text.trim()
+                    ? 'Select a resume and click "Analyze" in the top bar to run the ATS pass report.'
+                    : 'Add a job posting and click "Analyze" to see the ATS pass report.'}
+                />
               </div>
-
-              {resumeSubTab === "editor" && (
-                <ResumeView
-                  resumeText={analyzed.resumeText}
-                  company={job.company}
-                  jobText={job.posting_text}
-                  jobTitle={job.title}
-                  missingSkills={analyzed.report.highlights.missing}
-                  aiDetection={aiDetection.data}
-                  materials={materials}
-                  onMaterialsChange={setMaterials}
-                />
-              )}
-
-              {resumeSubTab === "report" && (
-                <MatchReportView
-                  report={analyzed.report}
-                  aiDetection={aiDetection}
-                  onRunAnalysis={() => runUnifiedAnalysis(false)}
-                  analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
-                  hasAnalysis={!!analyzed}
-                  hideSegmentedControl
-                  subTab="match"
-                />
-              )}
-
-              {resumeSubTab === "ai" && (
-                <MatchReportView
-                  report={analyzed.report}
-                  aiDetection={aiDetection}
-                  onRunAnalysis={() => runUnifiedAnalysis(false)}
-                  analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
-                  hasAnalysis={!!analyzed}
-                  hideSegmentedControl
-                  subTab="ai"
-                />
-              )}
-            </div>
+            )
           )}
-          {analyzed && rightTab === "cover" && (
-            <CoverLetterView
-              resumeText={analyzed.resumeText}
-              jobText={job.posting_text}
-              jobTitle={job.title}
-              company={job.company}
-              materials={materials}
-              onMaterialsChange={setMaterials}
+
+          {reportSubTab === "slop" && (
+            analyzed ? (
+              <MatchReportView
+                report={analyzed.report}
+                aiDetection={aiDetection}
+                onRunAnalysis={() => runUnifiedAnalysis(false)}
+                analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
+                hasAnalysis={!!analyzed}
+                hideSegmentedControl
+                subTab="ai"
+              />
+            ) : (
+              <div className="py-8">
+                <Banner
+                  status="info"
+                  title={job.posting_text.trim()
+                    ? 'Select a resume and click "Analyze" in the top bar to check for AI slop.'
+                    : 'Add a job posting and click "Analyze" to check for AI slop.'}
+                />
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {rightTab === "resume" && (
+        analyzed ? (
+          <ResumeView
+            resumeText={analyzed.resumeText}
+            company={job.company}
+            jobText={job.posting_text}
+            jobTitle={job.title}
+            missingSkills={analyzed.report.highlights.missing}
+            aiDetection={aiDetection.data}
+            materials={materials}
+            onMaterialsChange={setMaterials}
+          />
+        ) : (
+          <div className="py-12">
+            <Banner
+              status="info"
+              title={job.posting_text.trim()
+                ? 'Select a resume and click "Analyze" in the top bar to begin tailoring.'
+                : 'Add a job posting first to tailor your resume.'}
             />
-          )}
+          </div>
+        )
+      )}
+
+      {rightTab === "cover" && (
+        analyzed ? (
+          <CoverLetterView
+            resumeText={analyzed.resumeText}
+            jobText={job.posting_text}
+            jobTitle={job.title}
+            company={job.company}
+            materials={materials}
+            onMaterialsChange={setMaterials}
+          />
+        ) : (
+          <div className="py-12">
+            <Banner
+              status="info"
+              title={job.posting_text.trim()
+                ? 'Select a resume and click "Analyze" in the top bar to generate a cover letter.'
+                : 'Add a job posting first to generate a cover letter.'}
+            />
+          </div>
+        )
+      )}
     </>
   );
 
