@@ -15,11 +15,75 @@ export async function testMistralKey(apiKey: string): Promise<boolean> {
   }
 }
 
+function formatMistralError(status: number, errText: string): string {
+  try {
+    const json = JSON.parse(errText);
+    const msg = json.message || json.error?.message || errText;
+    const code = json.code || json.error?.code;
+    if (status === 429) {
+      return `Mistral API rate limit exceeded (${code ? `code ${code}: ` : ""}${msg}). Please wait a few seconds or check your usage tier at console.mistral.ai.`;
+    }
+    return `Mistral API error (${status}): ${msg}`;
+  } catch {
+    if (status === 429) {
+      return `Mistral API rate limit exceeded (429). Please wait a few seconds or check your account usage tier at console.mistral.ai.`;
+    }
+    return `Mistral API error (${status}): ${errText}`;
+  }
+}
+
+async function fetchMistralWithRetry(
+  url: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+  maxRetries = 3,
+): Promise<Response> {
+  let lastRes: Response | null = null;
+  let lastErrText = "";
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      // Exponential backoff with jitter: 1.5s, 3s
+      const delay = 1500 * Math.pow(2, attempt - 1) + Math.random() * 300;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        return res;
+      }
+
+      lastRes = res;
+      lastErrText = await res.text();
+
+      // Only retry on 429 (rate limit) or 503 (service unavailable)
+      if (res.status !== 429 && res.status !== 503) {
+        throw new Error(formatMistralError(res.status, lastErrText));
+      }
+    } catch (err: unknown) {
+      if (attempt === maxRetries - 1 || (err instanceof Error && !err.message.includes("429"))) {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error(formatMistralError(lastRes?.status ?? 429, lastErrText));
+}
+
 export async function generateMistralText(
   apiKey: string,
   options: GenerateTextOptions,
 ): Promise<{ text: string; model: string }> {
-  const model = options.model || AI_PROVIDERS.mistral.defaultModel;
+  let model = options.model || AI_PROVIDERS.mistral.defaultModel;
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -27,23 +91,24 @@ export async function generateMistralText(
   }
   messages.push({ role: "user", content: options.prompt });
 
-  const res = await fetch(`${MISTRAL_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: options.maxTokens ?? 4096,
-      temperature: 0.7,
-    }),
-  });
+  const body = {
+    model,
+    messages,
+    max_tokens: options.maxTokens ?? 4096,
+    temperature: 0.7,
+  };
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Mistral API error (${res.status}): ${err}`);
+  let res: Response;
+  try {
+    res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, body);
+  } catch (err: unknown) {
+    // If large model was rate limited, try mistral-small-latest as fallback
+    if (model === "mistral-large-latest") {
+      model = "mistral-small-latest";
+      res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
+    } else {
+      throw err;
+    }
   }
 
   const data = await res.json();
@@ -68,23 +133,15 @@ export function streamMistralText(
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetch(`${MISTRAL_BASE_URL}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages,
-            max_tokens: options.maxTokens ?? 4096,
-            stream: true,
-          }),
+        const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, {
+          model,
+          messages,
+          max_tokens: options.maxTokens ?? 4096,
+          stream: true,
         });
 
-        if (!res.ok || !res.body) {
-          const err = await res.text();
-          throw new Error(`Mistral stream error (${res.status}): ${err}`);
+        if (!res.body) {
+          throw new Error("Mistral response body is empty.");
         }
 
         const reader = res.body.getReader();
@@ -127,7 +184,7 @@ export async function generateMistralStructured<T>(
   apiKey: string,
   options: GenerateStructuredOptions<T>,
 ): Promise<{ data: T; model: string }> {
-  const model = options.model || AI_PROVIDERS.mistral.defaultModel;
+  let model = options.model || AI_PROVIDERS.mistral.defaultModel;
 
   const systemPrompt = (options.system ? options.system + "\n\n" : "") +
     "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema.";
@@ -137,23 +194,24 @@ export async function generateMistralStructured<T>(
     { role: "user", content: options.prompt },
   ];
 
-  const res = await fetch(`${MISTRAL_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: options.maxTokens ?? 4096,
-      response_format: { type: "json_object" },
-    }),
-  });
+  const body = {
+    model,
+    messages,
+    max_tokens: options.maxTokens ?? 4096,
+    response_format: { type: "json_object" },
+  };
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Mistral structured API error (${res.status}): ${err}`);
+  let res: Response;
+  try {
+    res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, body);
+  } catch (err: unknown) {
+    // If large model was rate limited, try mistral-small-latest as fallback
+    if (model === "mistral-large-latest") {
+      model = "mistral-small-latest";
+      res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
+    } else {
+      throw err;
+    }
   }
 
   const data = await res.json();

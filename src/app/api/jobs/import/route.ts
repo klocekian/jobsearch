@@ -61,18 +61,65 @@ function parseDate(raw: string): string | null {
   return null;
 }
 
-export async function POST() {
-  try {
-    const res = await fetch(CSV_URL);
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Could not fetch the spreadsheet." },
-        { status: 502 },
-      );
+function extractSheetExportUrl(input: string): string {
+  const trimmed = input.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    const idMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const gidMatch = trimmed.match(/[?&#]gid=([0-9]+)/);
+    if (idMatch) {
+      const sheetId = idMatch[1];
+      const gid = gidMatch ? gidMatch[1] : "0";
+      return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
     }
-    const text = await res.text();
-    const rows = parseCSV(text);
-    if (rows.length < 2) return NextResponse.json({ imported: 0, skipped: 0 });
+    return trimmed;
+  }
+  return `https://docs.google.com/spreadsheets/d/${trimmed}/export?format=csv&gid=0`;
+}
+
+export async function POST(req: Request) {
+  try {
+    let bodyJson: { sheetUrl?: string; csvText?: string } = {};
+    try {
+      bodyJson = await req.json();
+    } catch {
+      // Body may be empty if called without payload
+    }
+
+    let csvContent = bodyJson.csvText;
+
+    if (!csvContent) {
+      const targetUrl = bodyJson.sheetUrl ? extractSheetExportUrl(bodyJson.sheetUrl) : CSV_URL;
+      const res = await fetch(targetUrl);
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: `Could not fetch spreadsheet (${res.status}). Ensure sharing is set to 'Anyone with the link can view'.` },
+          { status: 502 },
+        );
+      }
+      csvContent = await res.text();
+    }
+
+    const rows = parseCSV(csvContent);
+    if (rows.length < 2) {
+      return NextResponse.json({ imported: 0, skipped: 0, message: "No data rows found in sheet." });
+    }
+
+    // Detect column indexes from header row
+    const headers = rows[0].map((h) => h.toLowerCase().trim());
+    let companyIdx = headers.findIndex((h) => h.includes("company") || h.includes("employer") || h.includes("org"));
+    let titleIdx = headers.findIndex((h) => h.includes("title") || h.includes("role") || h.includes("position"));
+    let dateIdx = headers.findIndex((h) => h.includes("applied") || h.includes("date"));
+    let statusIdx = headers.findIndex((h) => h.includes("status") || h.includes("stage"));
+    let urlIdx = headers.findIndex((h) => h === "url" || h.includes("link") || h.includes("posting"));
+    let textIdx = headers.findIndex((h) => h.includes("description") || h.includes("notes") || h.includes("text") || h.includes("details"));
+
+    // Fallbacks to standard layout if not detected
+    if (companyIdx === -1) companyIdx = 1;
+    if (titleIdx === -1) titleIdx = 2;
+    if (dateIdx === -1) dateIdx = 3;
+    if (statusIdx === -1) statusIdx = 5;
+    if (urlIdx === -1) urlIdx = 7;
+    if (textIdx === -1) textIdx = 8;
 
     const userId = await getCurrentUserId();
     const existing = await listJobs(userId);
@@ -83,20 +130,26 @@ export async function POST() {
 
     for (let i = 1; i < rows.length; i++) {
       const cols = rows[i];
-      const company = (cols[1] ?? "").trim();
-      const title = (cols[2] ?? "").trim();
-      const date = (cols[3] ?? "").trim();
-      const status = (cols[5] ?? "").trim();
-      const url = (cols[7] ?? "").trim();
-      const jobText = (cols[8] ?? "").trim();
+      const company = (cols[companyIdx] ?? "").trim();
+      const title = (cols[titleIdx] ?? "").trim();
+      const date = (dateIdx >= 0 ? cols[dateIdx] : "") ?? "";
+      const status = (statusIdx >= 0 ? cols[statusIdx] : "") ?? "";
+      const url = (urlIdx >= 0 ? cols[urlIdx] : "") ?? "";
+      const jobText = (textIdx >= 0 ? cols[textIdx] : "") ?? "";
+
       if (!company && !title) continue;
       const key = `${company.toLowerCase()}|${title.toLowerCase()}`;
-      if (existingKeys.has(key)) { skipped++; continue; }
+      if (existingKeys.has(key)) {
+        skipped++;
+        continue;
+      }
 
       const parsedDate = parseDate(date);
       await createJob({
         user_id: userId,
-        company, title, url,
+        company: company || "Unknown Company",
+        title: title || "Job Opportunity",
+        url,
         status: statusFromSheet(status, !!parsedDate),
         posting_text: jobText,
         source: "sheet",
@@ -106,7 +159,7 @@ export async function POST() {
       imported++;
     }
 
-    return NextResponse.json({ imported, skipped });
+    return NextResponse.json({ imported, skipped, total: rows.length - 1 });
   } catch (err: unknown) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to import." },

@@ -75,17 +75,27 @@ export async function generateClaudeStructured<T>(
   const client = getClient(apiKey);
   const model = options.model || AI_PROVIDERS.claude.defaultModel;
 
-  const parsed = await client.messages.parse({
-    model,
-    max_tokens: options.maxTokens ?? 4096,
-    system: options.system,
-    messages: [{ role: "user", content: options.prompt }],
-    output_config: { format: zodOutputFormat(options.schema) },
-  });
+  try {
+    const parsed = await client.messages.parse({
+      model,
+      max_tokens: options.maxTokens ?? 4096,
+      system: options.system,
+      messages: [{ role: "user", content: options.prompt }],
+      output_config: { format: zodOutputFormat(options.schema) },
+    });
 
-  if (!parsed.parsed_output) {
-    throw new Error(`Claude did not return structured output (stop_reason=${parsed.stop_reason})`);
+    if (!parsed.parsed_output) {
+      throw new Error(`Claude did not return structured output (stop_reason=${parsed.stop_reason})`);
+    }
+
+    return { data: parsed.parsed_output, model };
+  } catch (err: unknown) {
+    if (err instanceof Anthropic.APIError) {
+      if (err.status === 429) {
+        throw new Error("Anthropic Claude rate limit exceeded. Please wait a moment and try again.");
+      }
+      throw new Error(`Claude API error (${err.status}): ${err.message}`);
+    }
+    throw err;
   }
-
-  return { data: parsed.parsed_output, model };
 }
