@@ -12,6 +12,63 @@ export async function testGeminiKey(apiKey: string): Promise<boolean> {
   }
 }
 
+function formatGeminiError(status: number, errText: string): string {
+  try {
+    const json = JSON.parse(errText);
+    const msg = json.error?.message || json.message || errText;
+    if (status === 429) {
+      return `Google Gemini rate limit exceeded. Please retry in a few seconds or check your AI Studio quota.`;
+    }
+    return `Gemini API error (${status}): ${msg}`;
+  } catch {
+    if (status === 429) {
+      return `Google Gemini rate limit exceeded. Please retry in a few seconds.`;
+    }
+    return `Gemini API error (${status}): ${errText}`;
+  }
+}
+
+async function fetchGeminiWithRetry(
+  url: string,
+  body: Record<string, unknown>,
+  maxRetries = 3,
+): Promise<Response> {
+  let lastRes: Response | null = null;
+  let lastErrText = "";
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const delay = 1500 * Math.pow(2, attempt - 1) + Math.random() * 300;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        return res;
+      }
+
+      lastRes = res;
+      lastErrText = await res.text();
+
+      if (res.status !== 429 && res.status !== 503) {
+        throw new Error(formatGeminiError(res.status, lastErrText));
+      }
+    } catch (err: unknown) {
+      if (attempt === maxRetries - 1 || (err instanceof Error && !err.message.includes("rate limit"))) {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error(formatGeminiError(lastRes?.status ?? 429, lastErrText));
+}
+
 export async function generateGeminiText(
   apiKey: string,
   options: GenerateTextOptions,
@@ -33,16 +90,7 @@ export async function generateGeminiText(
     },
   };
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error (${res.status}): ${errText}`);
-  }
+  const res = await fetchGeminiWithRetry(url, body);
 
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
@@ -146,16 +194,7 @@ export async function generateGeminiStructured<T>(
     },
   };
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini structured API error (${res.status}): ${errText}`);
-  }
+  const res = await fetchGeminiWithRetry(url, body);
 
   const data = await res.json();
   let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";

@@ -18,6 +18,7 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Table, useTableSortable, proportional, pixel } from "@astryxdesign/core/Table";
 import type { TableColumn, TableSortState } from "@astryxdesign/core/Table";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
+import { ImportSheetModal } from "./ImportSheetModal";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
 
@@ -64,6 +65,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [starredOnly, setStarredOnly] = useState(false);
   const [importMsg, setImportMsg] = useState("");
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarHeight, setToolbarHeight] = useState(52);
@@ -142,22 +144,6 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     router.replace(`/jobs?${params}`, { scroll: false });
   };
 
-  const importFromSheet = useCallback(async () => {
-    window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { importing: true } }));
-    setImportMsg("");
-    try {
-      const res = await fetch("/api/jobs/import", { method: "POST" });
-      const data: { imported?: number; skipped?: number; error?: string } = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Import failed.");
-      setImportMsg(`Imported ${data.imported} jobs${data.skipped ? `, ${data.skipped} already existed` : ""}.`);
-      fetchJobs();
-    } catch (err: unknown) {
-      setImportMsg(err instanceof Error ? err.message : "Import failed.");
-    } finally {
-      window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { importing: false } }));
-    }
-  }, [fetchJobs]);
-
   const checkClosed = useCallback(async () => {
     window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { checking: true } }));
     setImportMsg("");
@@ -179,7 +165,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   }, [fetchJobs]);
 
   useEffect(() => {
-    const handleImport = () => { importFromSheet(); };
+    const handleImport = () => { setIsImportModalOpen(true); };
     const handleCheckClosed = () => { checkClosed(); };
     window.addEventListener("jobs-action-import", handleImport);
     window.addEventListener("jobs-action-check-closed", handleCheckClosed);
@@ -187,7 +173,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
       window.removeEventListener("jobs-action-import", handleImport);
       window.removeEventListener("jobs-action-check-closed", handleCheckClosed);
     };
-  }, [importFromSheet, checkClosed]);
+  }, [checkClosed]);
 
   const handleSortChange = (newSort: TableSortState<string>) => {
     if (newSort.length === 0) return;
@@ -400,6 +386,15 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
 
         <Text type="supporting" display="block" className="mt-3 shrink-0">{jobs.length} job{jobs.length !== 1 ? "s" : ""}</Text>
       </div>
+
+      <ImportSheetModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={(msg) => {
+          setImportMsg(msg);
+          fetchJobs();
+        }}
+      />
     </div>
   );
 }

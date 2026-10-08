@@ -15,6 +15,67 @@ export async function testGrokKey(apiKey: string): Promise<boolean> {
   }
 }
 
+function formatGrokError(status: number, errText: string): string {
+  try {
+    const json = JSON.parse(errText);
+    const msg = json.error?.message || json.message || errText;
+    if (status === 429) {
+      return `xAI Grok rate limit exceeded. Please retry in a few seconds or check your console.x.ai account.`;
+    }
+    return `Grok API error (${status}): ${msg}`;
+  } catch {
+    if (status === 429) {
+      return `xAI Grok rate limit exceeded. Please retry in a few seconds.`;
+    }
+    return `Grok API error (${status}): ${errText}`;
+  }
+}
+
+async function fetchGrokWithRetry(
+  url: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+  maxRetries = 3,
+): Promise<Response> {
+  let lastRes: Response | null = null;
+  let lastErrText = "";
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const delay = 1500 * Math.pow(2, attempt - 1) + Math.random() * 300;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        return res;
+      }
+
+      lastRes = res;
+      lastErrText = await res.text();
+
+      if (res.status !== 429 && res.status !== 503) {
+        throw new Error(formatGrokError(res.status, lastErrText));
+      }
+    } catch (err: unknown) {
+      if (attempt === maxRetries - 1 || (err instanceof Error && !err.message.includes("rate limit"))) {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error(formatGrokError(lastRes?.status ?? 429, lastErrText));
+}
+
 export async function generateGrokText(
   apiKey: string,
   options: GenerateTextOptions,
@@ -27,24 +88,12 @@ export async function generateGrokText(
   }
   messages.push({ role: "user", content: options.prompt });
 
-  const res = await fetch(`${XAI_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: options.maxTokens ?? 4096,
-      temperature: 0.7,
-    }),
+  const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
+    model,
+    messages,
+    max_tokens: options.maxTokens ?? 4096,
+    temperature: 0.7,
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Grok API error (${res.status}): ${err}`);
-  }
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? "";
@@ -68,23 +117,15 @@ export function streamGrokText(
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetch(`${XAI_BASE_URL}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            messages,
-            max_tokens: options.maxTokens ?? 4096,
-            stream: true,
-          }),
+        const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
+          model,
+          messages,
+          max_tokens: options.maxTokens ?? 4096,
+          stream: true,
         });
 
-        if (!res.ok || !res.body) {
-          const err = await res.text();
-          throw new Error(`Grok stream error (${res.status}): ${err}`);
+        if (!res.body) {
+          throw new Error("Grok response body is empty.");
         }
 
         const reader = res.body.getReader();
@@ -137,24 +178,12 @@ export async function generateGrokStructured<T>(
     { role: "user", content: options.prompt },
   ];
 
-  const res = await fetch(`${XAI_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: options.maxTokens ?? 4096,
-      response_format: { type: "json_object" },
-    }),
+  const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
+    model,
+    messages,
+    max_tokens: options.maxTokens ?? 4096,
+    response_format: { type: "json_object" },
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Grok structured API error (${res.status}): ${err}`);
-  }
 
   const data = await res.json();
   let rawText = data.choices?.[0]?.message?.content ?? "{}";
