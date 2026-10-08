@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "@/lib/anthropic";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { generateStructured } from "@/lib/ai";
 
 // Structure raw resume text into editable fields. Resume parsing by regex is
 // brittle across formats (LinkedIn's grouped companies, two-column layouts,
-// etc.), so we let Claude do the structuring with a constrained JSON schema.
+// etc.), so we let the active AI provider do the structuring with a constrained JSON schema.
 // The client persists the result, so this runs at most once per resume.
 
 export const runtime = "nodejs";
@@ -79,24 +77,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = await getAnthropicClient();
-    const message = await client.messages.parse({
-      model: "claude-opus-4-8",
-      max_tokens: 8000,
+    const { data: resume } = await generateStructured({
       system: SYSTEM,
-      messages: [{ role: "user", content: `Resume text:\n\n${resumeText}` }],
-      output_config: { format: zodOutputFormat(ResumeSchema) },
+      prompt: `Resume text:\n\n${resumeText}`,
+      schema: ResumeSchema,
+      schemaName: "ParsedResume",
+      maxTokens: 8000,
     });
 
-    const resume = message.parsed_output;
-    if (!resume) {
-      return NextResponse.json({ error: "Could not structure the resume. Try again." }, { status: 502 });
-    }
     return NextResponse.json({ resume });
   } catch (err: unknown) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });
-    }
     const message = err instanceof Error ? err.message : "Failed to parse the resume.";
     return NextResponse.json({ error: message }, { status: 502 });
   }

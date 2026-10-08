@@ -380,7 +380,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const jobHeaderInner = (
     <>
       <div className="min-w-0 flex-1">
-        <AstryxLink href="/jobs">← All jobs</AstryxLink>
         {editingHeader ? (
           <div className="mt-1 space-y-1.5">
             <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" />

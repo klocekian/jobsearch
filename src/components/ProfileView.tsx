@@ -11,9 +11,8 @@ import { Switch } from "@astryxdesign/core/Switch";
 import { Text } from "@astryxdesign/core/Text";
 import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
-import { Code } from "@astryxdesign/core/Code";
-import { Link } from "@astryxdesign/core/Link";
 import { CandidateProfilePanel } from "./CandidateProfilePanel";
+import { AIProvidersPanel } from "./AIProvidersPanel";
 
 type ClaudeStatus = "connected" | "expired" | "none";
 interface AuthUser { id: number; name: string; email: string; claudeStatus: ClaudeStatus }
@@ -34,7 +33,7 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewProps) {
-  const [user, setUser] = useState<AuthUser | null>(initialUser);
+  const [user] = useState<AuthUser | null>(initialUser);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -47,15 +46,6 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
   const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes" | "candidate">("account");
-
-  const refetchUser = useCallback(() => {
-    fetch("/api/auth/me").then(r => r.json())
-      .then((d: { user?: AuthUser | null }) => {
-        setUser(d.user ?? null);
-        window.dispatchEvent(new Event("auth-change"));
-      })
-      .catch(() => {});
-  }, []);
 
   const fetchResumes = useCallback(async () => {
     const res = await fetch("/api/resumes");
@@ -178,13 +168,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
       <ApplicationFields initialFields={initialAutofillFields} />
       </>}
 
-      {profileTab === "ai" && <>
-      {user && (
-        <ClaudeConnection status={user.claudeStatus} onUpdate={() => {
-          refetchUser();
-        }} />
-      )}
-      </>}
+      {profileTab === "ai" && <AIProvidersPanel />}
 
       {profileTab === "extension" && <>
       <Card>
@@ -311,93 +295,6 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
       </Card>
       </>}
     </Stack>
-  );
-}
-
-function ClaudeConnection({ status, onUpdate }: { status: ClaudeStatus; onUpdate: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const [key, setKey] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  const save = async () => {
-    if (!key.trim()) return;
-    setSaving(true);
-    setMsg("");
-    try {
-      const res = await fetch("/api/auth/connect-claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: key.trim() }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      setEditing(false);
-      setKey("");
-      setMsg("Connected!");
-      onUpdate();
-    } catch {
-      setMsg("Failed to save key.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Card>
-      <div className="p-5">
-        <Text type="label" display="block" className="mb-3">Claude AI</Text>
-        <Text type="supporting" display="block" className="mb-3">
-          Connect your Anthropic account to enable AI features: cover letter generation,
-          resume rewriting, and smart field extraction. Uses your Max/Pro subscription credits.
-        </Text>
-
-        {status === "connected" && !editing ? (
-          <HStack gap={3} className="items-center">
-            <Badge label="Connected" variant="success" />
-            <Button label="Update" variant="ghost" size="sm" onClick={() => setEditing(true)} />
-            {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
-          </HStack>
-        ) : status === "expired" && !editing ? (
-          <HStack gap={3} className="items-center">
-            <Badge label="Expired" variant="warning" />
-            <Button label="Reconnect" variant="primary" size="sm" onClick={() => setEditing(true)} />
-            {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
-          </HStack>
-        ) : !editing ? (
-          <HStack gap={3} className="items-center">
-            <Button label="Connect Claude" variant="primary" onClick={() => setEditing(true)} />
-            {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
-          </HStack>
-        ) : (
-          <Stack gap={2}>
-            <TextInput
-              label="API Key"
-              isLabelHidden
-              value={key}
-              onChange={setKey}
-              placeholder="sk-ant-api03-..."
-            />
-            <Card className="p-3">
-              <Stack gap={1}>
-                <Text type="supporting" display="block">
-                  <Text type="supporting" weight="semibold">API Key</Text> — create one at{" "}
-                  <Link href="https://console.anthropic.com/settings/keys" isExternalLink>
-                    console.anthropic.com/settings/keys
-                  </Link>
-                </Text>
-                <Text type="supporting" display="block">
-                  Paste your <Code>sk-ant-api03-...</Code> key above. API usage is pay-as-you-go and separate from consumer Claude.ai Pro/Max subscriptions.
-                </Text>
-              </Stack>
-            </Card>
-            <HStack gap={2}>
-              <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={save} isDisabled={!key.trim() || saving} />
-              <Button label="Cancel" variant="secondary" onClick={() => { setEditing(false); setKey(""); }} />
-            </HStack>
-          </Stack>
-        )}
-      </div>
-    </Card>
   );
 }
 
