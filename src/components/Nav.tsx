@@ -37,29 +37,28 @@ export function Nav({ user }: { user: NavUser | null }) {
   }, [user]);
 
   return (
-    <TopNav
-      label="Main navigation"
-      heading={<TopNavHeading heading="Job Search" headingHref="/jobs" />}
-      startContent={
-        <TopNavItem label="Jobs" href="/jobs" isSelected={pathname.startsWith("/jobs")} />
-      }
-      endContent={
-        user ? (
-          <TopNavItem
-            label={user.name || user.email || "Profile"}
-            href="/profile"
-            isSelected={pathname.startsWith("/profile")}
-            icon={<StatusDot {...CLAUDE_STATUS_DOT[claudeStatus]} tooltip={CLAUDE_STATUS_DOT[claudeStatus].label} />}
-          />
-        ) : (
-          <HStack gap={2} className="items-center">
-            <TopNavItem label="Profile" href="/profile" isSelected={pathname.startsWith("/profile")} />
-            <a href="/api/auth/login">
-              <Button label="Sign in with Google" variant="ghost" size="sm" />
-            </a>
-          </HStack>
-        )
-      }
-    />
+    <header className="sticky top-0 z-30 bg-surface border-b border-border">
+      <TopNav
+        label="Main navigation"
+        heading={<TopNavHeading heading="Job Search" headingHref="/jobs" />}
+        endContent={
+          user ? (
+            <TopNavItem
+              label={user.name || user.email || "Profile"}
+              href="/profile"
+              isSelected={pathname.startsWith("/profile")}
+              icon={<StatusDot {...CLAUDE_STATUS_DOT[claudeStatus]} tooltip={CLAUDE_STATUS_DOT[claudeStatus].label} />}
+            />
+          ) : (
+            <HStack gap={2} className="items-center">
+              <TopNavItem label="Profile" href="/profile" isSelected={pathname.startsWith("/profile")} />
+              <a href="/api/auth/login">
+                <Button label="Sign in with Google" variant="ghost" size="sm" />
+              </a>
+            </HStack>
+          )
+        }
+      />
+    </header>
   );
 }

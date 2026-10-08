@@ -117,12 +117,12 @@ export function JobsFunnel() {
     }
   }
 
-  // SVG layout — main chart only
+  // SVG layout — main chart only (compact 1/2 height)
   const W = 720;
-  const H = 180;
+  const H = 90;
   const padX = 40;
-  const padTop = 20;
-  const padBot = 30;
+  const padTop = 16;
+  const padBot = 20;
   const chartW = W - padX * 2;
   const chartH = H - padTop - padBot;
 
@@ -156,18 +156,20 @@ export function JobsFunnel() {
 
   return (
     <div>
-      <Card className="p-6">
-        <Heading level={2} className="mb-1">Application Pipeline</Heading>
-        <Text type="supporting" display="block" className="mb-4">{jobs.length} total jobs tracked</Text>
+      <Card className="p-4 sm:p-5">
+        <div className="mb-2 flex items-baseline justify-between">
+          <Heading level={3}>Application Pipeline</Heading>
+          <Text type="supporting" color="secondary">{jobs.length} total jobs tracked</Text>
+        </div>
 
         {/* Main pipeline chart */}
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 110 }}>
           {ticks.map((t) => {
             const y = padTop + chartH - (t / max) * chartH;
             return (
               <g key={t}>
                 <line x1={padX} y1={y} x2={W - padX} y2={y} stroke="var(--color-border, #f1f5f9)" strokeWidth={1} />
-                <text x={padX - 8} y={y + 4} textAnchor="end" fontSize={10} fill="var(--color-text-secondary, #94a3b8)">{t}</text>
+                <text x={padX - 8} y={y + 3} textAnchor="end" fontSize={9} fill="var(--color-text-secondary, #94a3b8)">{t}</text>
               </g>
             );
           })}
@@ -181,18 +183,18 @@ export function JobsFunnel() {
             d={`${mainPath} L ${mainPoints[mainPoints.length - 1].x} ${padTop + chartH} L ${mainPoints[0].x} ${padTop + chartH} Z`}
             fill="url(#aGrad)" opacity={0.1}
           />
-          <path d={mainPath} fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" />
+          <path d={mainPath} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinejoin="round" />
           {mainPoints.map((p) => (
             <g key={p.status} onClick={() => setSelected(isSel(p.status) ? null : { status: p.status })} className="cursor-pointer">
-              <circle cx={p.x} cy={p.y} r={isSel(p.status) ? 8 : 6} fill={DOT_COLORS[p.status] ?? "var(--color-text-secondary, #94a3b8)"} stroke="var(--color-background-surface, white)" strokeWidth={2} />
-              {p.count > 0 && <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize={11} fill="var(--color-text-primary, #1e293b)" fontWeight={600}>{p.count}</text>}
-              <text x={p.x} y={padTop + chartH + 16} textAnchor="middle" fontSize={10} fill="var(--color-text-secondary, #64748b)">{p.label}</text>
+              <circle cx={p.x} cy={p.y} r={isSel(p.status) ? 7 : 5} fill={DOT_COLORS[p.status] ?? "var(--color-text-secondary, #94a3b8)"} stroke="var(--color-background-surface, white)" strokeWidth={1.5} />
+              {p.count > 0 && <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize={10} fill="var(--color-text-primary, #1e293b)" fontWeight={600}>{p.count}</text>}
+              <text x={p.x} y={padTop + chartH + 14} textAnchor="middle" fontSize={9} fill="var(--color-text-secondary, #64748b)">{p.label}</text>
             </g>
           ))}
         </svg>
 
         {/* Terminal rows */}
-        <div className="mt-4 border-t border-border pt-3">
+        <div className="mt-3 border-t border-border pt-2">
           {TERMINAL_LINES.map((tl) => {
             const stageCounts = tl.stages.map((stage) => ({
               stage,
@@ -201,7 +203,7 @@ export function JobsFunnel() {
             }));
             const total = stageCounts.reduce((s, c) => s + c.count, 0);
             return (
-              <div key={tl.status} className="flex items-center gap-0 py-1.5">
+              <div key={tl.status} className="flex items-center gap-0 py-1">
                 <div className="w-[72px] shrink-0 text-right pr-3">
                   <Text type="supporting" weight="semibold" style={{ color: tl.color }}>{tl.label}</Text>
                 </div>
