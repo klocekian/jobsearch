@@ -15,7 +15,6 @@ import { Card } from "@astryxdesign/core/Card";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Text } from "@astryxdesign/core/Text";
-import { Heading } from "@astryxdesign/core/Heading";
 
 import { Badge } from "@astryxdesign/core/Badge";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
@@ -48,17 +47,17 @@ function SummaryCards({ report }: { report: MatchReport }) {
     { label: "Recruiter Tips", n: report.counts.recruiterIssues },
   ];
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <ScoreRing score={report.score} />
-      <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="flex items-center gap-3">
+      <ScoreRing score={report.score} size={60} />
+      <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
         {cards.map((c) => (
-          <Card key={c.label} className="px-4 py-3">
-            <Text type="supporting" color="secondary" display="block">{c.label}</Text>
-            <div className="mt-1">
-              <Text type="large" weight="semibold" color={c.n > 0 ? "primary" : undefined} className={c.n === 0 ? "text-emerald-600" : undefined}>
+          <Card key={c.label} className="px-3 py-2">
+            <Text type="supporting" color="secondary" display="block" className="text-xs">{c.label}</Text>
+            <div className="mt-0.5">
+              <span className={`text-base font-semibold ${c.n === 0 ? "text-emerald-600 dark:text-emerald-400" : "text-primary"}`}>
                 {c.n}
-              </Text>{" "}
-              <Text type="supporting" color="secondary">{c.n === 1 ? "issue" : "issues"}</Text>
+              </span>{" "}
+              <span className="text-xs text-muted-foreground">{c.n === 1 ? "issue" : "issues"}</span>
             </div>
           </Card>
         ))}
@@ -69,8 +68,8 @@ function SummaryCards({ report }: { report: MatchReport }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-8">
-      <Heading level={2} className="mb-3 tracking-tight">{title}</Heading>
+    <section className="mt-4">
+      <Text type="label" weight="semibold" display="block" className="mb-1.5 text-xs uppercase tracking-wider text-muted-foreground">{title}</Text>
       <Card className="overflow-hidden">{children}</Card>
     </section>
   );
@@ -78,15 +77,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
   return (
-    <div className="divide-y divide-border">
+    <div className="divide-y divide-border text-xs">
       {groups.map((g) => (
-        <div key={g.label} className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-[160px_1fr]">
-          <Text type="label" weight="semibold" display="block">{g.label}</Text>
-          <ul className="space-y-2">
+        <div key={g.label} className="grid grid-cols-1 gap-1.5 px-3.5 py-2 sm:grid-cols-[130px_1fr]">
+          <Text weight="semibold" display="block" className="text-xs">{g.label}</Text>
+          <ul className="space-y-1">
             {g.items.map((item, i) => (
-              <li key={i} className="flex gap-3 leading-relaxed">
-                <StatusIcon status={item.status} />
-                <Text color="secondary">{item.message}</Text>
+              <li key={i} className="flex gap-2 leading-snug">
+                <StatusIcon status={item.status} className="h-4 w-4 shrink-0 mt-0.5" />
+                <Text color="secondary" className="text-xs">{item.message}</Text>
               </li>
             ))}
           </ul>
@@ -98,43 +97,43 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
 
 function SkillsTable({ section, title }: { section: SkillSection; title: string }) {
   return (
-    <div>
-      <div className="flex items-center gap-4 border-b border-border px-5 py-3">
-        <Text type="label" weight="semibold">{title}</Text>
-        <Text color="secondary">
-          Matched <Text weight="semibold" className="text-emerald-600 dark:text-emerald-400">{section.matched}</Text>
+    <div className="text-xs">
+      <div className="flex items-center gap-3 border-b border-border px-3.5 py-1.5 bg-muted/30">
+        <Text weight="semibold" className="text-xs">{title}</Text>
+        <Text color="secondary" className="text-xs">
+          Matched <Text weight="semibold" className="text-emerald-600 dark:text-emerald-400 text-xs">{section.matched}</Text>
         </Text>
-        <Text color="secondary">
-          Missing <Text weight="semibold" className="text-rose-500 dark:text-rose-400">{section.missing}</Text>
+        <Text color="secondary" className="text-xs">
+          Missing <Text weight="semibold" className="text-rose-500 dark:text-rose-400 text-xs">{section.missing}</Text>
         </Text>
       </div>
       {section.rows.length === 0 ? (
-        <Text type="supporting" color="secondary" display="block" className="px-5 py-4">No skills of this type detected in the job description.</Text>
+        <Text type="supporting" color="secondary" display="block" className="px-3.5 py-2 text-xs">No skills of this type detected in the job description.</Text>
       ) : (
-        <table className="w-full">
+        <table className="w-full text-xs">
           <thead>
-            <tr className="text-left uppercase tracking-wide">
-              <th className="px-5 py-2"><Text type="supporting" color="secondary" weight="semibold">Skill</Text></th>
-              <th className="px-5 py-2 text-right"><Text type="supporting" color="secondary" weight="semibold">Resume</Text></th>
-              <th className="px-5 py-2 text-right"><Text type="supporting" color="secondary" weight="semibold">Job Description</Text></th>
+            <tr className="text-left uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/20">
+              <th className="px-3.5 py-1 text-[11px] font-medium">Skill</th>
+              <th className="px-3.5 py-1 text-right text-[11px] font-medium">Resume</th>
+              <th className="px-3.5 py-1 text-right text-[11px] font-medium">Job</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {section.rows.map((row) => (
-              <tr key={row.skill}>
-                <td className="px-5 py-2.5">
-                  <span className="inline-flex items-center gap-2">
-                    <StatusIcon status={row.state === "missing" ? "fail" : "pass"} className="h-4 w-4" />
-                    <Text>{row.skill}</Text>
+              <tr key={row.skill} className="hover:bg-muted/30">
+                <td className="px-3.5 py-1.5">
+                  <span className="inline-flex items-center gap-1.5">
+                    <StatusIcon status={row.state === "missing" ? "fail" : "pass"} className="h-3.5 w-3.5 shrink-0" />
+                    <Text className="text-xs">{row.skill}</Text>
                     {row.state === "exceeds" && (
                       <Badge variant="warning" label="over-indexed" />
                     )}
                   </span>
                 </td>
-                <td className="px-5 py-2.5 text-right tabular-nums">
-                  {row.state === "missing" ? <Text className="text-rose-400">✕</Text> : <Text>{row.resumeCount}</Text>}
+                <td className="px-3.5 py-1.5 text-right tabular-nums text-xs">
+                  {row.state === "missing" ? <Text className="text-rose-400 text-xs">✕</Text> : <Text className="text-xs">{row.resumeCount}</Text>}
                 </td>
-                <td className="px-5 py-2.5 text-right tabular-nums"><Text>{row.jobCount}</Text></td>
+                <td className="px-3.5 py-1.5 text-right tabular-nums text-xs"><Text className="text-xs">{row.jobCount}</Text></td>
               </tr>
             ))}
           </tbody>
@@ -146,23 +145,23 @@ function SkillsTable({ section, title }: { section: SkillSection; title: string 
 
 function RecruiterTable({ tips }: { tips: RecruiterTip[] }) {
   return (
-    <div className="divide-y divide-border">
+    <div className="divide-y divide-border text-xs">
       {tips.map((t) => (
-        <div key={t.label} className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-[160px_1fr]">
-          <Text type="label" weight="semibold" display="block">{t.label}</Text>
-          <div className="space-y-2">
-            <div className="flex gap-3 leading-relaxed">
-              <StatusIcon status={t.status} />
-              <Text color="secondary">{t.message}</Text>
+        <div key={t.label} className="grid grid-cols-1 gap-1.5 px-3.5 py-2 sm:grid-cols-[130px_1fr]">
+          <Text weight="semibold" display="block" className="text-xs">{t.label}</Text>
+          <div className="space-y-1">
+            <div className="flex gap-2 leading-snug">
+              <StatusIcon status={t.status} className="h-4 w-4 shrink-0 mt-0.5" />
+              <Text color="secondary" className="text-xs">{t.message}</Text>
             </div>
             {t.evidence && t.evidence.length > 0 && (
-              <div className="ml-8 rounded-lg bg-muted px-3 py-2">
-                <Text type="supporting" weight="semibold" display="block" className="mb-1 uppercase tracking-wide">
+              <div className="ml-6 rounded bg-muted px-2.5 py-1">
+                <Text type="supporting" weight="semibold" display="block" className="mb-0.5 text-[10px] uppercase tracking-wide">
                   Evidence
                 </Text>
-                <ul className="space-y-1 italic">
+                <ul className="space-y-0.5 italic text-xs">
                   {t.evidence.map((e, i) => (
-                    <li key={i}><Text type="supporting" color="secondary">&ldquo;{e}&rdquo;</Text></li>
+                    <li key={i}><Text type="supporting" color="secondary" className="text-xs">&ldquo;{e}&rdquo;</Text></li>
                   ))}
                 </ul>
               </div>
@@ -177,16 +176,16 @@ function RecruiterTable({ tips }: { tips: RecruiterTip[] }) {
 function AiDetectionSection({ state }: { state: AiDetectionState }) {
   if (state.status === "loading") {
     return (
-      <div className="px-5 py-6">
-        <div className="flex items-center gap-3">
+      <div className="px-4 py-4">
+        <div className="flex items-center gap-2">
           <Spinner size="sm" />
-          <Text color="secondary">Checking the writing for AI authorship…</Text>
+          <Text color="secondary" className="text-xs">Checking the writing for AI authorship…</Text>
         </div>
       </div>
     );
   }
   if (!state.data) {
-    return <Banner status="info" title="AI authorship check unavailable." className="mx-5 my-4" />;
+    return <Banner status="info" title="AI authorship check unavailable." className="mx-4 my-3" />;
   }
   return (
     <AiDetectionPanel
@@ -200,28 +199,28 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
   const bandColor =
     ai.band === "high" ? "text-rose-500" : ai.band === "moderate" ? "text-amber-500" : "text-emerald-600";
   return (
-    <div className="px-5 py-4">
+    <div className="px-4 py-3 text-xs">
       <div className="flex items-center gap-3">
-        <Heading level={2} className={bandColor}>{ai.confidence}%</Heading>
+        <span className={`text-2xl font-bold ${bandColor}`}>{ai.confidence}%</span>
         <div>
-          <Text weight="semibold" display="block" className={`capitalize ${bandColor}`}>{ai.band} AI signal</Text>
-          <Text color="secondary" display="block">
-            Probabilistic estimate of how AI-generated the resume reads — not a verdict.
+          <Text weight="semibold" display="block" className={`capitalize text-xs ${bandColor}`}>{ai.band} AI signal</Text>
+          <Text color="secondary" display="block" className="text-xs">
+            Probabilistic estimate of how AI-generated the resume reads.
           </Text>
         </div>
       </div>
-      {note && <Text type="supporting" display="block" className="mt-2 text-amber-600">{note}</Text>}
-      <div className="mt-4 space-y-3">
+      {note && <Text type="supporting" display="block" className="mt-1 text-amber-600 text-xs">{note}</Text>}
+      <div className="mt-3 space-y-2">
         {ai.patterns.map((p) => (
           <div key={p.label}>
             <div className="flex items-center justify-between">
-              <Text weight="semibold">{p.label}</Text>
-              <Text type="supporting" color="secondary" className="tabular-nums">{p.signal}</Text>
+              <Text weight="semibold" className="text-xs">{p.label}</Text>
+              <Text type="supporting" color="secondary" className="tabular-nums text-xs">{p.signal}</Text>
             </div>
-            <ProgressBar value={p.signal} max={100} label={p.label} className="mt-1" />
-            <Text type="supporting" color="secondary" display="block" className="mt-1 leading-relaxed">{p.message}</Text>
+            <ProgressBar value={p.signal} max={100} label={p.label} className="mt-0.5 h-1.5" />
+            <Text type="supporting" color="secondary" display="block" className="mt-0.5 text-xs leading-snug">{p.message}</Text>
             {p.examples.length > 0 && (
-              <Text type="supporting" color="secondary" display="block" className="mt-1">e.g. {p.examples.join(", ")}</Text>
+              <Text type="supporting" color="secondary" display="block" className="mt-0.5 text-xs">e.g. {p.examples.join(", ")}</Text>
             )}
           </div>
         ))}
@@ -247,7 +246,7 @@ export function MatchReportView({
   return (
     <div>
       {!hideSegmentedControl && (
-        <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <SegmentedControl value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)} label="Report view">
             <SegmentedControlItem value="match" label={`ATS pass (${report.score}/100)`} />
             <SegmentedControlItem value="ai" label={aiDetection.data !== null && aiDetection.data !== undefined ? `AI slop (${aiDetection.data.confidence}%)` : "AI slop"} />
@@ -265,9 +264,7 @@ export function MatchReportView({
       )}
 
       {subTab === "match" && (
-        <>
-          <Heading level={1} className="mb-5">ATS Match Report</Heading>
-
+        <div className="space-y-3">
           <SummaryCards report={report} />
 
           <Section title="Searchability">
@@ -285,16 +282,13 @@ export function MatchReportView({
           <Section title="Recruiter Tips">
             <RecruiterTable tips={report.recruiterTips} />
           </Section>
-        </>
+        </div>
       )}
 
       {subTab === "ai" && (
-        <>
-          <Heading level={1} className="mb-5 tracking-tight">AI Authorship Detection</Heading>
-          <Card className="overflow-hidden">
-            <AiDetectionSection state={aiDetection} />
-          </Card>
-        </>
+        <Card className="overflow-hidden">
+          <AiDetectionSection state={aiDetection} />
+        </Card>
       )}
     </div>
   );

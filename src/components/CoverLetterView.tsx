@@ -114,18 +114,10 @@ export function CoverLetterView({
     downloadCoverLetterPdf({ contact, body: letter, date, company });
 
   return (
-    <div>
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <Heading level={2}>Cover Letter</Heading>
-          <Text>
-            Generated from your resume and this job posting — grounded in your real experience, never
-            fabricated. Add a note below about what draws you to the role, then edit the draft and save
-            it as a PDF. Your draft is saved and restored as you work.
-          </Text>
-          {restored && (
-            <Text>Restored your saved draft.</Text>
-          )}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {restored && <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Restored saved draft</span>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
@@ -137,7 +129,7 @@ export function CoverLetterView({
           />
           <Button
             label="Download PDF"
-            variant="primary"
+            variant="secondary"
             size="sm"
             onClick={downloadPdf}
             isDisabled={!letter.trim()}
@@ -145,22 +137,18 @@ export function CoverLetterView({
         </div>
       </div>
 
-      <div className="mb-4">
-        <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
-      </div>
+      <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
 
       <TextArea
         label="What interests you about this role? (optional)"
         value={interests}
         onChange={setInterests}
-        rows={4}
-        placeholder="e.g. I've wanted to work on consumer subscription products at scale, and the AI-first pivot is exactly the kind of ambiguity I like leading through."
+        rows={2}
+        placeholder="e.g. I've wanted to work on consumer subscription products at scale…"
       />
 
       {status === "error" && (
-        <div className="mt-4">
-          <Banner status="error" title={error} />
-        </div>
+        <Banner status="error" title={error} className="text-xs" />
       )}
 
       {status === "loading" && (
