@@ -11,9 +11,6 @@ import { combinedContextText, type ContextMaterial } from "@/lib/context";
 import type { AiDetection } from "@/lib/analysis/types";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
-import { Card } from "@astryxdesign/core/Card";
-import { Heading } from "@astryxdesign/core/Heading";
-import { Text } from "@astryxdesign/core/Text";
 
 interface ResumeViewProps {
   /** The analyzed resume text — the starting point ("original"). */
@@ -161,20 +158,14 @@ export function ResumeView({
   };
 
   return (
-    <div>
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <Heading level={2}>Resume</Heading>
-          <Text type="supporting" display="block" className="mt-1">
-            Generate a tailored rewrite, then click any suggestion to accept it into your resume, or
-            just type to edit. Export a clean PDF when you&apos;re done. Saved on this device and
-            restored next time.
-          </Text>
-          {restored && <Text type="supporting" display="block" className="mt-1 text-emerald-600">Restored your saved draft.</Text>}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {restored && <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Restored saved draft</span>}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            label={gen.kind === "loading" ? "Rewriting…" : hasRewrite ? "Regenerate" : "Generate rewrite"}
+            label={gen.kind === "loading" ? "Rewriting…" : hasRewrite ? "Regenerate rewrite" : "Generate rewrite"}
             variant="primary"
             size="sm"
             onClick={generate}
@@ -182,14 +173,14 @@ export function ResumeView({
           />
           <Button
             label={exporting.kind === "loading" ? "Preparing…" : "Download PDF"}
-            variant="primary"
+            variant="secondary"
             size="sm"
             onClick={downloadPdf}
             isDisabled={exporting.kind === "loading"}
           />
           <Button
             label="Save as Resume"
-            variant="secondary"
+            variant="ghost"
             size="sm"
             onClick={async () => {
               const text = resultRef.current.trim() || original;
@@ -208,32 +199,23 @@ export function ResumeView({
       </div>
 
       {exporting.kind === "error" && (
-        <Banner status="error" title={exporting.message ?? "An error occurred."} className="mb-4" />
+        <Banner status="error" title={exporting.message ?? "An error occurred."} className="text-xs" />
+      )}
+      {gen.kind === "error" && (
+        <Banner status="error" title={gen.message ?? "Something went wrong."} className="text-xs" />
       )}
 
-      {/* Control: context materials + generate */}
-      <Card className="mb-4 p-5">
-        <Text type="label" weight="semibold" display="block">Tailor to this posting</Text>
-        <Text type="supporting" display="block" className="mb-3 mt-1">
-          Rewrites your resume to match the job, grounded in your real experience — never fabricated.
-          It also fixes the AI-authorship tells flagged in the report. Add context materials to ground
-          it in more of your work.
-        </Text>
-        <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
-        {gen.kind === "error" && (
-          <Banner status="error" title={gen.message ?? "Something went wrong."} className="mt-3" />
-        )}
-      </Card>
+      {/* Single-row Context materials uploader */}
+      <ContextMaterialsPanel materials={materials} onChange={onMaterialsChange} />
 
       {hasRewrite && (
-        <div className="mb-2 flex flex-wrap items-center gap-3">
-          <Text type="supporting">
-            Click a <span className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-1 text-emerald-900 dark:text-emerald-200">green suggestion</span> to accept it,
-            or × to dismiss. Type anywhere to edit.
-          </Text>
-          <div className="ml-auto flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground">
+            Click a <span className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-1 text-emerald-900 dark:text-emerald-200">green suggestion</span> to accept, or × to dismiss. Type anywhere to edit.
+          </span>
+          <div className="ml-auto flex gap-1.5">
             <Button label="Accept all" variant="secondary" size="sm" onClick={acceptAll} />
-            <Button label="Reset to original" variant="secondary" size="sm" onClick={reset} />
+            <Button label="Reset to original" variant="ghost" size="sm" onClick={reset} />
           </div>
         </div>
       )}

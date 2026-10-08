@@ -163,6 +163,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [analyzing, setAnalyzing] = useState(false);
+  const [withAi, setWithAi] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("jobWorkspaceWithAi") === "1";
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (job) {
@@ -613,61 +619,71 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   );
 
   const resumeControls = (
-    <>
-            <div className="min-w-0">
-              <Text type="supporting" display="block">Resume</Text>
-              <div className="mt-1 flex items-center gap-2">
-                {savedResumes.length > 0 && (
-                  <Selector
-                    label="Resume"
-                    isLabelHidden
-                    className="max-w-[220px]"
-                    options={savedResumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` }))}
-                    value={String(savedResumes.find(r => r.content === resumeText)?.id ?? "")}
-                    onChange={(v) => {
-                      const r = savedResumes.find(r => r.id === Number(v));
-                      if (r) setResumeText(r.content);
-                    }}
-                  />
-                )}
-                <input
-                  ref={resumeFileRef}
-                  type="file"
-                  className="hidden"
-                  accept=".txt,.md,.pdf,.docx"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const text = await file.text();
-                    const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_");
-                    const res = await fetch("/api/resumes", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ name, content: text }),
-                    });
-                    if (res.ok) {
-                      const d = await res.json();
-                      setSavedResumes(prev => [...prev, d.resume]);
-                      setResumeText(text);
-                    }
-                    e.target.value = "";
-                  }}
-                />
-                <Button label="+ Add" variant="secondary" size="sm" onClick={() => resumeFileRef.current?.click()} />
-              </div>
-              <Text type="supporting" display="block" className="mt-1">
-                {analyzed
-                  ? <>Score: <Text weight="semibold">{analyzed.report.score}</Text>/100</>
-                  : "Select a resume and click Analyze"
-                }
-              </Text>
-            </div>
-            {!analyzed && (
-              <div className="flex shrink-0 items-center gap-2">
-                <Button label={analyzing ? "Analyzing…" : "Analyze"} variant="primary" size="sm" onClick={() => runUnifiedAnalysis(false)} isDisabled={!resumeText.trim() || !job.posting_text.trim() || analyzing} />
-              </div>
-            )}
-    </>
+    <div className="flex w-full items-center justify-between gap-3 text-xs">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-muted-foreground font-medium shrink-0">Resume:</span>
+        {savedResumes.length > 0 && (
+          <Selector
+            label="Resume"
+            isLabelHidden
+            className="max-w-[200px]"
+            options={savedResumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` }))}
+            value={String(savedResumes.find(r => r.content === resumeText)?.id ?? "")}
+            onChange={(v) => {
+              const r = savedResumes.find(r => r.id === Number(v));
+              if (r) setResumeText(r.content);
+            }}
+          />
+        )}
+        <input
+          ref={resumeFileRef}
+          type="file"
+          className="hidden"
+          accept=".txt,.md,.pdf,.docx"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_");
+            const res = await fetch("/api/resumes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name, content: text }),
+            });
+            if (res.ok) {
+              const d = await res.json();
+              setSavedResumes(prev => [...prev, d.resume]);
+              setResumeText(text);
+            }
+            e.target.value = "";
+          }}
+        />
+        <Button label="+ Add" variant="ghost" size="sm" onClick={() => resumeFileRef.current?.click()} />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={withAi}
+            onChange={(e) => {
+              setWithAi(e.target.checked);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
+              }
+            }}
+            className="accent-primary rounded cursor-pointer"
+          />
+          <span>with AI</span>
+        </label>
+        <Button
+          label={analyzing || fitnessRunning ? "Analyzing…" : "Analyze"}
+          variant="primary"
+          size="sm"
+          onClick={() => runUnifiedAnalysis(withAi)}
+          isDisabled={analyzing || fitnessRunning || !job.posting_text.trim()}
+        />
+      </div>
+    </div>
   );
 
   const rightTabBar = (
@@ -907,15 +923,15 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border p-4">{leftPaneBody}</div>
 
       {/* Analysis controls */}
-      <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-3">
-        <div className="flex items-start justify-between gap-3">{resumeControls}</div>
+      <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-2 flex items-center min-h-[57px]">
+        <div className="flex items-center justify-between w-full">{resumeControls}</div>
       </div>
 
       {/* Right tabs */}
       <div className="col-start-2 row-start-2 border-b border-border bg-surface px-4">{rightTabBar}</div>
 
       {/* Right content */}
-      <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-4">{rightPaneBody}</div>
+      <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
     </div>
   );
 }

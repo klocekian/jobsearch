@@ -6,7 +6,6 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Text } from "@astryxdesign/core/Text";
-import { Heading } from "@astryxdesign/core/Heading";
 
 /**
  * Renders a fitness check.
@@ -33,17 +32,17 @@ const VERDICT_VARIANTS: Record<string, "success" | "warning" | "error" | "neutra
 
 function VerdictRow({ item }: { item: FitnessRequirement }) {
   return (
-    <div className="grid grid-cols-[92px_1fr] gap-3 px-5 py-4">
+    <div className="grid grid-cols-[80px_1fr] gap-2 px-3.5 py-2.5 text-xs">
       <div>
         <Badge variant={VERDICT_VARIANTS[item.verdict] ?? "neutral"} label={item.verdict} />
       </div>
       <div className="min-w-0">
-        <blockquote className="border-l-2 border-border pl-3">
-          <Text type="body" className="italic">{item.verbatim}</Text>
+        <blockquote className="border-l-2 border-border pl-2.5">
+          <Text className="italic text-xs leading-snug">{item.verbatim}</Text>
         </blockquote>
         {item.note && (
-          <div className="mt-2">
-            <Text type="supporting" color="secondary">{item.note}</Text>
+          <div className="mt-1">
+            <Text type="supporting" color="secondary" className="text-xs">{item.note}</Text>
           </div>
         )}
       </div>
@@ -61,14 +60,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-8">
-      <Heading level={2} className="tracking-tight">{title}</Heading>
+    <section className="mt-4">
+      <Text type="label" weight="semibold" display="block" className="text-xs uppercase tracking-wider text-muted-foreground">{title}</Text>
       {subtitle && (
-        <div className="mb-3 mt-1">
-          <Text type="supporting" color="secondary">{subtitle}</Text>
+        <div className="mb-1.5 mt-0.5">
+          <Text type="supporting" color="secondary" className="text-xs">{subtitle}</Text>
         </div>
       )}
-      <div className={subtitle ? "" : "mt-3"}>
+      <div className={subtitle ? "" : "mt-1.5"}>
         <Card className="overflow-hidden">{children}</Card>
       </div>
     </section>
@@ -102,9 +101,9 @@ export function FitnessReportView({
   const hasActions = Boolean(onAddToNotes || onAbandon);
 
   return (
-    <div className="px-1 pb-10">
+    <div className="space-y-3 pb-6 text-xs">
       {result.hard_stop.triggered && (
-        <div className="mb-5">
+        <div className="mb-3">
           <Banner
             status="error"
             title="Hard stop"
@@ -114,10 +113,10 @@ export function FitnessReportView({
       )}
 
       {/* Score header */}
-      <Card className="px-5 py-4">
-        <div className="flex flex-wrap items-baseline gap-3">
-          <Text type="display-2" weight="semibold">{result.score}</Text>
-          <Text type="large" color="secondary">/ 10</Text>
+      <Card className="px-4 py-3">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span className="text-2xl font-bold text-primary">{result.score}</span>
+          <span className="text-xs text-muted-foreground">/ 10</span>
           <div className="ml-auto">
             <Badge
               variant={result.verdict === "APPLY" ? "success" : "error"}
@@ -125,17 +124,12 @@ export function FitnessReportView({
             />
           </div>
         </div>
-        <div className="mt-2">
-          <Text type="body">{result.one_line}</Text>
+        <div className="mt-1.5">
+          <Text className="text-xs leading-relaxed">{result.one_line}</Text>
         </div>
-        <div className="mt-3 border-t border-border pt-3">
-          <Text type="supporting" color="secondary" display="block">
-            {result.company} — {result.title}
-          </Text>
-          <Text type="supporting" color="secondary" display="block">
-            {result.location} · {result.work_arrangement} · travel {result.travel_percent} ·{" "}
-            {result.salary}
-          </Text>
+        <div className="mt-2 border-t border-border pt-2 text-[11px] text-muted-foreground">
+          <div>{result.company} — {result.title}</div>
+          <div>{result.location} · {result.work_arrangement} · travel {result.travel_percent} · {result.salary}</div>
         </div>
       </Card>
 
@@ -143,11 +137,12 @@ export function FitnessReportView({
           a press — automating the decision is how you stop reading the report
           that informs it. */}
       {hasActions && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {onAddToNotes && (
             <Button
               label={busy ? "Working…" : "Add to notes"}
               variant="secondary"
+              size="sm"
               onClick={onAddToNotes}
               isDisabled={busy}
             />
@@ -156,6 +151,7 @@ export function FitnessReportView({
             <Button
               label="Add to notes and abandon"
               variant="secondary"
+              size="sm"
               onClick={onAbandon}
               isDisabled={busy}
             />
@@ -163,34 +159,34 @@ export function FitnessReportView({
         </div>
       )}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <Card className="px-5 py-4">
-          <Text type="supporting" color="secondary" display="block">Employer type</Text>
-          <div className="mt-1">
-            <Text type="body" weight="semibold">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Card className="px-3.5 py-2.5">
+          <Text type="supporting" color="secondary" display="block" className="text-[11px]">Employer type</Text>
+          <div className="mt-0.5">
+            <Text weight="semibold" className="text-xs">
               {EMPLOYER_TYPE_LABELS[result.employer_type] ?? result.employer_type}
             </Text>
           </div>
           {result.employer_type_note && (
-            <div className="mt-1">
-              <Text type="supporting" color="secondary">{result.employer_type_note}</Text>
+            <div className="mt-0.5">
+              <Text type="supporting" color="secondary" className="text-xs">{result.employer_type_note}</Text>
             </div>
           )}
         </Card>
-        <Card className="px-5 py-4">
-          <Text type="supporting" color="secondary" display="block">
+        <Card className="px-3.5 py-2.5">
+          <Text type="supporting" color="secondary" display="block" className="text-[11px]">
             Logistics (light touch at this stage)
           </Text>
-          <div className="mt-1">
-            <Text type="body">{result.logistics_note}</Text>
+          <div className="mt-0.5">
+            <Text className="text-xs">{result.logistics_note}</Text>
           </div>
         </Card>
       </div>
 
       <Section title={`Stated minimums, objective (${objective.length})`}>
         {objective.length === 0 ? (
-          <div className="px-5 py-4">
-            <Text type="body" color="secondary">Posting states no checkable minimums.</Text>
+          <div className="px-3.5 py-2.5">
+            <Text color="secondary" className="text-xs">Posting states no checkable minimums.</Text>
           </div>
         ) : (
           <div className="divide-y divide-border">

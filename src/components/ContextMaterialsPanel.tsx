@@ -10,10 +10,7 @@ import {
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
-import { Card } from "@astryxdesign/core/Card";
 import { Banner } from "@astryxdesign/core/Banner";
-import { Heading } from "@astryxdesign/core/Heading";
-import { Text } from "@astryxdesign/core/Text";
 import { Link } from "@astryxdesign/core/Link";
 
 interface ContextMaterialsPanelProps {
@@ -97,65 +94,73 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
   };
 
   return (
-    <Card className="p-5">
-      <div className="mb-1 flex items-center justify-between">
-        <Heading level={3}>Context materials</Heading>
-        <Text type="supporting" color="secondary">Shared across Resume &amp; Cover Letter</Text>
-      </div>
-      <Text type="supporting" color="secondary" display="block" className="mb-3">
-        Add supporting materials the AI can draw on — brag docs, project write-ups, past letters,
-        performance reviews. Everything stays grounded in what you provide.
-      </Text>
-
+    <div className="space-y-1.5">
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
           void handleFiles(e.dataTransfer.files);
         }}
-        className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted px-3 py-2"
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-1.5 text-xs"
       >
-        <Text type="supporting" color="secondary">
-          Drop PDF / DOCX / .txt / .md here,{" "}
-          <Link onClick={() => fileInputRef.current?.click()} hasUnderline>
-            browse
-          </Link>
-          , or{" "}
-          <Link onClick={() => setPasteOpen((v) => !v)} hasUnderline>
-            paste a note
-          </Link>
-        </Text>
-        {status.kind === "loading" && <Text type="supporting" color="secondary">Reading…</Text>}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
-          multiple
-          className="hidden"
-          onChange={(e) => void handleFiles(e.target.files)}
-        />
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-semibold text-foreground shrink-0">Context:</span>
+          <span className="text-muted-foreground truncate">
+            Drop docs here,{" "}
+            <Link onClick={() => fileInputRef.current?.click()} hasUnderline>
+              browse
+            </Link>
+            , or{" "}
+            <Link onClick={() => setPasteOpen((v) => !v)} hasUnderline>
+              paste note
+            </Link>
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+            multiple
+            className="hidden"
+            onChange={(e) => void handleFiles(e.target.files)}
+          />
+        </div>
+        {status.kind === "loading" && <span className="text-muted-foreground">Reading…</span>}
+        {materials.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 py-0.5">
+            {materials.map((m) => (
+              <span
+                key={m.id}
+                className="inline-flex items-center gap-1 rounded bg-surface border border-border px-2 py-0.5 text-xs text-foreground shadow-xs"
+              >
+                <span className="max-w-[130px] truncate font-medium">{m.name}</span>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground ml-0.5 cursor-pointer font-bold leading-none"
+                  onClick={() => remove(m.id)}
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {status.kind === "error" && <Banner status="error" title={status.message ?? "An error occurred."} className="mt-2" />}
+      {status.kind === "error" && (
+        <Banner status="error" title={status.message ?? "An error occurred."} className="text-xs" />
+      )}
 
       {pasteOpen && (
-        <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted p-3">
-          <TextInput
-            label="Label"
-            isLabelHidden
-            value={pasteName}
-            onChange={setPasteName}
-            placeholder="Label (e.g. 2024 brag doc)"
-          />
-          <TextArea
-            label="Paste text"
-            isLabelHidden
-            value={pasteText}
-            onChange={setPasteText}
-            placeholder="Paste any supporting text here…"
-            rows={4}
-          />
-          <div className="flex gap-2">
+        <div className="space-y-1.5 rounded-lg border border-border bg-muted/60 p-2 text-xs">
+          <div className="flex gap-1.5">
+            <TextInput
+              label="Label"
+              isLabelHidden
+              value={pasteName}
+              onChange={setPasteName}
+              placeholder="Label (e.g. 2024 brag doc)"
+            />
             <Button
               label="Add"
               variant="primary"
@@ -170,32 +175,16 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
               onClick={() => setPasteOpen(false)}
             />
           </div>
+          <TextArea
+            label="Paste text"
+            isLabelHidden
+            value={pasteText}
+            onChange={setPasteText}
+            placeholder="Paste supporting text here…"
+            rows={3}
+          />
         </div>
       )}
-
-      {materials.length > 0 && (
-        <ul className="mt-3 space-y-1.5">
-          {materials.map((m) => (
-            <li
-              key={m.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
-            >
-              <span className="min-w-0 flex-1 truncate">
-                <Text type="supporting" weight="semibold">{m.name}</Text>{" "}
-                <Text type="supporting" color="secondary">
-                  · {m.source === "paste" ? "pasted" : m.source.toUpperCase()} · {m.text.length.toLocaleString()} chars
-                </Text>
-              </span>
-              <Button
-                label="×"
-                variant="ghost"
-                size="sm"
-                onClick={() => remove(m.id)}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
+    </div>
   );
 }
