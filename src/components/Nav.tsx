@@ -121,47 +121,52 @@ export function Nav({ user }: { user: NavUser | null }) {
               )}
 
               {isJobPage && (
-                <HStack gap={2} className="items-center mr-2">
-                  <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={withAi}
-                      onChange={(e) => {
-                        setWithAi(e.target.checked);
-                        localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
-                      }}
-                      className="accent-primary rounded cursor-pointer"
-                    />
-                    <span>with AI</span>
-                  </label>
-                  <Button
-                    label={jobWorkspaceState?.analyzing ? "Analyzing…" : "Analyze"}
-                    variant="primary"
-                    size="sm"
-                    onClick={() => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "analyze", withAi } }))}
-                    isDisabled={jobWorkspaceState?.analyzing}
-                  />
+                <HStack gap={3} className="items-center mr-2">
                   {jobWorkspaceState?.status && (
-                    <Selector
-                      label="Status"
-                      isLabelHidden
-                      size="sm"
-                      className="w-36"
-                      startIcon={<JobStatusDot status={jobWorkspaceState.status} />}
-                      options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
-                      value={jobWorkspaceState.status}
-                      onChange={(v) => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "status", status: v } }))}
-                    />
+                    <HStack gap={1.5} className="items-center">
+                      <span className="text-xs text-secondary font-medium whitespace-nowrap">Change Status:</span>
+                      <Selector
+                        label="Change Status"
+                        isLabelHidden
+                        size="sm"
+                        className="w-36"
+                        startIcon={<JobStatusDot status={jobWorkspaceState.status} />}
+                        options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
+                        value={jobWorkspaceState.status}
+                        onChange={(v) => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "status", status: v } }))}
+                      />
+                    </HStack>
                   )}
-                  <DropdownMenu
-                    button={{ label: "⋯", variant: "ghost", size: "sm" }}
-                    items={[
-                      {
-                        label: "Delete Job",
-                        onClick: () => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "delete" } })),
-                      },
-                    ]}
-                  />
+                  <HStack gap={2} className="items-center">
+                    <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={withAi}
+                        onChange={(e) => {
+                          setWithAi(e.target.checked);
+                          localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
+                        }}
+                        className="accent-primary rounded cursor-pointer"
+                      />
+                      <span>with AI</span>
+                    </label>
+                    <Button
+                      label={jobWorkspaceState?.analyzing ? "Analyzing…" : "Analyze"}
+                      variant="primary"
+                      size="sm"
+                      onClick={() => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "analyze", withAi } }))}
+                      isDisabled={jobWorkspaceState?.analyzing}
+                    />
+                    <DropdownMenu
+                      button={{ label: "⋯", variant: "ghost", size: "sm" }}
+                      items={[
+                        {
+                          label: "Delete Job",
+                          onClick: () => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "delete" } })),
+                        },
+                      ]}
+                    />
+                  </HStack>
                 </HStack>
               )}
 
