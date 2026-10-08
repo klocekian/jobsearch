@@ -68,6 +68,24 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const [checking, setChecking] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarHeight, setToolbarHeight] = useState(52);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.borderBoxSize?.[0]?.blockSize) {
+          setToolbarHeight(entry.borderBoxSize[0].blockSize);
+        } else {
+          setToolbarHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(toolbarRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
@@ -319,43 +337,45 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   ];
 
   return (
-    <div className="flex flex-col">
-      <Stack gap={3} className="shrink-0">
-        <HStack gap={3} className="flex-wrap items-center">
-          <TextInput
-            label="Search"
-            isLabelHidden
-            value={search}
-            onChange={setSearch}
-            placeholder="Search jobs…"
-            className="w-40"
-          />
-          <Selector
-            label="Status filter"
-            isLabelHidden
-            options={statusOptions}
-            value={statusFilter}
-            onChange={(v) => updateStatusFilter(v as string)}
-            placeholder="All statuses"
-            className="w-36"
-          />
-          <label className="flex cursor-pointer items-center gap-1.5 text-sm select-none">
-            <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
-            <span className={starredOnly ? "text-amber-500 font-medium" : "text-secondary"}>★ Starred</span>
-          </label>
-          <HStack gap={2} className="items-center sm:ml-auto">
-            <Button label={checking ? "Checking…" : "Check closed"} variant="ghost" size="sm" onClick={checkClosed} isDisabled={checking} />
-            <Button label={importing ? "Importing…" : isMobile ? "Import" : "Import from Google Sheet"} variant="ghost" size="sm" onClick={importFromSheet} isDisabled={importing} />
-            <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
+    <div className="flex flex-col" style={{ "--table-header-top": `${57 + toolbarHeight}px` } as React.CSSProperties}>
+      <div ref={toolbarRef} className="sticky top-[57px] z-20 bg-body py-2.5">
+        <Stack gap={3} className="shrink-0">
+          <HStack gap={3} className="flex-wrap items-center">
+            <TextInput
+              label="Search"
+              isLabelHidden
+              value={search}
+              onChange={setSearch}
+              placeholder="Search jobs…"
+              className="w-40"
+            />
+            <Selector
+              label="Status filter"
+              isLabelHidden
+              options={statusOptions}
+              value={statusFilter}
+              onChange={(v) => updateStatusFilter(v as string)}
+              placeholder="All statuses"
+              className="w-36"
+            />
+            <label className="flex cursor-pointer items-center gap-1.5 text-sm select-none">
+              <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
+              <span className={starredOnly ? "text-amber-500 font-medium" : "text-secondary"}>★ Starred</span>
+            </label>
+            <HStack gap={2} className="items-center sm:ml-auto">
+              <Button label={checking ? "Checking…" : "Check closed"} variant="ghost" size="sm" onClick={checkClosed} isDisabled={checking} />
+              <Button label={importing ? "Importing…" : isMobile ? "Import" : "Import from Google Sheet"} variant="ghost" size="sm" onClick={importFromSheet} isDisabled={importing} />
+              <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
+            </HStack>
           </HStack>
-        </HStack>
 
-        {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
-      </Stack>
+          {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
+        </Stack>
+      </div>
 
-      <div className="mt-3 flex flex-col">
+      <div className="mt-1 flex flex-col">
         {loading ? (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-1 items-center justify-center py-12">
             <Spinner label="Loading jobs…" />
           </div>
         ) : jobs.length === 0 ? (
