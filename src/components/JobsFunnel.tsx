@@ -156,7 +156,7 @@ export function JobsFunnel() {
 
   return (
     <div>
-      <Card className="mb-6 p-6">
+      <Card className="p-6">
         <Heading level={2} className="mb-1">Application Pipeline</Heading>
         <Text type="supporting" display="block" className="mb-4">{jobs.length} total jobs tracked</Text>
 

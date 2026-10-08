@@ -319,7 +319,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   ];
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       <Stack gap={3} className="shrink-0">
         <HStack gap={3} className="flex-wrap items-center">
           <TextInput
@@ -353,7 +353,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
         {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
       </Stack>
 
-      <div className="mt-3 flex min-h-0 flex-1 flex-col">
+      <div className="mt-3 flex flex-col">
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
             <Spinner label="Loading jobs…" />
