@@ -201,21 +201,21 @@ export function JobDetail({ jobId }: { jobId: number }) {
   };
 
   if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
-  if (!job) return <p className="py-12 text-center text-sm text-slate-500">Job not found.</p>;
+  if (!job) return <p className="py-12 text-center text-sm text-secondary">Job not found.</p>;
 
   return (
     <div>
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/jobs" className="mb-2 inline-block text-xs text-slate-400 hover:text-slate-600">
+          <Link href="/jobs" className="mb-2 inline-block text-xs text-secondary hover:text-primary">
             ← All jobs
           </Link>
-          <h2 className="text-xl font-bold text-slate-900">{job.title || "Untitled"}</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-primary">{job.title || "Untitled"}</h2>
+          <p className="text-sm text-secondary">
             {job.company}
             {job.location && <span> · {job.location}</span>}
-            {job.remote_type && <span className="ml-1 text-xs text-slate-400">({job.remote_type})</span>}
+            {job.remote_type && <span className="ml-1 text-xs text-secondary">({job.remote_type})</span>}
             {job.salary_text && <span> · {job.salary_text}</span>}
           </p>
           {job.url && (
@@ -246,7 +246,7 @@ export function JobDetail({ jobId }: { jobId: number }) {
       {/* Edit modal */}
       {editing && (
         <Card className="mb-6 p-5">
-          <h3 className="mb-4 text-sm font-semibold text-slate-700">Edit Job</h3>
+          <h3 className="mb-4 text-sm font-semibold text-primary">Edit Job</h3>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <TextInput label="Company" value={editCompany} onChange={setEditCompany} />
@@ -303,7 +303,7 @@ export function JobDetail({ jobId }: { jobId: number }) {
 
           {pasting && (
             <Card className="p-4">
-              <p className="mb-2 text-xs text-slate-500">
+              <p className="mb-2 text-xs text-secondary">
                 Select all text on the job posting page, copy it, and paste it here.
               </p>
               <TextArea
@@ -333,15 +333,15 @@ export function JobDetail({ jobId }: { jobId: number }) {
                   onClick={() => { setPasting(false); setPasteText(""); }}
                 />
               </div>
-              {extractMsg && <p className="mt-2 text-xs text-emerald-600">{extractMsg}</p>}
+              {extractMsg && <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">{extractMsg}</p>}
             </Card>
           )}
 
           <Card className="p-5">
             {job.posting_text ? (
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{job.posting_text}</pre>
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-primary">{job.posting_text}</pre>
             ) : (
-              <p className="text-sm text-slate-400">No posting text saved. Paste it above or click Edit.</p>
+              <p className="text-sm text-disabled">No posting text saved. Paste it above or click Edit.</p>
             )}
           </Card>
         </div>
@@ -350,9 +350,9 @@ export function JobDetail({ jobId }: { jobId: number }) {
       {tab === "notes" && (
         <Card className="p-5">
           {job.notes ? (
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{job.notes}</pre>
+            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-primary">{job.notes}</pre>
           ) : (
-            <p className="text-sm text-slate-400">No notes yet. Click Edit to add some.</p>
+            <p className="text-sm text-disabled">No notes yet. Click Edit to add some.</p>
           )}
         </Card>
       )}
@@ -379,16 +379,16 @@ export function JobDetail({ jobId }: { jobId: number }) {
           </div>
 
           {submissions.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-400">
+            <p className="py-8 text-center text-sm text-disabled">
               No submissions yet. Save your resume, cover letter, or application materials here.
             </p>
           ) : (
-            <Card className="divide-y divide-slate-100">
+            <Card className="divide-y divide-border">
               {submissions.map((s) => (
                 <div key={s.id} className="flex items-center justify-between px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{s.label}</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-sm font-medium text-primary">{s.label}</p>
+                    <p className="text-xs text-secondary">
                       {s.type} · {s.format} · {new Date(s.created_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -428,7 +428,7 @@ export function JobDetail({ jobId }: { jobId: number }) {
       )}
 
       {/* Metadata */}
-      <div className="mt-6 flex gap-4 text-xs text-slate-400">
+      <div className="mt-6 flex gap-4 text-xs text-secondary">
         <span>Added {new Date(job.created_at).toLocaleDateString()}</span>
         {job.applied_at && <span>Applied {new Date(job.applied_at).toLocaleDateString()}</span>}
         {job.fitness_score != null && <span>Fitness: {job.fitness_score}/10</span>}

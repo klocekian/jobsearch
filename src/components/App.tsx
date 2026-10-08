@@ -66,13 +66,11 @@ export function App() {
         .then((r) => r.json())
         .then((data: { job?: { id: number; company: string; title: string; url: string; posting_text: string } }) => {
           if (data.job) {
-            /* eslint-disable react-hooks/set-state-in-effect */
             setCompany(data.job.company);
             setJobTitle(data.job.title);
             setJobUrl(data.job.url);
             setJobText(data.job.posting_text);
             setActiveJobId(data.job.id);
-            /* eslint-enable react-hooks/set-state-in-effect */
           }
           setHydrated(true);
         })
@@ -317,10 +315,10 @@ export function App() {
   return (
     <main className="mx-auto w-full max-w-4xl px-5 py-10">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-bold tracking-tight text-primary">
           Resume Match Report
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-secondary">
           Analyze how well a resume positions a candidate for a specific role, calibrated to the
           criteria Applicant Tracking Systems use.
         </p>
@@ -333,14 +331,14 @@ export function App() {
       </header>
 
       {/* Input form */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="space-y-4">
           {/* Job picker */}
           <div className="relative flex items-center gap-2" ref={trackerRef}>
             <button
               type="button"
               onClick={() => (trackerStatus === "done" ? setTrackerOpen(!trackerOpen) : loadTracker())}
-              className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+              className="rounded-lg border border-border bg-muted px-3 py-1.5 text-xs font-medium text-secondary transition hover:bg-card hover:text-primary"
             >
               {trackerStatus === "loading" ? "Loading…" : "Load from saved jobs"}
             </button>
@@ -348,7 +346,7 @@ export function App() {
               <span className="text-xs text-rose-500">Failed to load jobs.</span>
             )}
             {trackerOpen && trackerJobs.length > 0 && (
-              <div className="absolute left-0 top-full z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+              <div className="absolute left-0 top-full z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
                 {trackerJobs
                   .filter((j) => j.status !== "closed")
                   .map((job) => (
@@ -356,13 +354,13 @@ export function App() {
                     key={job.id}
                     type="button"
                     onClick={() => pickJob(job)}
-                    className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                    className="flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
                   >
-                    <span className="font-medium text-slate-800">{job.company}</span>
-                    <span className="text-slate-500">{job.title}</span>
+                    <span className="font-medium text-primary">{job.company}</span>
+                    <span className="text-secondary">{job.title}</span>
                     {job.status && (
                       <span className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-                        job.status === "interview" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        job.status === "interview" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-muted text-secondary"
                       }`}>
                         {job.status}
                       </span>
@@ -413,16 +411,16 @@ export function App() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => { if (!jobUrl.trim()) e.preventDefault(); }}
-                className={`shrink-0 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 ${!jobUrl.trim() ? "pointer-events-none opacity-50" : ""}`}
+                className={`shrink-0 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-secondary transition hover:bg-muted hover:text-primary ${!jobUrl.trim() ? "pointer-events-none opacity-50" : ""}`}
               >
                 Open ↗
               </a>
             </div>
             {fetchStatus.kind === "done" && (
-              <span className="mt-1 block text-xs text-emerald-600">{fetchStatus.message}</span>
+              <span className="mt-1 block text-xs text-emerald-600 dark:text-emerald-400">{fetchStatus.message}</span>
             )}
             {fetchStatus.kind === "error" && (
-              <span className="mt-1 block text-xs text-rose-500">{fetchStatus.message}</span>
+              <span className="mt-1 block text-xs text-rose-500 dark:text-rose-400">{fetchStatus.message}</span>
             )}
           </Field>
         </div>
@@ -454,9 +452,9 @@ export function App() {
                 e.preventDefault();
                 void handleFile(e.dataTransfer.files[0]);
               }}
-              className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2"
+              className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted px-3 py-2"
             >
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-secondary">
                 Drop a PDF, DOCX, .txt or .md here, or{" "}
                 <button
                   type="button"
@@ -467,13 +465,13 @@ export function App() {
                 </button>
               </span>
               {pdfStatus.kind === "loading" && (
-                <span className="text-xs text-slate-500">Extracting…</span>
+                <span className="text-xs text-secondary">Extracting…</span>
               )}
               {pdfStatus.kind === "done" && (
-                <span className="text-xs text-emerald-600">{pdfStatus.message}</span>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400">{pdfStatus.message}</span>
               )}
               {pdfStatus.kind === "error" && (
-                <span className="text-xs text-rose-500">{pdfStatus.message}</span>
+                <span className="text-xs text-rose-500 dark:text-rose-400">{pdfStatus.message}</span>
               )}
               <input
                 ref={fileInputRef}
@@ -512,7 +510,7 @@ export function App() {
       {/* Results */}
       {analyzed && (
         <div className="mt-8">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-border">
             <div className="flex gap-1">
               <TabButton active={tab === "report"} onClick={() => setTab("report")}>
                 Resume Report
@@ -554,7 +552,7 @@ export function App() {
                     });
                     alert("Saved to job submissions.");
                   }}
-                  className="mb-1.5 rounded-md border border-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-500 hover:text-white"
+                  className="mb-1.5 rounded-md border border-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-500 hover:text-white"
                 >
                   Save to job
                 </button>
@@ -609,7 +607,7 @@ export function App() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-secondary">{label}</span>
       {children}
     </label>
   );
@@ -630,7 +628,7 @@ function TabButton({
       className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
         active
           ? "border-brand text-brand"
-          : "border-transparent text-slate-500 hover:text-slate-700"
+          : "border-transparent text-secondary hover:text-primary"
       }`}
     >
       {children}

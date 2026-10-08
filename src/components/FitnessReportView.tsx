@@ -38,7 +38,7 @@ function VerdictRow({ item }: { item: FitnessRequirement }) {
         <Badge variant={VERDICT_VARIANTS[item.verdict] ?? "neutral"} label={item.verdict} />
       </div>
       <div className="min-w-0">
-        <blockquote className="border-l-2 border-slate-300 pl-3">
+        <blockquote className="border-l-2 border-border pl-3">
           <Text type="body" className="italic">{item.verbatim}</Text>
         </blockquote>
         {item.note && (
@@ -128,7 +128,7 @@ export function FitnessReportView({
         <div className="mt-2">
           <Text type="body">{result.one_line}</Text>
         </div>
-        <div className="mt-3 border-t border-slate-100 pt-3">
+        <div className="mt-3 border-t border-border pt-3">
           <Text type="supporting" color="secondary" display="block">
             {result.company} — {result.title}
           </Text>
@@ -193,7 +193,7 @@ export function FitnessReportView({
             <Text type="body" color="secondary">Posting states no checkable minimums.</Text>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {objective.map((m, i) => (
               <VerdictRow key={`${i}-${m.verbatim.slice(0, 24)}`} item={m} />
             ))}
@@ -206,7 +206,7 @@ export function FitnessReportView({
           title={`Dispositional (${dispositional.length})`}
           subtitle="Interview material — never scored."
         >
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {dispositional.map((m, i) => (
               <VerdictRow key={`${i}-${m.verbatim.slice(0, 24)}`} item={m} />
             ))}
@@ -216,13 +216,13 @@ export function FitnessReportView({
 
       {result.preferred.length > 0 && (
         <Section title="Preferred" subtitle="Informs the score modestly, never decisively.">
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {result.preferred.map((p, i) => (
               <div key={`${i}-${p.verbatim.slice(0, 24)}`} className="grid grid-cols-[92px_1fr] gap-3 px-5 py-3">
                 <div>
                   <Badge variant={VERDICT_VARIANTS[p.verdict] ?? "neutral"} label={p.verdict} />
                 </div>
-                <blockquote className="border-l-2 border-slate-200 pl-3">
+                <blockquote className="border-l-2 border-border pl-3">
                   <Text type="body" className="italic">{p.verbatim}</Text>
                 </blockquote>
               </div>
@@ -236,7 +236,7 @@ export function FitnessReportView({
           title="Gaps and framings"
           subtitle="A prepared response, not a defense. Rehearse these aloud before the call."
         >
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {result.gaps.map((g, i) => (
               <div key={`${i}-${g.gap.slice(0, 24)}`} className="px-5 py-4">
                 <Text type="body" weight="semibold" display="block">{g.gap}</Text>
@@ -250,7 +250,7 @@ export function FitnessReportView({
       )}
 
       <Section title="Outcome spectrum">
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-border">
           {[
             ["Best case", result.outcomes.best_case],
             ["Probable", result.outcomes.probable],
@@ -265,7 +265,7 @@ export function FitnessReportView({
       </Section>
 
       <Section title="Tradeoffs of pursuing">
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-border">
           <div className="grid grid-cols-[110px_1fr] gap-3 px-5 py-3">
             <Text type="supporting" color="secondary">Gained</Text>
             <Text type="body">{result.tradeoffs.gained}</Text>

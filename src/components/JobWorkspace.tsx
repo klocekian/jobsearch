@@ -455,7 +455,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 </div>
               )}
               {pasting && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="rounded-lg border border-border bg-muted p-3">
                   <TextArea label="Paste posting" isLabelHidden value={pasteText} onChange={setPasteText} placeholder="Paste job posting text…" rows={6} />
                   <div className="mt-2 flex gap-2">
                     <Button label="Save" variant="primary" size="sm" onClick={pasteDirect} isDisabled={!pasteText.trim()} />
@@ -487,7 +487,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                   <AstryxLink href={job.url} isExternalLink>Open in new tab</AstryxLink>
                   <Text type="supporting">Many sites block embedding — use the link above if the form doesn&apos;t load below.</Text>
                 </div>
-                <iframe src={job.url} className="flex-1 w-full rounded-lg border border-slate-200" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
+                <iframe src={job.url} className="flex-1 w-full rounded-lg border border-border" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
               </div>
             ) : (
               <Banner status="info" title="No URL saved for this job. Add one to open the application here." />
@@ -548,7 +548,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                         </div>
                         {viewingSubmission === s.id && s.content && (
                           <div className="mt-3 border-t border-border pt-3">
-                            <div className="prose prose-sm prose-slate max-w-none">
+                            <div className="prose prose-sm max-w-none">
                               <Markdown>{s.content}</Markdown>
                             </div>
                           </div>
@@ -575,7 +575,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 <div>
                   <Button label={job.notes ? "Edit notes" : "Add notes"} variant="secondary" size="sm" onClick={() => { setEditNotes(job.notes); setEditing(true); }} />
                   {job.notes ? (
-                    <div className="prose prose-sm prose-slate mt-3 max-w-none">
+                    <div className="prose prose-sm mt-3 max-w-none">
                       <Markdown>{job.notes}</Markdown>
                     </div>
                   ) : (
@@ -761,10 +761,10 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   if (isMobile) {
     return (
       <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3">
+        <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
           <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
         </div>
-        <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-2">
+        <div className="shrink-0 border-b border-border bg-surface px-4 py-2">
           <SegmentedControl value={mobilePane} onChange={(v) => setMobilePane(v as MobilePane)} label="View">
             <SegmentedControlItem value="posting" label="Posting" />
             <SegmentedControlItem value="analysis" label="Analysis" />
@@ -772,15 +772,15 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         </div>
         {mobilePane === "posting" ? (
           <>
-            <div className="shrink-0 border-b border-slate-200 bg-white px-4">{leftTabBar}</div>
+            <div className="shrink-0 border-b border-border bg-surface px-4">{leftTabBar}</div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4">{leftPaneBody}</div>
           </>
         ) : (
           <>
-            <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3">
+            <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
               <div className="flex items-start justify-between gap-3">{resumeControls}</div>
             </div>
-            <div className="shrink-0 border-b border-slate-200 bg-white px-4">{rightTabBar}</div>
+            <div className="shrink-0 border-b border-border bg-surface px-4">{rightTabBar}</div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
           </>
         )}
@@ -801,23 +801,23 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
       />
       {/* Header */}
-      <div className="col-start-1 row-start-1 border-b border-r border-slate-200 bg-white px-4 py-3">
+      <div className="col-start-1 row-start-1 border-b border-r border-border bg-surface px-4 py-3">
         <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
       </div>
 
       {/* Left tabs */}
-      <div className="col-start-1 row-start-2 border-b border-r border-slate-200 bg-white px-4">{leftTabBar}</div>
+      <div className="col-start-1 row-start-2 border-b border-r border-border bg-surface px-4">{leftTabBar}</div>
 
       {/* Left content */}
-      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-slate-200 p-4">{leftPaneBody}</div>
+      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border p-4">{leftPaneBody}</div>
 
       {/* Analysis controls */}
-      <div className="col-start-2 row-start-1 border-b border-slate-200 bg-white px-4 py-3">
+      <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-3">
         <div className="flex items-start justify-between gap-3">{resumeControls}</div>
       </div>
 
       {/* Right tabs */}
-      <div className="col-start-2 row-start-2 border-b border-slate-200 bg-white px-4">{rightTabBar}</div>
+      <div className="col-start-2 row-start-2 border-b border-border bg-surface px-4">{rightTabBar}</div>
 
       {/* Right content */}
       <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-4">{rightPaneBody}</div>

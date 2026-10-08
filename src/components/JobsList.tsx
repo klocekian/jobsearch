@@ -196,7 +196,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
       renderCell: (job) => (
         <button
           onClick={(e) => { e.preventDefault(); toggleStar(job); }}
-          className={`text-lg leading-none transition ${job.is_starred ? "text-amber-400" : "text-slate-200 hover:text-amber-300"}`}
+          className={`text-lg leading-none transition ${job.is_starred ? "text-amber-400" : "text-disabled hover:text-amber-300"}`}
         >
           {job.is_starred ? "★" : "☆"}
         </button>

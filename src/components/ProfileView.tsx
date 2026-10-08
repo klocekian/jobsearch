@@ -220,7 +220,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
           </div>
 
           {adding && (
-            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-4 rounded-lg border border-border bg-muted p-4">
               <div className="mb-3">
                 <TextInput label="Name" value={newName} onChange={setNewName} placeholder="e.g. General, Design Lead, IC Focus" />
               </div>
@@ -242,7 +242,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
           {loading ? (
             <Text type="supporting" className="py-8 text-center">Loading…</Text>
           ) : resumes.length === 0 && !adding ? (
-            <div className="rounded-lg border border-dashed border-slate-300 py-10 text-center">
+            <div className="rounded-lg border border-dashed border-border py-10 text-center">
               <Text display="block">No resumes yet.</Text>
               <Text type="supporting" display="block" className="mt-1">Add a resume to use it for matching and cover letters.</Text>
             </div>

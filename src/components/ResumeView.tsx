@@ -228,7 +228,7 @@ export function ResumeView({
       {hasRewrite && (
         <div className="mb-2 flex flex-wrap items-center gap-3">
           <Text type="supporting">
-            Click a <span className="rounded bg-emerald-100 px-1 text-emerald-900">green suggestion</span> to accept it,
+            Click a <span className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-1 text-emerald-900 dark:text-emerald-200">green suggestion</span> to accept it,
             or × to dismiss. Type anywhere to edit.
           </Text>
           <div className="ml-auto flex gap-2">
@@ -241,13 +241,13 @@ export function ResumeView({
       {gen.kind === "loading" ? (
         <div className="space-y-3">
           {rewrite ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 font-mono text-xs whitespace-pre-wrap text-slate-800 animate-pulse">
+            <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-4 font-mono text-xs whitespace-pre-wrap text-primary animate-pulse">
               {rewrite}
             </div>
           ) : (
             <div className="space-y-2" aria-hidden>
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-4 animate-pulse rounded bg-slate-100" style={{ width: `${95 - (i % 4) * 12}%` }} />
+                <div key={i} className="h-4 animate-pulse rounded bg-muted" style={{ width: `${95 - (i % 4) * 12}%` }} />
               ))}
             </div>
           )}

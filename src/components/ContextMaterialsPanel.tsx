@@ -113,7 +113,7 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
           e.preventDefault();
           void handleFiles(e.dataTransfer.files);
         }}
-        className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2"
+        className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted px-3 py-2"
       >
         <Text type="supporting" color="secondary">
           Drop PDF / DOCX / .txt / .md here,{" "}
@@ -139,7 +139,7 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
       {status.kind === "error" && <Banner status="error" title={status.message ?? "An error occurred."} className="mt-2" />}
 
       {pasteOpen && (
-        <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted p-3">
           <TextInput
             label="Label"
             isLabelHidden
@@ -178,7 +178,7 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
           {materials.map((m) => (
             <li
               key={m.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
             >
               <span className="min-w-0 flex-1 truncate">
                 <Text type="supporting" weight="semibold">{m.name}</Text>{" "}

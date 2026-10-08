@@ -42,7 +42,7 @@ function highlight(text: string, matched: Set<string>, missing: Set<string>): To
   return tokens;
 }
 
-export function JobDescriptionView({ jobText, jobTitle, matched, missing }: JobDescriptionViewProps) {
+export function JobDescriptionView({ jobText, matched, missing }: JobDescriptionViewProps) {
   const tokens = highlight(jobText, new Set(matched), new Set(missing));
   return (
     <div>

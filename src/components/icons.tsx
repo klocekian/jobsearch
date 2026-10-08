@@ -63,7 +63,7 @@ export function ScoreRing({ score, size = 88 }: ScoreRingProps) {
             <stop offset="100%" stopColor="#6366f1" />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-border, #e2e8f0)" strokeWidth={stroke} />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -76,7 +76,7 @@ export function ScoreRing({ score, size = 88 }: ScoreRingProps) {
           strokeDashoffset={offset}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-2xl font-semibold text-slate-800">
+      <span className="absolute inset-0 flex items-center justify-center text-2xl font-semibold text-primary">
         {score}
       </span>
     </div>
