@@ -27,7 +27,7 @@ export interface AiDetectionState {
   data: AiDetection | null;
 }
 
-type ReportSubTab = "match" | "ai";
+export type ReportSubTab = "match" | "ai";
 
 interface MatchReportViewProps {
   report: MatchReport;
@@ -35,6 +35,9 @@ interface MatchReportViewProps {
   onRunAnalysis?: () => void;
   analysisDisabled?: boolean;
   hasAnalysis?: boolean;
+  subTab?: ReportSubTab;
+  onSubTabChange?: (tab: ReportSubTab) => void;
+  hideSegmentedControl?: boolean;
 }
 
 function SummaryCards({ report }: { report: MatchReport }) {
@@ -227,26 +230,39 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
   );
 }
 
-export function MatchReportView({ report, aiDetection, onRunAnalysis, analysisDisabled, hasAnalysis }: MatchReportViewProps) {
-  const [subTab, setSubTab] = useState<ReportSubTab>("match");
+export function MatchReportView({
+  report,
+  aiDetection,
+  onRunAnalysis,
+  analysisDisabled,
+  hasAnalysis,
+  subTab: controlledSubTab,
+  onSubTabChange,
+  hideSegmentedControl,
+}: MatchReportViewProps) {
+  const [internalSubTab, setInternalSubTab] = useState<ReportSubTab>("match");
+  const subTab = controlledSubTab ?? internalSubTab;
+  const setSubTab = onSubTabChange ?? setInternalSubTab;
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <SegmentedControl value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)} label="Report view">
-          <SegmentedControlItem value="match" label="ATS Match" />
-          <SegmentedControlItem value="ai" label="AI Detection" />
-        </SegmentedControl>
-        {onRunAnalysis && (
-          <Button
-            label={hasAnalysis ? "Re-run analysis" : "Run analysis"}
-            variant="primary"
-            size="sm"
-            onClick={onRunAnalysis}
-            isDisabled={analysisDisabled}
-          />
-        )}
-      </div>
+      {!hideSegmentedControl && (
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <SegmentedControl value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)} label="Report view">
+            <SegmentedControlItem value="match" label="ATS Match" />
+            <SegmentedControlItem value="ai" label="AI Detection" />
+          </SegmentedControl>
+          {onRunAnalysis && (
+            <Button
+              label={hasAnalysis ? "Re-run analysis" : "Run analysis"}
+              variant="primary"
+              size="sm"
+              onClick={onRunAnalysis}
+              isDisabled={analysisDisabled}
+            />
+          )}
+        </div>
+      )}
 
       {subTab === "match" && (
         <>

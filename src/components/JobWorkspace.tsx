@@ -43,8 +43,9 @@ import { Stack, HStack } from "@astryxdesign/core/Stack";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 
 type LeftTab = "posting" | "apply" | "submissions" | "notes";
-type RightTab = "fitness" | "report" | "resume" | "cover";
+type RightTab = "fitness" | "resume" | "cover";
 type MobilePane = "posting" | "analysis";
+type ResumeSubTab = "editor" | "report" | "ai";
 
 interface SavedResume { id: number; name: string; content: string; is_default: number }
 
@@ -55,6 +56,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [loading, setLoading] = useState(true);
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
   const [rightTab, setRightTab] = useState<RightTab>("fitness");
+  const [resumeSubTab, setResumeSubTab] = useState<ResumeSubTab>("editor");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
 
@@ -181,7 +183,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       company: job.company, jobTitle: job.title, jobUrl: job.url, fileName: "",
     });
     setUserAnalysis({ report, resumeText, jobText: job.posting_text });
-    setRightTab("report");
+    setRightTab("resume");
     const selectedResume = savedResumes.find(r => r.content === resumeText);
     fetch(`/api/jobs/${jobId}`, {
       method: "PATCH",
@@ -670,8 +672,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const rightTabBar = (
     <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
       <Tab value="fitness" label={fitnessSaved ? `Fitness (${fitnessSaved.score}/10)` : "Fitness"} />
-      <Tab value="report" label={analyzed ? `ATS Report (${analyzed.report.score}/100)` : "ATS Report"} />
-      <Tab value="resume" label="Resume" />
+      <Tab value="resume" label={analyzed ? `Resume (${analyzed.report.score}/100)` : "Resume"} />
       <Tab value="cover" label="Cover Letter" />
     </TabList>
   );
@@ -743,26 +744,57 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             </div>
           )}
 
-          {analyzed && rightTab === "report" && (
-            <MatchReportView
-              report={analyzed.report}
-              aiDetection={aiDetection}
-              onRunAnalysis={() => runUnifiedAnalysis(false)}
-              analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
-              hasAnalysis={!!analyzed}
-            />
-          )}
           {analyzed && rightTab === "resume" && (
-            <ResumeView
-              resumeText={analyzed.resumeText}
-              company={job.company}
-              jobText={job.posting_text}
-              jobTitle={job.title}
-              missingSkills={analyzed.report.highlights.missing}
-              aiDetection={aiDetection.data}
-              materials={materials}
-              onMaterialsChange={setMaterials}
-            />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <SegmentedControl
+                  value={resumeSubTab}
+                  onChange={(v) => setResumeSubTab(v as ResumeSubTab)}
+                  label="Resume view"
+                >
+                  <SegmentedControlItem value="editor" label="Resume & Tailor" />
+                  <SegmentedControlItem value="report" label={`ATS Match (${analyzed.report.score}/100)`} />
+                  <SegmentedControlItem value="ai" label="AI Detection" />
+                </SegmentedControl>
+              </div>
+
+              {resumeSubTab === "editor" && (
+                <ResumeView
+                  resumeText={analyzed.resumeText}
+                  company={job.company}
+                  jobText={job.posting_text}
+                  jobTitle={job.title}
+                  missingSkills={analyzed.report.highlights.missing}
+                  aiDetection={aiDetection.data}
+                  materials={materials}
+                  onMaterialsChange={setMaterials}
+                />
+              )}
+
+              {resumeSubTab === "report" && (
+                <MatchReportView
+                  report={analyzed.report}
+                  aiDetection={aiDetection}
+                  onRunAnalysis={() => runUnifiedAnalysis(false)}
+                  analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
+                  hasAnalysis={!!analyzed}
+                  hideSegmentedControl
+                  subTab="match"
+                />
+              )}
+
+              {resumeSubTab === "ai" && (
+                <MatchReportView
+                  report={analyzed.report}
+                  aiDetection={aiDetection}
+                  onRunAnalysis={() => runUnifiedAnalysis(false)}
+                  analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
+                  hasAnalysis={!!analyzed}
+                  hideSegmentedControl
+                  subTab="ai"
+                />
+              )}
+            </div>
           )}
           {analyzed && rightTab === "cover" && (
             <CoverLetterView
