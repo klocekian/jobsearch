@@ -1,12 +1,24 @@
 import { createClient, type Client } from "@libsql/client";
+import fs from "node:fs";
+import path from "node:path";
 
 let _client: Client | null = null;
 let _initialized = false;
 
 export function getClient(): Client {
   if (_client) return _client;
+  const dbUrl = process.env.TURSO_DATABASE_URL || "file:data/jobsearch.db";
+  if (dbUrl.startsWith("file:")) {
+    const filePath = dbUrl.slice("file:".length);
+    const dir = path.dirname(filePath);
+    if (dir && !fs.existsSync(dir)) {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch {}
+    }
+  }
   _client = createClient({
-    url: process.env.TURSO_DATABASE_URL || "file:data/jobsearch.db",
+    url: dbUrl,
     authToken: process.env.TURSO_AUTH_TOKEN,
   });
   return _client;
@@ -16,9 +28,7 @@ export async function getDb(): Promise<Client> {
   const client = getClient();
   if (_initialized) return client;
 
-  // Single batch: tables + indexes. Migrations (ALTER TABLE) go through
-  // individual try/catch since they fail if the column already exists,
-  // but we batch them into one executeMultiple to minimize round-trips.
+  // Single batch: tables + indexes.
   await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,6 +60,11 @@ export async function getDb(): Promise<Client> {
       match_score   INTEGER,
       match_report  TEXT,
       previous_status TEXT,
+      is_starred    INTEGER NOT NULL DEFAULT 0,
+      fitness_score INTEGER,
+      fitness_report TEXT,
+      fitness_run_at TEXT,
+      match_resume_name TEXT,
       created_at    TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
       applied_at    TEXT
@@ -84,10 +99,6 @@ export async function getDb(): Promise<Client> {
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- The candidate's positive profile (the fact canon) and negative profile
-    -- (what they do not have, with standing reframes). Grounding for the
-    -- fitness check: without the negative profile the check degrades into a
-    -- keyword matcher, which is the failure it exists to prevent.
     CREATE TABLE IF NOT EXISTS candidate_docs (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -100,24 +111,21 @@ export async function getDb(): Promise<Client> {
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_jobs_starred ON jobs(is_starred);
     CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id);
     CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_candidate_docs_user_kind ON candidate_docs(user_id, kind);
   `);
 
-  await client.execute("ALTER TABLE jobs ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0").catch(() => {});
-  await client.execute("CREATE INDEX IF NOT EXISTS idx_jobs_starred ON jobs(is_starred)").catch(() => {});
-
-  // Fitness check (1-10 pursuit score) — distinct from match_score, which is
-  // the ATS keyword similarity measure. Both are kept: they answer different
-  // questions (see docs/FITNESS_CHECK_PLAN.md).
-  await client.execute("ALTER TABLE jobs ADD COLUMN fitness_score INTEGER").catch(() => {});
-  await client.execute("ALTER TABLE jobs ADD COLUMN fitness_report TEXT").catch(() => {});
-  await client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_at TEXT").catch(() => {});
-  // Which resume produced match_score, so the ATS number reads as a fact about
-  // a document rather than a verdict on the job.
-  await client.execute("ALTER TABLE jobs ADD COLUMN match_resume_name TEXT").catch(() => {});
+  // Parallelize backward-compatibility migrations for existing DBs
+  await Promise.allSettled([
+    client.execute("ALTER TABLE jobs ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0"),
+    client.execute("ALTER TABLE jobs ADD COLUMN fitness_score INTEGER"),
+    client.execute("ALTER TABLE jobs ADD COLUMN fitness_report TEXT"),
+    client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_at TEXT"),
+    client.execute("ALTER TABLE jobs ADD COLUMN match_resume_name TEXT"),
+  ]);
 
   _initialized = true;
   return client;

@@ -43,10 +43,8 @@ export function CoverLetterView({
   const [interests, setInterests] = useState(saved?.interests ?? "");
   const [letter, setLetter] = useState(saved?.letter ?? "");
   const resumeContact = useMemo(() => extractContact(resumeText), [resumeText]);
-  const [contact, setContact] = useState<Contact>(() => resumeContact);
+  const [contact, setContact] = useState<Contact>(() => saved?.contact ?? resumeContact);
   const [date, setDate] = useState(saved?.date ?? todayDisplay());
-
-  useEffect(() => { setContact(resumeContact); }, [resumeContact]);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -75,11 +73,30 @@ export function CoverLetterView({
           context: combinedContextText(materials),
         }),
       });
-      const data: { letter?: string; error?: string } = await res.json();
-      if (!res.ok || !data.letter) {
-        throw new Error(data.error ?? `Request failed (${res.status}).`);
+      if (!res.ok) {
+        let errMsg = `Request failed (${res.status}).`;
+        try {
+          const d = await res.json();
+          if (d.error) errMsg = d.error;
+        } catch {
+          const t = await res.text().catch(() => "");
+          if (t) errMsg = t;
+        }
+        throw new Error(errMsg);
       }
-      setLetter(data.letter);
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No readable stream received.");
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      setLetter("");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setLetter(accumulated);
+      }
       setStatus("done");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

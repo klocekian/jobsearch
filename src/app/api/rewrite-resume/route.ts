@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
   try {
     const client = await getAnthropicClient();
-    const response = await client.messages.create({
+    const stream = client.messages.stream({
       model: "claude-opus-4-8",
       max_tokens: 8000,
       thinking: { type: "adaptive" },
@@ -98,19 +98,28 @@ export async function POST(request: Request) {
       messages: [{ role: "user", content: buildUserPrompt(parsed) }],
     });
 
-    const resume = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
 
-    if (!resume) {
-      return NextResponse.json(
-        { error: "The model returned an empty rewrite. Please try again." },
-        { status: 502 }
-      );
-    }
-    return NextResponse.json({ resume });
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+      },
+    });
   } catch (err: unknown) {
     if (err instanceof Anthropic.AuthenticationError) {
       return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });

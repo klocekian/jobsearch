@@ -18,21 +18,23 @@ const CLAUDE_STATUS_DOT: Record<ClaudeStatus, { variant: "success" | "warning" |
 
 export function Nav({ user }: { user: NavUser | null }) {
   const pathname = usePathname();
-  // `user` comes from the root layout, a Server Component that only runs once
-  // per hard load — it never re-executes on client-side navigation, so its
-  // claudeStatus goes stale the moment the token state changes mid-session
-  // (e.g. after reconnecting on the Profile page). Re-fetch on every
-  // navigation so the dot always reflects the current state.
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatus>(user?.claudeStatus ?? "none");
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/auth/me").then((r) => r.json())
-      .then((d: { user?: { claudeStatus?: ClaudeStatus } | null }) => {
-        if (d.user?.claudeStatus) setClaudeStatus(d.user.claudeStatus);
-      })
-      .catch(() => {});
-  }, [pathname, user]);
+    const checkStatus = () => {
+      fetch("/api/auth/me")
+        .then((r) => r.json())
+        .then((d: { user?: { claudeStatus?: ClaudeStatus } | null }) => {
+          if (d.user?.claudeStatus) setClaudeStatus(d.user.claudeStatus);
+        })
+        .catch(() => {});
+    };
+
+    // Listen for explicit auth status changes (e.g. after connecting Claude)
+    window.addEventListener("auth-change", checkStatus);
+    return () => window.removeEventListener("auth-change", checkStatus);
+  }, [user]);
 
   return (
     <TopNav

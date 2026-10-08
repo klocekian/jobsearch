@@ -55,8 +55,12 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
     (typeof window !== "undefined" && sessionStorage.getItem("jobsSortOrder") as "asc" | "desc") || "desc"
   );
-  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
-  const [ready, setReady] = useState(false);
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (typeof window !== "undefined") {
+      return searchParams.get("status") ?? sessionStorage.getItem("jobsStatusFilter") ?? "";
+    }
+    return searchParams.get("status") ?? "";
+  });
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [starredOnly, setStarredOnly] = useState(false);
@@ -65,23 +69,16 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const [importMsg, setImportMsg] = useState("");
 
   useEffect(() => {
-    if (!searchParams.get("status")) {
-      const stored = sessionStorage.getItem("jobsStatusFilter");
-      if (stored) {
-        setStatusFilter(stored);
-        router.replace(`/jobs?status=${encodeURIComponent(stored)}`, { scroll: false });
-      }
-    }
-    setReady(true);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
+  // If we are on the default view, jobsPromise (server-streamed) provides the data.
+  // We only fetch from client if filters/sorting differ from the default or change.
+  const isDefaultView = sortKey === "created_at" && sortOrder === "desc" && !statusFilter && !debouncedSearch && !starredOnly;
+  const isFirstRun = useRef(true);
+
   const fetchJobs = useCallback(async () => {
-    if (!ready) return;
     const params = new URLSearchParams();
     params.set("sort", sortKey);
     params.set("order", sortOrder);
@@ -93,9 +90,18 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     fetchedFromClient.current = true;
     setJobs(data.jobs ?? []);
     setLoading(false);
-  }, [ready, sortKey, sortOrder, statusFilter, debouncedSearch, starredOnly]);
+  }, [sortKey, sortOrder, statusFilter, debouncedSearch, starredOnly]);
 
-  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+  useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      if (isDefaultView) {
+        // jobsPromise will supply the initial list
+        return;
+      }
+    }
+    fetchJobs();
+  }, [fetchJobs, isDefaultView]);
 
   useEffect(() => {
     const key = "jobsLastUrlCheck";

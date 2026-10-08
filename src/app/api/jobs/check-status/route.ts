@@ -37,7 +37,7 @@ async function checkUrl(url: string): Promise<"closed" | "open" | "unknown"> {
         "Accept": "text/html,application/xhtml+xml",
       },
       redirect: "follow",
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(4000),
     });
 
     if (res.status === 404 || res.status === 410) return "closed";
@@ -59,15 +59,23 @@ export async function POST() {
   const userId = await getCurrentUserId();
   const jobs = await listJobs(userId, { sort: "created_at", order: "desc" });
 
-  const toCheck = jobs.filter((j) => j.url && ACTIVE_STATUSES.has(j.status));
+  const toCheck = jobs.filter((j) => j.url && ACTIVE_STATUSES.has(j.status)).slice(0, 20);
   const results: { id: number; company: string; result: string }[] = [];
 
-  for (const job of toCheck.slice(0, 20)) {
-    const result = await checkUrl(job.url);
-    results.push({ id: job.id, company: job.company, result });
-    if (result === "closed") {
-      await updateJob(job.id, { status: "closed", previous_status: job.status });
-    }
+  // Run in concurrent chunks of 5 to avoid connection flooding while finishing in seconds
+  const CHUNK_SIZE = 5;
+  for (let i = 0; i < toCheck.length; i += CHUNK_SIZE) {
+    const chunk = toCheck.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async (job) => {
+        const result = await checkUrl(job.url);
+        if (result === "closed") {
+          await updateJob(job.id, { status: "closed", previous_status: job.status });
+        }
+        return { id: job.id, company: job.company, result };
+      })
+    );
+    results.push(...chunkResults);
   }
 
   const closed = results.filter((r) => r.result === "closed");

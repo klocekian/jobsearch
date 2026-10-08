@@ -50,7 +50,10 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
 
   const refetchUser = useCallback(() => {
     fetch("/api/auth/me").then(r => r.json())
-      .then((d: { user?: AuthUser | null }) => setUser(d.user ?? null))
+      .then((d: { user?: AuthUser | null }) => {
+        setUser(d.user ?? null);
+        window.dispatchEvent(new Event("auth-change"));
+      })
       .catch(() => {});
   }, []);
 
@@ -61,7 +64,21 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchResumes(); }, [fetchResumes]);
+  useEffect(() => {
+    let ignore = false;
+    fetch("/api/resumes")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { resumes?: Resume[] } | null) => {
+        if (!ignore && data?.resumes) setResumes(data.resumes);
+        if (!ignore) setLoading(false);
+      })
+      .catch(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleFile = async (
     file: File | undefined,
