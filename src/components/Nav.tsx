@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { TopNav, TopNavHeading, TopNavItem } from "@astryxdesign/core/TopNav";
 import { Button } from "@astryxdesign/core/Button";
+import { Selector } from "@astryxdesign/core/Selector";
+import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { HStack } from "@astryxdesign/core/HStack";
+import { STATUS_OPTIONS } from "@/lib/status";
+import { JobStatusDot } from "./icons";
 
 interface NavAIStatus {
   connected: boolean;
@@ -20,6 +24,12 @@ interface NavUser {
   email: string;
   claudeStatus?: "connected" | "expired" | "none";
   aiStatus?: NavAIStatus;
+}
+
+interface JobWorkspaceState {
+  jobId: number;
+  status: string;
+  analyzing: boolean;
 }
 
 export function Nav({ user }: { user: NavUser | null }) {
@@ -47,10 +57,18 @@ export function Nav({ user }: { user: NavUser | null }) {
   const dotVariant = isConnected ? "success" : "neutral";
 
   const isAdding = pathname === "/jobs" && searchParams.get("add") === "1";
-  const isSubPage = pathname.startsWith("/profile") || pathname.startsWith("/jobs/") || isAdding || (pathname !== "/" && pathname !== "/jobs");
+  const isJobPage = pathname.startsWith("/jobs/") && pathname !== "/jobs";
+  const isSubPage = pathname.startsWith("/profile") || isJobPage || isAdding || (pathname !== "/" && pathname !== "/jobs");
   const headingText = isSubPage ? "← All jobs" : "Job Search";
 
   const [actionState, setActionState] = useState<{ importing: boolean; checking: boolean }>({ importing: false, checking: false });
+  const [jobWorkspaceState, setJobWorkspaceState] = useState<JobWorkspaceState | null>(null);
+  const [withAi, setWithAi] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("jobWorkspaceWithAi") === "1";
+    }
+    return false;
+  });
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -61,6 +79,17 @@ export function Nav({ user }: { user: NavUser | null }) {
     };
     window.addEventListener("jobs-action-status", handler);
     return () => window.removeEventListener("jobs-action-status", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<JobWorkspaceState>;
+      if (custom.detail) {
+        setJobWorkspaceState(custom.detail);
+      }
+    };
+    window.addEventListener("job-workspace-sync", handler);
+    return () => window.removeEventListener("job-workspace-sync", handler);
   }, []);
 
   return (
@@ -90,6 +119,52 @@ export function Nav({ user }: { user: NavUser | null }) {
                   <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
                 </HStack>
               )}
+
+              {isJobPage && (
+                <HStack gap={2} className="items-center mr-2">
+                  <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={withAi}
+                      onChange={(e) => {
+                        setWithAi(e.target.checked);
+                        localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
+                      }}
+                      className="accent-primary rounded cursor-pointer"
+                    />
+                    <span>with AI</span>
+                  </label>
+                  <Button
+                    label={jobWorkspaceState?.analyzing ? "Analyzing…" : "Analyze"}
+                    variant="primary"
+                    size="sm"
+                    onClick={() => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "analyze", withAi } }))}
+                    isDisabled={jobWorkspaceState?.analyzing}
+                  />
+                  {jobWorkspaceState?.status && (
+                    <Selector
+                      label="Status"
+                      isLabelHidden
+                      size="sm"
+                      className="w-36"
+                      startIcon={<JobStatusDot status={jobWorkspaceState.status} />}
+                      options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
+                      value={jobWorkspaceState.status}
+                      onChange={(v) => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "status", status: v } }))}
+                    />
+                  )}
+                  <DropdownMenu
+                    button={{ label: "⋯", variant: "ghost", size: "sm" }}
+                    items={[
+                      {
+                        label: "Delete Job",
+                        onClick: () => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "delete" } })),
+                      },
+                    ]}
+                  />
+                </HStack>
+              )}
+
               <TopNavItem
                 label={user.name || user.email || "Profile"}
                 href="/profile"

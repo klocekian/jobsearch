@@ -8,6 +8,8 @@ import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/pr
 import { renderFitnessText } from "@/lib/fitness/render";
 import { generateStructured } from "@/lib/ai";
 
+import { evaluateFitnessDeterministic } from "@/lib/fitness/deterministic";
+
 export const runtime = "nodejs";
 // The report is long and the model reasons through every requirement.
 export const maxDuration = 300;
@@ -16,13 +18,17 @@ const MAX_TOKENS = 16_000;
 
 const RequestSchema = z.object({
   job_id: z.number().int().positive(),
+  use_ai: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
   let jobId: number;
+  let useAi = false;
   try {
     const body: unknown = await request.json();
-    jobId = RequestSchema.parse(body).job_id;
+    const parsed = RequestSchema.parse(body);
+    jobId = parsed.job_id;
+    useAi = !!parsed.use_ai;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Invalid request.";
     return NextResponse.json({ error: message }, { status: 400 });
@@ -40,20 +46,40 @@ export async function POST(request: Request) {
     );
   }
 
-  // Refuse rather than degrade. Without the negative profile this is a
-  // similarity scorer, which is the exact instrument the fitness check exists
-  // to replace — and a check that silently scores against half a profile is
-  // worse than no check, because it looks like one.
   const { profile, gaps } = await getCandidateProfiles(userId);
-  const missing: string[] = [];
-  if (!profile) missing.push("positive profile");
-  if (!gaps) missing.push("negative profile (gaps)");
-  if (missing.length > 0) {
+  const positiveProfile = profile ?? "";
+  const negativeGaps = gaps ?? "";
+
+  // Deterministic mode (fast, rule-based, no LLM required)
+  if (!useAi) {
+    const result = evaluateFitnessDeterministic({
+      company: job.company || "Unknown Company",
+      title: job.title || "Job Opportunity",
+      location: job.location || "",
+      salary: job.salary_text || "",
+      posting,
+      profile: positiveProfile,
+      gaps: negativeGaps,
+    });
+
+    return NextResponse.json({
+      result,
+      text: renderFitnessText(result),
+      model: "deterministic:rule-based",
+      run_at: new Date().toISOString(),
+    });
+  }
+
+  // AI-powered mode
+  if (!positiveProfile || !negativeGaps) {
+    const missing: string[] = [];
+    if (!positiveProfile) missing.push("positive profile");
+    if (!negativeGaps) missing.push("negative profile (gaps)");
     return NextResponse.json(
       {
-        error: `Fitness check needs your ${missing.join(" and ")}. Add ${
+        error: `Fitness check with AI needs your ${missing.join(" and ")}. Add ${
           missing.length > 1 ? "them" : "it"
-        } under Profile → Candidate Profile.`,
+        } under Profile → Candidate Profile, or uncheck "with AI" for deterministic scoring.`,
         code: "missing_candidate_docs",
         missing,
       },
@@ -64,7 +90,7 @@ export async function POST(request: Request) {
   try {
     const { data: result, model, provider } = await generateStructured({
       system: FITNESS_SYSTEM_PROMPT,
-      prompt: buildFitnessUserMessage({ profile, gaps, posting }),
+      prompt: buildFitnessUserMessage({ profile: positiveProfile, gaps: negativeGaps, posting }),
       schema: FitnessResultSchema,
       schemaName: "FitnessResult",
       maxTokens: MAX_TOKENS,
