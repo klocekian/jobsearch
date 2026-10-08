@@ -698,7 +698,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               />
               <SegmentedControlItem
                 value="slop"
-                label="AI slop"
+                label={aiDetection.data !== null && aiDetection.data !== undefined ? `AI slop (${aiDetection.data.confidence}%)` : "AI slop"}
               />
             </SegmentedControl>
           </div>

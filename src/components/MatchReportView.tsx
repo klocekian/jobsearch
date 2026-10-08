@@ -249,8 +249,8 @@ export function MatchReportView({
       {!hideSegmentedControl && (
         <div className="mb-4 flex items-center justify-between gap-4">
           <SegmentedControl value={subTab} onChange={(v) => setSubTab(v as ReportSubTab)} label="Report view">
-            <SegmentedControlItem value="match" label="ATS pass" />
-            <SegmentedControlItem value="ai" label="AI slop" />
+            <SegmentedControlItem value="match" label={`ATS pass (${report.score}/100)`} />
+            <SegmentedControlItem value="ai" label={aiDetection.data !== null && aiDetection.data !== undefined ? `AI slop (${aiDetection.data.confidence}%)` : "AI slop"} />
           </SegmentedControl>
           {onRunAnalysis && (
             <Button
