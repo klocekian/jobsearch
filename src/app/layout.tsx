@@ -28,7 +28,7 @@ export default async function RootLayout({
       lang="en"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-body text-primary">
+      <body className="min-h-full flex flex-col bg-surface text-primary">
         <Providers>
           <Suspense fallback={null}>
             <Nav user={navUser} />

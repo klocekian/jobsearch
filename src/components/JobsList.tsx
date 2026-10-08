@@ -8,7 +8,6 @@ import { STATUS_OPTIONS } from "@/lib/status";
 import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
 import { formatDate } from "@/lib/format";
 import { JobStatusDot } from "./icons";
-import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Badge } from "@astryxdesign/core/Badge";
@@ -64,8 +63,6 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [starredOnly, setStarredOnly] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [checking, setChecking] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -145,8 +142,8 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     router.replace(`/jobs?${params}`, { scroll: false });
   };
 
-  const importFromSheet = async () => {
-    setImporting(true);
+  const importFromSheet = useCallback(async () => {
+    window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { importing: true } }));
     setImportMsg("");
     try {
       const res = await fetch("/api/jobs/import", { method: "POST" });
@@ -157,12 +154,12 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     } catch (err: unknown) {
       setImportMsg(err instanceof Error ? err.message : "Import failed.");
     } finally {
-      setImporting(false);
+      window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { importing: false } }));
     }
-  };
+  }, [fetchJobs]);
 
-  const checkClosed = async () => {
-    setChecking(true);
+  const checkClosed = useCallback(async () => {
+    window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { checking: true } }));
     setImportMsg("");
     try {
       const res = await fetch("/api/jobs/check-status", { method: "POST" });
@@ -177,9 +174,20 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     } catch {
       setImportMsg("Failed to check job URLs.");
     } finally {
-      setChecking(false);
+      window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { checking: false } }));
     }
-  };
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    const handleImport = () => { importFromSheet(); };
+    const handleCheckClosed = () => { checkClosed(); };
+    window.addEventListener("jobs-action-import", handleImport);
+    window.addEventListener("jobs-action-check-closed", handleCheckClosed);
+    return () => {
+      window.removeEventListener("jobs-action-import", handleImport);
+      window.removeEventListener("jobs-action-check-closed", handleCheckClosed);
+    };
+  }, [importFromSheet, checkClosed]);
 
   const handleSortChange = (newSort: TableSortState<string>) => {
     if (newSort.length === 0) return;
@@ -337,8 +345,8 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   ];
 
   return (
-    <div className="flex flex-col" style={{ "--table-header-top": `${57 + toolbarHeight}px` } as React.CSSProperties}>
-      <div ref={toolbarRef} className="sticky top-[57px] z-20 bg-body py-2.5">
+    <div className="flex flex-col" style={{ "--table-header-top": `${56 + toolbarHeight}px` } as React.CSSProperties}>
+      <div ref={toolbarRef} className="sticky top-[56px] z-20 bg-surface border-b border-border/40 py-2.5 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:bg-surface">
         <Stack gap={3} className="shrink-0">
           <HStack gap={3} className="flex-wrap items-center">
             <TextInput
@@ -347,7 +355,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
               value={search}
               onChange={setSearch}
               placeholder="Search jobs…"
-              className="w-40"
+              className="w-48"
             />
             <Selector
               label="Status filter"
@@ -362,11 +370,6 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
               <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
               <span className={starredOnly ? "text-amber-500 font-medium" : "text-secondary"}>★ Starred</span>
             </label>
-            <HStack gap={2} className="items-center sm:ml-auto">
-              <Button label={checking ? "Checking…" : "Check closed"} variant="ghost" size="sm" onClick={checkClosed} isDisabled={checking} />
-              <Button label={importing ? "Importing…" : isMobile ? "Import" : "Import from Google Sheet"} variant="ghost" size="sm" onClick={importFromSheet} isDisabled={importing} />
-              <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
-            </HStack>
           </HStack>
 
           {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
