@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "@/lib/anthropic";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/api-auth";
 import { getJob } from "@/lib/db/jobs";
@@ -9,21 +6,11 @@ import { getCandidateProfiles } from "@/lib/db/candidate-docs";
 import { FitnessResultSchema } from "@/lib/fitness/schema";
 import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/prompt";
 import { renderFitnessText } from "@/lib/fitness/render";
+import { generateStructured } from "@/lib/ai";
 
 export const runtime = "nodejs";
 // The report is long and the model reasons through every requirement.
 export const maxDuration = 300;
-
-/**
- * Opus only, deliberately.
- *
- * Sonnet was measured against it on 2026-08-30 and retired: it scored a soft
- * case 5 where Opus repeatably scored 7, it varied between runs where Opus did
- * not, and its rationale let a logistics item demote the band — which
- * contradicts the spec's rule that logistics is light-touch and hardens only at
- * offer stage. A model that reasons against the spec is not a cheap fallback.
- */
-const MODEL = "claude-opus-5";
 
 const MAX_TOKENS = 16_000;
 
@@ -75,56 +62,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = await getAnthropicClient();
-    const message = await client.messages.parse({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+    const { data: result, model, provider } = await generateStructured({
       system: FITNESS_SYSTEM_PROMPT,
-      messages: [
-        { role: "user", content: buildFitnessUserMessage({ profile, gaps, posting }) },
-      ],
-      output_config: { format: zodOutputFormat(FitnessResultSchema) },
+      prompt: buildFitnessUserMessage({ profile, gaps, posting }),
+      schema: FitnessResultSchema,
+      schemaName: "FitnessResult",
+      maxTokens: MAX_TOKENS,
     });
-
-    // Keep the CLI's diagnostic: a truncated result is a specific, fixable
-    // failure, not a generic one. Rendering a half-report as though it were
-    // whole is how a missing MISS goes unnoticed.
-    if (message.stop_reason === "max_tokens") {
-      return NextResponse.json(
-        {
-          error:
-            `The model hit the ${MAX_TOKENS} token ceiling and the result was cut off. ` +
-            "Trim the posting text, or shorten the profile documents.",
-          code: "max_tokens",
-        },
-        { status: 502 },
-      );
-    }
-
-    const result = message.parsed_output;
-    if (!result) {
-      return NextResponse.json(
-        { error: `No structured result returned (stop_reason=${message.stop_reason}).` },
-        { status: 502 },
-      );
-    }
 
     return NextResponse.json({
       result,
       text: renderFitnessText(result),
-      model: MODEL,
+      model: `${provider}:${model}`,
       run_at: new Date().toISOString(),
     });
   } catch (err: unknown) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json(
-        { error: "Anthropic auth failed. Reconnect Claude on the Profile page." },
-        { status: 502 },
-      );
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited. Try again shortly." }, { status: 429 });
-    }
     const message = err instanceof Error ? err.message : "Fitness check failed.";
     return NextResponse.json({ error: message }, { status: 502 });
   }

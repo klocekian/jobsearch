@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "@/lib/anthropic";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { generateStructured } from "@/lib/ai";
 
 // AI-authorship detection via the model itself — more reliable than surface
 // heuristics. Returns a calibrated confidence plus the specific LLM stylistic
@@ -52,20 +50,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = await getAnthropicClient();
-    const message = await client.messages.parse({
-      model: "claude-opus-4-8",
-      max_tokens: 4000,
-      thinking: { type: "adaptive" },
+    const { data: result } = await generateStructured({
       system: SYSTEM,
-      messages: [{ role: "user", content: `=== RESUME ===\n${resumeText}\n\nAssess AI authorship now.` }],
-      output_config: { format: zodOutputFormat(ResultSchema) },
+      prompt: `=== RESUME ===\n${resumeText}\n\nAssess AI authorship now.`,
+      schema: ResultSchema,
+      schemaName: "AIDetectionResult",
+      maxTokens: 4000,
     });
 
-    const result = message.parsed_output;
-    if (!result) {
-      return NextResponse.json({ error: "The model returned an empty response." }, { status: 502 });
-    }
     const confidence = Math.max(0, Math.min(100, Math.round(result.confidence)));
     const band = confidence >= 66 ? "high" : confidence >= 33 ? "moderate" : "low";
     const patterns = result.patterns.map((p) => ({
@@ -76,12 +68,6 @@ export async function POST(request: Request) {
     }));
     return NextResponse.json({ confidence, band, patterns });
   } catch (err: unknown) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited by the Anthropic API. Try again shortly." }, { status: 429 });
-    }
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to analyze." }, { status: 502 });
   }
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
@@ -29,7 +30,9 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-body text-primary">
         <Providers>
-          <Nav user={navUser} />
+          <Suspense fallback={null}>
+            <Nav user={navUser} />
+          </Suspense>
           {children}
         </Providers>
       </body>

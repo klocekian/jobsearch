@@ -108,6 +108,17 @@ export async function getDb(): Promise<Client> {
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS user_ai_providers (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider    TEXT NOT NULL,
+      api_key     TEXT NOT NULL,
+      model       TEXT,
+      is_active   INTEGER NOT NULL DEFAULT 0,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
@@ -116,6 +127,7 @@ export async function getDb(): Promise<Client> {
     CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_candidate_docs_user_kind ON candidate_docs(user_id, kind);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_user_ai_providers_user_provider ON user_ai_providers(user_id, provider);
   `);
 
   // Parallelize backward-compatibility migrations for existing DBs

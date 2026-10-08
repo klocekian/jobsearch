@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 import { STATUS_OPTIONS, STATUS_COLORS } from "@/lib/status";
@@ -208,9 +207,6 @@ export function JobDetail({ jobId }: { jobId: number }) {
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/jobs" className="mb-2 inline-block text-xs text-secondary hover:text-primary">
-            ← All jobs
-          </Link>
           <h2 className="text-xl font-bold text-primary">{job.title || "Untitled"}</h2>
           <p className="text-sm text-secondary">
             {job.company}

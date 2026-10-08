@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "@/lib/anthropic";
 import { z } from "zod";
+import { streamText } from "@/lib/ai";
 
-// Cover letter generation. Runs server-side so the Anthropic API key never
-// reaches the browser. Grounds the letter in the resume + job posting and, when
+// Cover letter generation. Runs server-side so API keys never
+// reach the browser. Grounds the letter in the resume + job posting and, when
 // provided, the candidate's stated interests — and forbids inventing experience.
 
 export const runtime = "nodejs";
@@ -34,8 +33,6 @@ function buildSystemPrompt(): string {
     "Length: 250-400 words, 3-4 short paragraphs. Output ONLY the cover letter body text: no salutation block with addresses, no date, no markdown, no preamble, and no sign-off name placeholder beyond a simple closing like \"Sincerely,\".",
   ].join("\n");
 }
-
-
 
 function buildUserPrompt(input: z.infer<typeof RequestSchema>): string {
   const { company, jobTitle, jobText, resumeText, interests, context } = input;
@@ -68,44 +65,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = await getAnthropicClient();
-    const stream = client.messages.stream({
-      model: "claude-opus-4-8",
-      max_tokens: 2048,
-      thinking: { type: "adaptive" },
+    const { stream } = await streamText({
       system: buildSystemPrompt(),
-      messages: [{ role: "user", content: buildUserPrompt(parsed) }],
+      prompt: buildUserPrompt(parsed),
+      maxTokens: 2048,
     });
 
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const event of stream) {
-            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(event.delta.text));
-            }
-          }
-          controller.close();
-        } catch (err) {
-          controller.error(err);
-        }
-      },
-    });
-
-    return new Response(readable, {
+    return new Response(stream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
       },
     });
   } catch (err: unknown) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited by the Anthropic API. Try again shortly." }, { status: 429 });
-    }
     const message = err instanceof Error ? err.message : "Failed to generate the cover letter.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
