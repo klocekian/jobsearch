@@ -380,16 +380,14 @@ function ClaudeConnection({ status, onUpdate }: { status: ClaudeStatus; onUpdate
             <Card className="p-3">
               <Stack gap={1}>
                 <Text type="supporting" display="block">
-                  <Text type="supporting" weight="semibold">API key</Text> — create at{" "}
+                  <Text type="supporting" weight="semibold">API Key</Text> — create one at{" "}
                   <Link href="https://console.anthropic.com/settings/keys" isExternalLink>
                     console.anthropic.com/settings/keys
                   </Link>
                 </Text>
                 <Text type="supporting" display="block">
-                  <Text type="supporting" weight="semibold">Max/Pro subscribers</Text> — run in terminal:
+                  Paste your <Code>sk-ant-api03-...</Code> key above. API usage is pay-as-you-go and separate from consumer Claude.ai Pro/Max subscriptions.
                 </Text>
-                <Text type="supporting" display="block">1. <Code>ant auth login</Code></Text>
-                <Text type="supporting" display="block">2. <Code>ant auth print-credentials --access-token</Code></Text>
               </Stack>
             </Card>
             <HStack gap={2}>
