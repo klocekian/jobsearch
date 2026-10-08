@@ -14,7 +14,6 @@ import { renderFitnessText } from "@/lib/fitness/render";
 import { JobDescriptionView } from "./JobDescriptionView";
 import { ResumeView } from "./ResumeView";
 import { CoverLetterView } from "./CoverLetterView";
-import { JobStatusDot } from "./icons";
 import {
   loadSavedResume,
   coverLetterText,
@@ -27,7 +26,6 @@ import {
 import { buildPackageMarkdown } from "@/lib/package";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
-import { STATUS_OPTIONS } from "@/lib/status";
 import { Button } from "@astryxdesign/core/Button";
 import { TabList, Tab } from "@astryxdesign/core/TabList";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
@@ -162,7 +160,17 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const runAnalysis = () => {
+  const [analyzing, setAnalyzing] = useState(false);
+
+  useEffect(() => {
+    if (job) {
+      window.dispatchEvent(new CustomEvent("job-workspace-sync", {
+        detail: { jobId: job.id, status: job.status, analyzing: analyzing || fitnessRunning }
+      }));
+    }
+  }, [job, analyzing, fitnessRunning]);
+
+  const runAnalysis = useCallback(() => {
     if (!job || !resumeText.trim() || !job.posting_text.trim()) return;
     if (!analyzed || analyzed.jobText !== job.posting_text) {
       clearCoverLetter();
@@ -193,19 +201,18 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         body: JSON.stringify({ add_tag: job.company }),
       }).catch(() => {});
     }
-  };
+  }, [job, resumeText, analyzed, savedResumes, jobId]);
 
-  const runFitnessCheck = async () => {
+  const runFitnessCheck = useCallback(async (useAi = false) => {
     if (!job || !job.posting_text.trim()) return;
     setFitnessRunning(true);
     setFitnessError(null);
     setNotesFlash(false);
-    setRightTab("fitness");
     try {
       const res = await fetch("/api/fitness-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_id: jobId }),
+        body: JSON.stringify({ job_id: jobId, use_ai: useAi }),
       });
       const data = await res.json() as {
         result?: FitnessResult; text?: string; model?: string; run_at?: string; error?: string;
@@ -216,10 +223,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       }
       setFitnessRunModel(data.model ?? null);
 
-      // Persist on completion, the same way runAnalysis persists the ATS
-      // report: the run is paid for, so it is kept. Re-running overwrites,
-      // which is what you want when checking against a different resume.
-      // The DECISION stays manual — notes and status still need a button.
       const runAt = data.run_at ?? new Date().toISOString();
       const saveRes = await fetch(`/api/jobs/${jobId}`, {
         method: "PATCH",
@@ -240,7 +243,22 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     } finally {
       setFitnessRunning(false);
     }
-  };
+  }, [job, jobId, fetchJob]);
+
+  const runUnifiedAnalysis = useCallback(async (useAi = false) => {
+    if (!job || !job.posting_text.trim()) return;
+    setAnalyzing(true);
+    setFitnessError(null);
+
+    // 1. Run ATS Match Analysis (if resume is available)
+    if (resumeText.trim()) {
+      runAnalysis();
+    }
+
+    // 2. Run Fitness Check (deterministic or AI)
+    await runFitnessCheck(useAi);
+    setAnalyzing(false);
+  }, [job, resumeText, runAnalysis, runFitnessCheck]);
 
   /**
    * Writing the report into the job's notes, and abandoning the job, stay
@@ -277,7 +295,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }
   };
 
-  const updateStatus = async (newStatus: string) => {
+  const updateStatus = useCallback(async (newStatus: string) => {
     await fetch(`/api/jobs/${jobId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -298,7 +316,29 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       });
     }
     fetchJob();
-  };
+  }, [jobId, analyzed, job, fetchJob]);
+
+  const deleteJob = useCallback(async () => {
+    if (!confirm("Delete this job?")) return;
+    await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
+    router.push("/jobs");
+  }, [jobId, router]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ action: string; status?: string; withAi?: boolean }>;
+      if (!custom.detail) return;
+      if (custom.detail.action === "analyze") {
+        runUnifiedAnalysis(!!custom.detail.withAi);
+      } else if (custom.detail.action === "status" && custom.detail.status) {
+        updateStatus(custom.detail.status);
+      } else if (custom.detail.action === "delete") {
+        deleteJob();
+      }
+    };
+    window.addEventListener("job-workspace-action", handler);
+    return () => window.removeEventListener("job-workspace-action", handler);
+  }, [runUnifiedAnalysis, updateStatus, deleteJob]);
 
   const saveNotes = async () => {
     await fetch(`/api/jobs/${jobId}`, {
@@ -320,12 +360,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     setPasting(false);
     setPasteText("");
     fetchJob();
-  };
-
-  const deleteJob = async () => {
-    if (!confirm("Delete this job?")) return;
-    await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
-    router.push("/jobs");
   };
 
   const uploadFile = async (file: File) => {
@@ -378,58 +412,44 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   if (!job) return <div className="py-12"><Banner status="error" title="Job not found." /></div>;
 
   const jobHeaderInner = (
-    <>
-      <div className="min-w-0 flex-1">
-        {editingHeader ? (
-          <div className="mt-1 space-y-1.5">
-            <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" />
-            <div className="flex gap-1.5">
-              <TextInput label="Company" isLabelHidden value={headerFields.company} onChange={(v) => setHeaderFields(f => ({ ...f, company: v }))} placeholder="Company" />
-              <TextInput label="Location" isLabelHidden value={headerFields.location} onChange={(v) => setHeaderFields(f => ({ ...f, location: v }))} placeholder="Location" />
-            </div>
-            <div className="flex gap-1.5">
-              <TextInput label="Salary" isLabelHidden value={headerFields.salary_text} onChange={(v) => setHeaderFields(f => ({ ...f, salary_text: v }))} placeholder="Salary" />
-              <TextInput label="URL" isLabelHidden value={headerFields.url} onChange={(v) => setHeaderFields(f => ({ ...f, url: v }))} placeholder="URL" />
-            </div>
-            <div className="flex gap-1.5">
-              <Button label="Save" variant="primary" size="sm" onClick={saveHeader} />
-              <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditingHeader(false)} />
-            </div>
+    <div className="min-w-0 flex-1">
+      {editingHeader ? (
+        <div className="mt-1 space-y-1.5">
+          <TextInput label="Job title" isLabelHidden value={headerFields.title} onChange={(v) => setHeaderFields(f => ({ ...f, title: v }))} placeholder="Job title" />
+          <div className="flex gap-1.5">
+            <TextInput label="Company" isLabelHidden value={headerFields.company} onChange={(v) => setHeaderFields(f => ({ ...f, company: v }))} placeholder="Company" />
+            <TextInput label="Location" isLabelHidden value={headerFields.location} onChange={(v) => setHeaderFields(f => ({ ...f, location: v }))} placeholder="Location" />
           </div>
-        ) : (
-          <div className="group">
-            <HStack gap={2} className="items-center">
-              <Heading level={2}>{job.title || "Untitled"}</Heading>
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  label="Edit"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
-                />
-              </span>
-            </HStack>
-            <Text type="supporting" display="block">
-              {job.company}
-              {job.location && <> · {job.location}</>}
-              {job.salary_text && <> · {job.salary_text}</>}
-            </Text>
+          <div className="flex gap-1.5">
+            <TextInput label="Salary" isLabelHidden value={headerFields.salary_text} onChange={(v) => setHeaderFields(f => ({ ...f, salary_text: v }))} placeholder="Salary" />
+            <TextInput label="URL" isLabelHidden value={headerFields.url} onChange={(v) => setHeaderFields(f => ({ ...f, url: v }))} placeholder="URL" />
           </div>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <Selector
-          label="Status"
-          isLabelHidden
-          size="sm"
-          startIcon={<JobStatusDot status={job.status} />}
-          options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
-          value={job.status}
-          onChange={(v) => updateStatus(v as string)}
-        />
-        <Button label="Delete" variant="destructive" size="sm" onClick={deleteJob} />
-      </div>
-    </>
+          <div className="flex gap-1.5">
+            <Button label="Save" variant="primary" size="sm" onClick={saveHeader} />
+            <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditingHeader(false)} />
+          </div>
+        </div>
+      ) : (
+        <div className="group">
+          <HStack gap={2} className="items-center">
+            <Heading level={2}>{job.title || "Untitled"}</Heading>
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                label="Edit"
+                variant="ghost"
+                size="sm"
+                onClick={() => { setHeaderFields({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url }); setEditingHeader(true); }}
+              />
+            </span>
+          </HStack>
+          <Text type="supporting" display="block">
+            {job.company}
+            {job.location && <> · {job.location}</>}
+            {job.salary_text && <> · {job.salary_text}</>}
+          </Text>
+        </div>
+      )}
+    </div>
   );
 
   const leftTabBar = (
@@ -635,13 +655,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               <Text type="supporting" display="block" className="mt-1">
                 {analyzed
                   ? <>Score: <Text weight="semibold">{analyzed.report.score}</Text>/100</>
-                  : "Select a resume and run analysis"
+                  : "Select a resume and click Analyze"
                 }
               </Text>
             </div>
             {!analyzed && (
               <div className="flex shrink-0 items-center gap-2">
-                <Button label="Run analysis" variant="primary" size="sm" onClick={runAnalysis} isDisabled={!resumeText.trim() || !job.posting_text.trim()} />
+                <Button label={analyzing ? "Analyzing…" : "Analyze"} variant="primary" size="sm" onClick={() => runUnifiedAnalysis(false)} isDisabled={!resumeText.trim() || !job.posting_text.trim() || analyzing} />
               </div>
             )}
     </>
@@ -650,7 +670,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const rightTabBar = (
     <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
       <Tab value="fitness" label={fitnessSaved ? `Fitness (${fitnessSaved.score}/10)` : "Fitness"} />
-      <Tab value="report" label="ATS Report" />
+      <Tab value="report" label={analyzed ? `ATS Report (${analyzed.report.score}/100)` : "ATS Report"} />
       <Tab value="resume" label="Resume" />
       <Tab value="cover" label="Cover Letter" />
     </TabList>
@@ -662,11 +682,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             <div className="py-4">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Button
-                  label={fitnessRunning ? "Running…" : fitnessSaved ? "Re-run fitness check" : "Run fitness check"}
+                  label={analyzing || fitnessRunning ? "Analyzing…" : fitnessSaved ? "Re-run analysis" : "Analyze"}
                   variant="primary"
                   size="sm"
-                  onClick={runFitnessCheck}
-                  isDisabled={fitnessRunning || !job.posting_text.trim()}
+                  onClick={() => runUnifiedAnalysis(false)}
+                  isDisabled={analyzing || fitnessRunning || !job.posting_text.trim()}
                 />
                 {job.fitness_run_at && !fitnessRunning && (
                   <Text type="supporting" color="secondary">
@@ -694,7 +714,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 <Banner
                   status="info"
                   title={job.posting_text.trim()
-                    ? "Run a fitness check to score this posting against your profile."
+                    ? 'Click "Analyze" in the top bar to run fitness and ATS match reports.'
                     : "Add the posting text first — the fitness check reads the posting, not the resume."}
                 />
               )}
@@ -719,7 +739,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           )}
           {rightTab !== "fitness" && !analyzed && job.posting_text && (
             <div className="py-12">
-              <Banner status="info" title={'Click "Run analysis" to match your resume against this posting.'} />
+              <Banner status="info" title={'Click "Analyze" to match your resume and evaluate fitness.'} />
             </div>
           )}
 
@@ -727,7 +747,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             <MatchReportView
               report={analyzed.report}
               aiDetection={aiDetection}
-              onRunAnalysis={runAnalysis}
+              onRunAnalysis={() => runUnifiedAnalysis(false)}
               analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
               hasAnalysis={!!analyzed}
             />
