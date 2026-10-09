@@ -170,8 +170,16 @@ export async function generateGrokStructured<T>(
 ): Promise<{ data: T; model: string }> {
   const model = options.model || AI_PROVIDERS.grok.defaultModel;
 
+  const jsonSchema = typeof (options.schema as { toJSONSchema?: () => unknown }).toJSONSchema === "function"
+    ? (options.schema as { toJSONSchema: () => unknown }).toJSONSchema()
+    : null;
+
+  const schemaInstruction = jsonSchema
+    ? `\n\nREQUIRED JSON SCHEMA:\nYou MUST format your response as a valid JSON object strictly matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n`
+    : "";
+
   const systemPrompt = (options.system ? options.system + "\n\n" : "") +
-    "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema.";
+    `You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema. Do not include markdown code blocks or preamble.${schemaInstruction}`;
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: systemPrompt },
@@ -181,7 +189,7 @@ export async function generateGrokStructured<T>(
   const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
     model,
     messages,
-    max_tokens: options.maxTokens ?? 4096,
+    max_tokens: options.maxTokens ?? 8192,
     response_format: { type: "json_object" },
   });
 

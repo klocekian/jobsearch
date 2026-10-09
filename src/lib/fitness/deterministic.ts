@@ -83,8 +83,31 @@ function isBoilerplateOrOrganizational(line: string): boolean {
     lower.includes("regardless of race") ||
     lower.includes("sexual orientation") ||
     lower.includes("gender identity") ||
+    lower.includes("gender identification") ||
     lower.includes("veteran status") ||
+    lower.includes("protected veteran") ||
     lower.includes("protected status") ||
+    lower.includes("voluntary self-identification") ||
+    lower.includes("self-identification") ||
+    lower.includes("self identification") ||
+    lower.includes("government reporting") ||
+    lower.includes("completion of the form") ||
+    lower.includes("completion of this form") ||
+    lower.includes("not be considered in the hiring") ||
+    lower.includes("considered in the hiring") ||
+    lower.includes("accepted file types") ||
+    lower.includes("attach resume") ||
+    lower.includes("attach your resume") ||
+    lower.includes("enter the first name") ||
+    lower.includes("enter your legal name") ||
+    lower.includes("legal first name") ||
+    lower.includes("linkedin profile") ||
+    lower.includes("portfolio url") ||
+    lower.includes("website, blog or portfolio") ||
+    lower.includes("how did you hear about") ||
+    lower.includes("how did you hear") ||
+    lower.includes("please provide the name of") ||
+    lower.includes("most recent company") ||
     lower.includes("atlassians can choose") ||
     lower.includes("we believe that") ||
     lower.includes("our mission") ||
@@ -95,7 +118,10 @@ function isBoilerplateOrOrganizational(line: string): boolean {
     lower.includes("working at ") ||
     lower.includes("privacy policy") ||
     lower.includes("privacy notice") ||
-    lower.includes("terms of service")
+    lower.includes("terms of service") ||
+    lower.includes("cookie policy") ||
+    lower.includes("submit application") ||
+    lower.includes("apply for this job")
   );
 }
 
@@ -108,6 +134,19 @@ function extractRequirementLines(posting: string): { minimums: string[]; preferr
 
   for (const line of lines) {
     const lower = line.toLowerCase();
+
+    // Check for application form / legal footer boundaries where we should stop parsing requirements
+    if (
+      lower.startsWith("apply for this job") ||
+      lower.startsWith("submit application") ||
+      lower.startsWith("voluntary self-identification") ||
+      lower.startsWith("self-identification") ||
+      lower.startsWith("demographic questions") ||
+      lower.startsWith("equal employment opportunity") ||
+      lower.startsWith("eeoc")
+    ) {
+      break;
+    }
 
     // Detect section headers
     if (
