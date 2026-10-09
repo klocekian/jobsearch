@@ -22,6 +22,8 @@ export async function GET(request: Request) {
   const store = await cookies();
   const savedState = store.get("oauth_state")?.value;
   store.delete("oauth_state");
+  const next = store.get("login_next")?.value;
+  store.delete("login_next");
 
   if (!code || !state || state !== savedState) {
     return NextResponse.redirect(new URL("/profile?error=invalid_state", url.origin));
@@ -75,7 +77,8 @@ export async function GET(request: Request) {
       console.log(`User ${user.email} claimed ${claimed} unowned jobs`);
     }
 
-    return NextResponse.redirect(new URL("/jobs", url.origin));
+    const landing = next && next.startsWith("/") && !next.startsWith("//") ? next : "/jobs";
+    return NextResponse.redirect(new URL(landing, url.origin));
   } catch (err) {
     console.error("Google OAuth error:", err);
     return NextResponse.redirect(new URL("/profile?error=auth_failed", url.origin));

@@ -13,6 +13,7 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { AIProvidersPanel } from "./AIProvidersPanel";
+import { McpConnectPanel } from "./McpConnectPanel";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
 type ClaudeStatus = "connected" | "expired" | "none";
@@ -184,7 +185,10 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
       <ApplicationFields initialFields={initialAutofillFields} />
       </>}
 
-      {profileTab === "ai" && <AIProvidersPanel />}
+      {profileTab === "ai" && <>
+        <AIProvidersPanel />
+        <McpConnectPanel />
+      </>}
 
       {profileTab === "extension" && <>
       <Card>

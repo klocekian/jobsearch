@@ -144,6 +144,30 @@ export async function updateJob(id: number, data: JobUpdate): Promise<JobRow | u
   return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
+const TERMINAL_STATUSES = new Set(["rejected", "declined", "withdrawn", "abandoned", "closed"]);
+
+/**
+ * Fields that ride along with a status change: moving to "applied" stamps
+ * applied_at (unless the caller supplied one), and moving into a terminal
+ * status remembers the live status it left so the job can be restored later.
+ */
+export function statusChangeUpdates(
+  next: string,
+  currentStatus: string | undefined,
+  opts?: { appliedAtGiven?: boolean },
+): JobUpdate {
+  const updates: JobUpdate = {};
+  if (next === "applied" && !opts?.appliedAtGiven) {
+    updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  }
+  if (TERMINAL_STATUSES.has(next)) {
+    if (currentStatus && !TERMINAL_STATUSES.has(currentStatus)) updates.previous_status = currentStatus;
+  } else {
+    updates.previous_status = null;
+  }
+  return updates;
+}
+
 export async function findMatchingJob(userId: number | null, data: { company?: string; title?: string; url?: string }): Promise<JobRow | undefined> {
   const db = await getDb();
   const userClause = userId != null ? "user_id = ?" : "user_id IS NULL";

@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs"
+    "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
+    "mcp": "tsx --tsconfig tsconfig.json src/mcp/stdio.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
     "@astryxdesign/core": "^0.1.2",
     "@astryxdesign/theme-neutral": "^0.1.2",
     "@libsql/client": "^0.17.4",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@tailwindcss/typography": "^0.5.20",
     "better-sqlite3": "^12.11.1",
     "geist": "^1.7.2",
@@ -36,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

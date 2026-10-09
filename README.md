@@ -67,3 +67,47 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000). The form is pre-filled with a
 sample resume and job description so you can analyze immediately.
+
+## MCP server
+
+The job tracker is exposed to MCP clients (claude.ai, the Claude apps, Claude Code) so Claude
+can read and update the search directly. Tools live in `src/mcp/server.ts`:
+
+| Area | Tools |
+| --- | --- |
+| Pipeline | `pipeline_summary`, `list_jobs`, `get_job`, `add_job`, `update_job`, `delete_job`, `check_job_status`, `save_submission` |
+| Resumes & profile | `list_resumes`, `get_resume`, `create_resume`, `get_candidate_profile`, `update_candidate_doc` |
+| Analysis | `run_ats_match`, `run_fitness_check`, `get_fitness_brief`, `save_fitness_report` |
+
+Plus a `fitness_check` prompt. The AI fitness check runs on the client's model rather than
+the app's configured provider: `get_fitness_brief` returns the app's exact prompt and output
+schema, and `save_fitness_report` validates and stores the result.
+
+### Hosted (`/api/mcp`)
+
+Streamable HTTP, stateless. The URL and setup steps are in **Profile → AI → Connect Claude**.
+
+- **OAuth 2.1** for connectors: `/.well-known/oauth-protected-resource` →
+  `/.well-known/oauth-authorization-server` → `/api/oauth/register` (dynamic registration) →
+  `/api/oauth/authorize` (Google sign-in if needed, then a consent page at `/oauth/consent`) →
+  `/api/oauth/token` (PKCE S256; access 1h, refresh 30d). Nothing OAuth-related is stored:
+  client ids, codes and tokens are HMAC-signed with a key derived from `SESSION_SECRET`.
+  Client ids carry their registered redirect URIs, which `/authorize` enforces.
+  "Disconnect all connected apps" bumps `users.mcp_oauth_epoch`, which revokes every token
+  issued so far.
+- **Personal access tokens** (`jbs_pat_…`) for scripts, sent as `Authorization: Bearer`.
+  Only a SHA-256 hash is stored (`api_tokens`); the plaintext is shown once.
+- `SESSION_SECRET` must stay stable across deploys — rotating it disconnects every client.
+  Set `MCP_PUBLIC_ORIGIN` if a proxy hides the public host (issuer and resource URLs must
+  match what clients reached).
+
+### Local (stdio)
+
+```bash
+pnpm mcp
+```
+
+Reads the same database as the app: `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` if set,
+otherwise `data/jobsearch.db`. `JOBSEARCH_USER_EMAIL` picks the user (optional when the
+database has one); `JOBSEARCH_ENV_FILE` loads those variables from a file. Claude Code picks
+up `.mcp.json` in this repo automatically.

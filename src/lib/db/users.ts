@@ -9,6 +9,9 @@ export interface UserRow {
   refresh_token: string | null;
   token_expires: number | null;
   profile_data: string | null;
+  /** Stamped into MCP OAuth tokens; bumping it revokes every one issued so far. */
+  mcp_oauth_epoch: number;
+  mcp_last_used_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,4 +84,15 @@ export async function updateProfileData(id: number, data: string): Promise<void>
     sql: "UPDATE users SET profile_data = ?, updated_at = datetime('now') WHERE id = ?",
     args: [data, id],
   });
+}
+
+/** Revoke every MCP OAuth token issued to this user. Connected clients must sign in again. */
+export async function bumpMcpOauthEpoch(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute({ sql: "UPDATE users SET mcp_oauth_epoch = mcp_oauth_epoch + 1, updated_at = datetime('now') WHERE id = ?", args: [id] });
+}
+
+export async function touchMcpUse(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute({ sql: "UPDATE users SET mcp_last_used_at = datetime('now') WHERE id = ?", args: [id] });
 }
