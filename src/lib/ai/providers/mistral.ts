@@ -43,8 +43,8 @@ async function fetchMistralWithRetry(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (attempt > 0) {
-      // Exponential backoff with jitter: 1.5s, 3s
-      const delay = 1500 * Math.pow(2, attempt - 1) + Math.random() * 300;
+      // Exponential backoff with jitter: 2s, 4s
+      const delay = 2000 * Math.pow(2, attempt - 1) + Math.random() * 500;
       await new Promise((r) => setTimeout(r, delay));
     }
 
@@ -70,7 +70,7 @@ async function fetchMistralWithRetry(
         throw new Error(formatMistralError(res.status, lastErrText));
       }
     } catch (err: unknown) {
-      if (attempt === maxRetries - 1 || (err instanceof Error && !err.message.includes("429"))) {
+      if (attempt === maxRetries - 1 || (err instanceof Error && !err.message.includes("429") && !err.message.includes("rate limit"))) {
         throw err;
       }
     }
@@ -79,11 +79,19 @@ async function fetchMistralWithRetry(
   throw new Error(formatMistralError(lastRes?.status ?? 429, lastErrText));
 }
 
+const FALLBACK_MODELS = [
+  "mistral-small-latest",
+  "open-mistral-nemo",
+  "open-mistral-7b",
+  "mistral-large-latest",
+];
+
 export async function generateMistralText(
   apiKey: string,
   options: GenerateTextOptions,
 ): Promise<{ text: string; model: string }> {
-  let model = options.model || AI_PROVIDERS.mistral.defaultModel;
+  const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 3000, 3000);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -92,28 +100,31 @@ export async function generateMistralText(
   messages.push({ role: "user", content: options.prompt });
 
   const body = {
-    model,
     messages,
-    max_tokens: options.maxTokens ?? 4096,
+    max_tokens: maxTokens,
     temperature: 0.7,
   };
 
-  let res: Response;
-  try {
-    res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, body);
-  } catch (err: unknown) {
-    // If large model was rate limited, try mistral-small-latest as fallback
-    if (model === "mistral-large-latest") {
-      model = "mistral-small-latest";
-      res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
-    } else {
+  const candidateModels = Array.from(new Set([initialModel, ...FALLBACK_MODELS]));
+  let lastError: unknown;
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content ?? "";
+      return { text, model };
+    } catch (err: unknown) {
+      lastError = err;
+      // If error was rate limit or unsupported model on user's tier, try next candidate
+      if (err instanceof Error && (err.message.includes("429") || err.message.includes("rate limit") || err.message.includes("404") || err.message.includes("400"))) {
+        continue;
+      }
       throw err;
     }
   }
 
-  const data = await res.json();
-  const text = data.choices?.[0]?.message?.content ?? "";
-  return { text, model };
+  throw lastError;
 }
 
 export function streamMistralText(
@@ -121,6 +132,7 @@ export function streamMistralText(
   options: StreamTextOptions,
 ): ReadableStream<Uint8Array> {
   const model = options.model || AI_PROVIDERS.mistral.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 3000, 3000);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -136,7 +148,7 @@ export function streamMistralText(
         const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, {
           model,
           messages,
-          max_tokens: options.maxTokens ?? 4096,
+          max_tokens: maxTokens,
           stream: true,
         });
 
@@ -184,7 +196,8 @@ export async function generateMistralStructured<T>(
   apiKey: string,
   options: GenerateStructuredOptions<T>,
 ): Promise<{ data: T; model: string }> {
-  let model = options.model || AI_PROVIDERS.mistral.defaultModel;
+  const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 3000, 3000);
 
   const systemPrompt = (options.system ? options.system + "\n\n" : "") +
     "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema.";
@@ -195,30 +208,33 @@ export async function generateMistralStructured<T>(
   ];
 
   const body = {
-    model,
     messages,
-    max_tokens: options.maxTokens ?? 4096,
+    max_tokens: maxTokens,
     response_format: { type: "json_object" },
   };
 
-  let res: Response;
-  try {
-    res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, body);
-  } catch (err: unknown) {
-    // If large model was rate limited, try mistral-small-latest as fallback
-    if (model === "mistral-large-latest") {
-      model = "mistral-small-latest";
-      res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
-    } else {
+  const candidateModels = Array.from(new Set([initialModel, ...FALLBACK_MODELS]));
+  let lastError: unknown;
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
+      const data = await res.json();
+      let rawText = data.choices?.[0]?.message?.content ?? "{}";
+      rawText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
+
+      const parsedJson = JSON.parse(rawText);
+      const validated = options.schema.parse(parsedJson);
+      return { data: validated, model };
+    } catch (err: unknown) {
+      lastError = err;
+      // If error was rate limit or unsupported model on user's tier, try next candidate
+      if (err instanceof Error && (err.message.includes("429") || err.message.includes("rate limit") || err.message.includes("404") || err.message.includes("400"))) {
+        continue;
+      }
       throw err;
     }
   }
 
-  const data = await res.json();
-  let rawText = data.choices?.[0]?.message?.content ?? "{}";
-  rawText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-
-  const parsedJson = JSON.parse(rawText);
-  const validated = options.schema.parse(parsedJson);
-  return { data: validated, model };
+  throw lastError;
 }

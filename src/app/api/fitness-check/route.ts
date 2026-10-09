@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 // The report is long and the model reasons through every requirement.
 export const maxDuration = 300;
 
-const MAX_TOKENS = 16_000;
+const MAX_TOKENS = 4096;
 
 const RequestSchema = z.object({
   job_id: z.number().int().positive(),
