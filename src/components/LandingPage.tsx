@@ -12,26 +12,19 @@ const GoogleIcon = () => (
 );
 
 function BrowserFrame({
-  url,
   children,
   className = "",
 }: {
-  url: string;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <div className={`overflow-hidden rounded-xl border border-border/80 bg-zinc-950/80 shadow-2xl shadow-black/60 ring-1 ring-white/10 ${className}`}>
       {/* Chrome bar */}
-      <div className="flex items-center gap-2 border-b border-border/60 bg-zinc-900/90 px-4 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-        </div>
-        <div className="mx-auto flex h-6 w-full max-w-sm items-center justify-center rounded-md bg-zinc-950/80 px-3 text-[11px] font-mono text-zinc-400 border border-border/40">
-          <span className="truncate">{url}</span>
-        </div>
+      <div className="flex items-center gap-1.5 border-b border-border/60 bg-zinc-900/90 px-3 py-1.5">
+        <span className="h-2 w-2 rounded-full bg-rose-500/80" />
+        <span className="h-2 w-2 rounded-full bg-amber-500/80" />
+        <span className="h-2 w-2 rounded-full bg-emerald-500/80" />
       </div>
       <div className="relative bg-white">
         {children}
@@ -40,11 +33,11 @@ function BrowserFrame({
   );
 }
 
-type Shot = { src: string; alt: string; url: string; width: number; height: number };
+type Shot = { src: string; alt: string; width: number; height: number };
 
 function Screenshot({ shot, priority }: { shot: Shot; priority?: boolean }) {
   return (
-    <BrowserFrame url={shot.url}>
+    <BrowserFrame>
       <Image
         src={shot.src}
         alt={shot.alt}
@@ -124,20 +117,20 @@ function FeatureSection({
 }
 
 const SHOTS = {
-  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Application pipeline chart, drop-off table and job list with fitness and ATS scores", url: "jobs.fieldlines.org/jobs", width: 2400, height: 1177 },
-  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Pipeline stage drill-down listing every job at the Recruiter stage and the path it took", url: "jobs.fieldlines.org/jobs (Stage drill-down)", width: 2400, height: 1382 },
-  clip: { src: "/hero/extension-clip.webp", alt: "Job Search Clipper side panel extracting company, title, salary and description from a careers page", url: "jobs.ashbyhq.com (Job Search Clipper)", width: 2400, height: 1182 },
-  fitness: { src: "/hero/fitness-check.webp", alt: "Fitness check scoring a posting 9/10 with Meet and Adjacent verdicts per requirement", url: "jobs.fieldlines.org/jobs/391 (Fitness 9/10)", width: 2400, height: 1177 },
-  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile with a positive fact canon and a negative gaps profile", url: "jobs.fieldlines.org/profile (Candidate Profile)", width: 1788, height: 1715 },
-  ats: { src: "/hero/ats-qualification.webp", alt: "ATS pass score of 94/100 with searchability checks and highlighted skills in the posting", url: "jobs.fieldlines.org/jobs/329 (ATS Match 94/100)", width: 2400, height: 1177 },
-  slop: { src: "/hero/ai-authenticity.webp", alt: "AI slop score of 42% broken down into negative parallelism, narrative openers and clause rhythm", url: "jobs.fieldlines.org/jobs/329 (AI Slop Check)", width: 1851, height: 1010 },
-  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume rewrite with inline accept/dismiss diffs beside the embedded application", url: "jobs.fieldlines.org/jobs/329 (Tailored Rewrite)", width: 2400, height: 1177 },
-  coverLetter: { src: "/hero/cover-letter.webp", alt: "Cover letter generator with letter header and editable draft beside the application", url: "jobs.fieldlines.org/jobs/269 (Cover Letter)", width: 2400, height: 1177 },
-  fill: { src: "/hero/extension-fill.webp", alt: "Job Search Clipper Fill tab populating an Ashby application form", url: "jobs.ashbyhq.com/…/application (Autofill)", width: 2400, height: 1182 },
-  providers: { src: "/hero/ai-providers.webp", alt: "AI provider settings for Anthropic Claude, Google Gemini, xAI Grok and Mistral AI", url: "jobs.fieldlines.org/profile (AI)", width: 1946, height: 1572 },
-  connector: { src: "/hero/claude-connector.webp", alt: "Job Search connector inside claude.ai settings with its read-only and write tools", url: "claude.ai (Settings → Connectors)", width: 1840, height: 1436 },
-  importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", url: "", width: 1025, height: 783 },
-  resumes: { src: "/hero/resumes.webp", alt: "Multiple resumes, each tagged with the companies it was used for", url: "jobs.fieldlines.org/profile (Resumes)", width: 1714, height: 1419 },
+  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Application pipeline chart, drop-off table and job list with fitness and ATS scores", width: 2400, height: 1177 },
+  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Pipeline stage drill-down listing every job at the Recruiter stage and the path it took", width: 2400, height: 1382 },
+  clip: { src: "/hero/extension-clip.webp", alt: "Job Search Clipper side panel extracting company, title, salary and description from a careers page", width: 2400, height: 1182 },
+  fitness: { src: "/hero/fitness-check.webp", alt: "Fitness check scoring a posting 9/10 with Meet and Adjacent verdicts per requirement", width: 2400, height: 1177 },
+  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile with a positive fact canon and a negative gaps profile", width: 1788, height: 1715 },
+  ats: { src: "/hero/ats-qualification.webp", alt: "ATS pass score of 94/100 with searchability checks and highlighted skills in the posting", width: 2400, height: 1177 },
+  slop: { src: "/hero/ai-authenticity.webp", alt: "AI slop score of 42% broken down into negative parallelism, narrative openers and clause rhythm", width: 1851, height: 1010 },
+  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume rewrite with inline accept/dismiss diffs beside the embedded application", width: 2400, height: 1177 },
+  coverLetter: { src: "/hero/cover-letter.webp", alt: "Cover letter generator with letter header and editable draft beside the application", width: 2400, height: 1177 },
+  fill: { src: "/hero/extension-fill.webp", alt: "Job Search Clipper Fill tab populating an Ashby application form", width: 2400, height: 1182 },
+  providers: { src: "/hero/ai-providers.webp", alt: "AI provider settings for Anthropic Claude, Google Gemini, xAI Grok and Mistral AI", width: 1946, height: 1572 },
+  connector: { src: "/hero/claude-connector.webp", alt: "Job Search connector inside claude.ai settings with its read-only and write tools", width: 1840, height: 1436 },
+  importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", width: 1025, height: 783 },
+  resumes: { src: "/hero/resumes.webp", alt: "Multiple resumes, each tagged with the companies it was used for", width: 1714, height: 1419 },
 } satisfies Record<string, Shot>;
 
 const STEPS = [
