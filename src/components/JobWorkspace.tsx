@@ -926,7 +926,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   if (isMobile) {
     return (
-      <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden">
+      <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden bg-surface text-primary">
         <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
           <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
         </div>
@@ -939,12 +939,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         {mobilePane === "posting" ? (
           <>
             <div className="shrink-0 border-b border-border bg-surface px-4">{leftTabBar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">{leftPaneBody}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-4">{leftPaneBody}</div>
           </>
         ) : (
           <>
             <div className="shrink-0 border-b border-border bg-surface px-4">{rightTabBar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-4">{rightPaneBody}</div>
           </>
         )}
       </div>
@@ -954,7 +954,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   return (
     <div
       ref={containerRef}
-      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden"
+      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden bg-surface text-primary"
       style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}
     >
       {/* Drag handle */}
@@ -972,13 +972,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       <div className="col-start-1 row-start-2 border-b border-r border-border bg-surface px-4">{leftTabBar}</div>
 
       {/* Left content */}
-      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border p-4">{leftPaneBody}</div>
+      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border bg-surface p-4">{leftPaneBody}</div>
 
       {/* Right tabs in header */}
       <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
 
       {/* Right content */}
-      <div className="col-start-2 row-start-2 row-span-2 min-h-0 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+      <div className="col-start-2 row-start-2 row-span-2 min-h-0 overflow-y-auto bg-surface p-3 sm:p-4 text-xs">{rightPaneBody}</div>
     </div>
   );
 }

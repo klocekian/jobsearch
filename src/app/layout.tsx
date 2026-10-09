@@ -26,9 +26,10 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      data-astryx-theme="neutral"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-surface text-primary">
+      <body data-astryx-theme="neutral" className="min-h-full flex flex-col bg-surface text-primary">
         <Providers>
           <Suspense fallback={null}>
             <Nav user={navUser} />
