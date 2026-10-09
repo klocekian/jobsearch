@@ -241,7 +241,8 @@ export async function claimUnownedJobs(userId: number): Promise<number> {
 export async function confirmClosedJobs(userId: number | null, ids: number[]): Promise<number> {
   if (ids.length === 0) return 0;
   const db = await getDb();
-  const userClause = userId != null ? "AND user_id = ?" : "";
+  // Signed out means only unowned rows — never fall through to every user's jobs.
+  const userClause = userId != null ? "AND user_id = ?" : "AND user_id IS NULL";
   const userArgs: InValue[] = userId != null ? [userId] : [];
   const result = await db.execute({
     sql: `UPDATE jobs SET previous_status = NULL, updated_at = datetime('now') WHERE status = 'closed' AND id IN (${ids.map(() => "?").join(", ")}) ${userClause}`,
