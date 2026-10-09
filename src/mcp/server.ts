@@ -27,6 +27,7 @@ import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/pr
 import { renderFitnessText } from "@/lib/fitness/render";
 import { checkJobStatus } from "@/lib/job-status-check";
 import { STATUS_OPTIONS } from "@/lib/status";
+import { JobActivitySchema, resolveJobActivity, serializeActivity } from "@/lib/job-activity";
 
 // MCP surface over the job tracker. Every tool is scoped to one user, resolved
 // once by the transport entry point — the same scoping the API routes get from
@@ -234,6 +235,7 @@ export function createJobsearchMcpServer(
         ats_match_report: matchReport ? matchDigest(matchReport) : undefined,
         fitness_run_at: job.fitness_run_at ?? undefined,
         fitness_report: fitnessReport ? renderFitnessText(fitnessReport) : undefined,
+        activity_summary: resolveJobActivity(job, submissions),
         submissions: submissions.map((s) => ({
           id: s.id,
           type: s.type,
@@ -289,7 +291,7 @@ export function createJobsearchMcpServer(
     {
       title: "Update job",
       description:
-        "Update fields on a job. Changing status follows the app's rules: 'applied' stamps applied_at, and closing statuses remember the prior status so it can be restored. Use append_note to add a dated line to the notes without replacing them.",
+        "Update fields on a job. Changing status follows the app's rules: 'applied' stamps applied_at, and closing statuses remember the prior status so it can be restored. Use append_note to add a dated line to the notes without replacing them. After logging activity (an interview booked or held, a reply, an offer), call update_job_summary so the job's banner in the app reflects it.",
       inputSchema: {
         job_id: z.number().int(),
         status: z.enum(STATUS_VALUES).optional(),
@@ -327,6 +329,21 @@ export function createJobsearchMcpServer(
       if (Object.keys(updates).length === 0) return fail("Nothing to update.");
       const updated = await updateJob(job.id, updates);
       return json({ job: jobSummary(updated!) });
+    }),
+  );
+
+  server.registerTool(
+    "update_job_summary",
+    {
+      title: "Update job activity summary",
+      description:
+        "Write the activity banner shown at the top of the job in the app: a one-line headline, upcoming scheduled events, the latest interaction, and next steps. Base it on the job's notes (get_job) — log new facts with update_job append_note first, then call this. The stage shown is always the job's status, so keep status current with update_job. A later notes or status change marks the summary stale until it is rewritten.",
+      inputSchema: { job_id: z.number().int(), ...JobActivitySchema.shape },
+    },
+    safe(async ({ job_id, ...activity }) => {
+      const job = await requireJob(job_id);
+      const updated = await updateJob(job.id, { activity_summary: serializeActivity(activity, job, "mcp") });
+      return json({ job: jobSummary(updated!), activity_summary: resolveJobActivity(updated!, []) });
     }),
   );
 

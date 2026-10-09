@@ -25,6 +25,8 @@ export interface JobRow {
   fitness_score: number | null;
   fitness_report: string | null;
   fitness_run_at: string | null;
+  /** JSON StoredJobActivity — the job's activity banner, written via MCP or AI. See lib/job-activity.ts. */
+  activity_summary: string | null;
   created_at: string;
   updated_at: string;
   applied_at: string | null;
