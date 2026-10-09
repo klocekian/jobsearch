@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import { Button } from "@astryxdesign/core/Button";
 import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
 
@@ -19,7 +19,7 @@ function BrowserFrame({
   className?: string;
 }) {
   return (
-    <div className={`overflow-hidden rounded-xl bg-zinc-950/80 shadow-2xl shadow-black/60 ${className}`}>
+    <div className={`overflow-hidden rounded-2xl bg-zinc-950/80 shadow-2xl shadow-black/60 ${className}`}>
       {/* Chrome bar */}
       <div className="flex items-center gap-1.5 border-b border-border/60 bg-zinc-900/90 px-3 py-1.5">
         <span className="h-2 w-2 rounded-full bg-rose-500/80" />
@@ -33,20 +33,30 @@ function BrowserFrame({
   );
 }
 
-type Shot = { src: string; alt: string; width: number; height: number };
+type Img = { src: string; width: number; height: number };
+type Shot = Img & { alt: string; mobile?: Img };
 
-function Screenshot({ shot, priority }: { shot: Shot; priority?: boolean }) {
+// Phones get a tighter crop of the part each shot is about; tapping opens the full image.
+// `fill` pins the frame to a fixed aspect ratio so side-by-side shots line up.
+function Screenshot({ shot, priority, fill }: { shot: Shot; priority?: boolean; fill?: string }) {
+  const sizes = "(min-width: 1024px) 680px, 100vw";
+  const { props: { srcSet: desktopSrcSet } } = getImageProps({ src: shot.src, alt: shot.alt, width: shot.width, height: shot.height, sizes });
+  const { props: img } = getImageProps({
+    ...(fill ? shot : shot.mobile ?? shot),
+    alt: shot.alt,
+    sizes,
+    loading: priority ? "eager" : "lazy",
+    fetchPriority: priority ? "high" : undefined,
+  });
   return (
     <BrowserFrame>
-      <Image
-        src={shot.src}
-        alt={shot.alt}
-        width={shot.width}
-        height={shot.height}
-        sizes="(min-width: 1024px) 680px, 100vw"
-        className="w-full h-auto block"
-        priority={priority}
-      />
+      <a href={shot.src} target="_blank" rel="noopener" aria-label={`Open full screenshot: ${shot.alt}`} className={`block ${fill ?? ""}`}>
+        <picture>
+          {shot.mobile && !fill && <source media="(min-width: 640px)" srcSet={desktopSrcSet} sizes={sizes} />}
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- alt comes from getImageProps */}
+          <img {...img} className={fill ? "h-full w-full object-cover object-left-top" : "w-full h-auto block"} />
+        </picture>
+      </a>
     </BrowserFrame>
   );
 }
@@ -97,7 +107,7 @@ function FeatureSection({
             <Badge variant={badgeVariant} label={badge} />
             <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">{title}</h2>
             <p className="text-sm text-secondary leading-relaxed">{intro}</p>
-            <ul className="space-y-3 pt-2 text-xs sm:text-sm text-primary">
+            <ul className="space-y-3 pt-2 text-sm text-primary">
               {bullets.map((b) => (
                 <li key={b.title} className="flex items-start gap-2.5">
                   <span className={`${CHECK_COLORS[check]} font-bold mt-0.5`}>✓</span>
@@ -117,16 +127,16 @@ function FeatureSection({
 }
 
 const SHOTS = {
-  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Application pipeline chart, drop-off table and job list with fitness and ATS scores", width: 2400, height: 1177 },
-  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Pipeline stage drill-down listing every job at the Recruiter stage and the path it took", width: 2400, height: 1382 },
-  clip: { src: "/hero/extension-clip.webp", alt: "Job Search Clipper side panel extracting company, title, salary and description from a careers page", width: 2400, height: 1182 },
-  fitness: { src: "/hero/fitness-check.webp", alt: "Fitness check scoring a posting 9/10 with Meet and Adjacent verdicts per requirement", width: 2400, height: 1177 },
-  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile with a positive fact canon and a negative gaps profile", width: 1788, height: 1715 },
-  ats: { src: "/hero/ats-qualification.webp", alt: "ATS pass score of 94/100 with searchability checks and highlighted skills in the posting", width: 2400, height: 1177 },
+  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Application pipeline chart, drop-off table and job list with fitness and ATS scores", width: 2400, height: 1177, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 344 } },
+  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Pipeline stage drill-down listing every job at the Recruiter stage and the path it took", width: 2400, height: 1382, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 1061 } },
+  clip: { src: "/hero/extension-clip.webp", alt: "Job Search Clipper side panel extracting company, title, salary and description from a careers page", width: 2400, height: 1182, mobile: { src: "/hero/extension-clip-mobile.webp", width: 729, height: 1174 } },
+  fitness: { src: "/hero/fitness-check.webp", alt: "Fitness check scoring a posting 9/10 with Meet and Adjacent verdicts per requirement", width: 2400, height: 1177, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 630 } },
+  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile with a positive fact canon and a negative gaps profile", width: 1788, height: 1715, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
+  ats: { src: "/hero/ats-qualification.webp", alt: "ATS pass score of 94/100 with searchability checks and highlighted skills in the posting", width: 2400, height: 1177, mobile: { src: "/hero/ats-qualification-mobile.webp", width: 1200, height: 757 } },
   slop: { src: "/hero/ai-authenticity.webp", alt: "AI slop score of 42% broken down into negative parallelism, narrative openers and clause rhythm", width: 1851, height: 1010 },
-  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume rewrite with inline accept/dismiss diffs beside the embedded application", width: 2400, height: 1177 },
-  coverLetter: { src: "/hero/cover-letter.webp", alt: "Cover letter generator with letter header and editable draft beside the application", width: 2400, height: 1177 },
-  fill: { src: "/hero/extension-fill.webp", alt: "Job Search Clipper Fill tab populating an Ashby application form", width: 2400, height: 1182 },
+  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume rewrite with inline accept/dismiss diffs beside the embedded application", width: 2400, height: 1177, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 757 } },
+  coverLetter: { src: "/hero/cover-letter.webp", alt: "Cover letter generator with letter header and editable draft beside the application", width: 2400, height: 1177, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 757 } },
+  fill: { src: "/hero/extension-fill.webp", alt: "Job Search Clipper Fill tab populating an Ashby application form", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 729, height: 1227 } },
   providers: { src: "/hero/ai-providers.webp", alt: "AI provider settings for Anthropic Claude, Google Gemini, xAI Grok and Mistral AI", width: 1946, height: 1572 },
   connector: { src: "/hero/claude-connector.webp", alt: "Job Search connector inside claude.ai settings with its read-only and write tools", width: 1840, height: 1436 },
   importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", width: 1018, height: 776 },
@@ -232,7 +242,7 @@ export function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
             {STEPS.map((s) => (
-              <div key={s.n} className="p-5 rounded-xl border border-border bg-surface/80 space-y-2">
+              <div key={s.n} className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${s.color}`}>{s.n}</span>
                   <span className="font-semibold text-primary text-sm">{s.title}</span>
@@ -258,9 +268,12 @@ export function LandingPage() {
         ]}
         shot={SHOTS.clip}
         footer={
-          <a href="/chrome-extension.zip" download className="inline-block pt-2 text-xs font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-300 dark:hover:text-cyan-200 transition-colors">
+          <>
+            <p className="pt-2 text-xs text-secondary sm:hidden">Works in desktop Chrome. Open this page on your computer to install it.</p>
+            <a href="/chrome-extension.zip" download className="hidden sm:inline-block pt-2 text-xs font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-300 dark:hover:text-cyan-200 transition-colors">
             Download the Chrome extension →
           </a>
+          </>
         }
       />
 
@@ -406,14 +419,14 @@ export function LandingPage() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <Screenshot shot={SHOTS.providers} />
+              <Screenshot shot={SHOTS.providers} fill="aspect-[5/4]" />
               <h3 className="text-lg font-semibold text-primary">Connect Claude, Gemini, Grok or Mistral</h3>
               <p className="text-sm text-secondary leading-relaxed">
                 Add one or more API keys and choose your active default. That provider powers cover letters, resume rewriting, AI fitness checks and smart parsing.
               </p>
             </div>
             <div className="space-y-4">
-              <Screenshot shot={SHOTS.connector} />
+              <Screenshot shot={SHOTS.connector} fill="aspect-[5/4]" />
               <h3 className="text-lg font-semibold text-primary">Work from Claude with the MCP connector</h3>
               <p className="text-sm text-secondary leading-relaxed">
                 Add Job Search as a custom connector in claude.ai, the Claude apps or Claude Code. Claude can read your pipeline, resumes and profile, add and update jobs, and run ATS and fitness checks on your Claude plan, with no API key needed.
@@ -437,23 +450,25 @@ export function LandingPage() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <Screenshot shot={SHOTS.resumes} />
+              <Screenshot shot={SHOTS.resumes} fill="aspect-[5/4]" />
               <h3 className="text-lg font-semibold text-primary">Multiple resumes, tagged by where they went</h3>
               <p className="text-sm text-secondary leading-relaxed">
                 Keep a resume per job type, upload PDFs or text, set a default, and see at a glance which companies each version has been used for.
               </p>
             </div>
             <div className="space-y-4">
-              <div className="flex items-center justify-center rounded-xl bg-muted p-6 sm:p-10 shadow-2xl shadow-black/20">
-                <Image
-                  src={SHOTS.importSheet.src}
-                  alt={SHOTS.importSheet.alt}
-                  width={SHOTS.importSheet.width}
-                  height={SHOTS.importSheet.height}
-                  sizes="(min-width: 1024px) 480px, 100vw"
-                  className="w-full max-w-md h-auto block drop-shadow-2xl"
-                />
-              </div>
+              <BrowserFrame>
+                <div className="flex aspect-[5/4] items-center justify-center bg-zinc-200 p-6 sm:p-10">
+                  <Image
+                    src={SHOTS.importSheet.src}
+                    alt={SHOTS.importSheet.alt}
+                    width={SHOTS.importSheet.width}
+                    height={SHOTS.importSheet.height}
+                    sizes="(min-width: 1024px) 480px, 100vw"
+                    className="w-full max-w-md h-auto block drop-shadow-xl"
+                  />
+                </div>
+              </BrowserFrame>
               <h3 className="text-lg font-semibold text-primary">Import from Google Sheets or CSV</h3>
               <p className="text-sm text-secondary leading-relaxed">
                 Paste a shared spreadsheet link or upload a CSV and your existing search lands in the pipeline intact.
@@ -462,7 +477,7 @@ export function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {MORE_FEATURES.map((f) => (
-              <div key={f.title} className="p-5 rounded-xl border border-border bg-surface/80 space-y-2">
+              <div key={f.title} className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
                 <div className="font-semibold text-primary text-sm">{f.title}</div>
                 <p className="text-xs text-secondary leading-relaxed">{f.body}</p>
               </div>
@@ -482,7 +497,7 @@ export function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-            <div className="p-5 rounded-xl border border-border bg-surface/80 space-y-2">
+            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold">A</span>
                 <span className="font-semibold text-primary text-sm">This is a numbers game</span>
@@ -492,7 +507,7 @@ export function LandingPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-xl border border-border bg-surface/80 space-y-2">
+            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold">B</span>
                 <span className="font-semibold text-primary text-sm">Tune your resume to &gt;90% match</span>
@@ -502,7 +517,7 @@ export function LandingPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-xl border border-border bg-surface/80 space-y-2">
+            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold">C</span>
                 <span className="font-semibold text-primary text-sm">Practice first on low-stakes roles</span>
@@ -512,7 +527,7 @@ export function LandingPage() {
               </p>
             </div>
 
-            <div className="p-5 rounded-xl border border-border bg-surface/80 space-y-2">
+            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold">D</span>
                 <span className="font-semibold text-primary text-sm">Get picky over time</span>
