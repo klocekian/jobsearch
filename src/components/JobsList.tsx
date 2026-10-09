@@ -161,13 +161,13 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     setImportMsg("");
     try {
       const res = await fetch("/api/jobs/check-status", { method: "POST" });
-      const data: { checked?: number; closed?: number; closedJobs?: { company: string }[] } = await res.json();
+      const data: { checked?: number; closed?: number; closedJobs?: { company: string; title?: string; reason?: string }[] } = await res.json();
       if (data.closed && data.closed > 0) {
-        const names = data.closedJobs?.map((j) => j.company).join(", ") ?? "";
-        setImportMsg(`Checked ${data.checked} jobs — ${data.closed} now closed${names ? `: ${names}` : ""}.`);
+        const names = data.closedJobs?.map((j) => `${j.company}${j.title ? ` — ${j.title}` : ""}`).join(", ") ?? "";
+        setImportMsg(`Checked ${data.checked} jobs — ${data.closed} closed and marked${names ? `: ${names}` : ""}.`);
         fetchJobs();
       } else {
-        setImportMsg(`Checked ${data.checked ?? 0} jobs — all still open.`);
+        setImportMsg(`Checked ${data.checked ?? 0} active jobs — all postings are still open.`);
       }
     } catch {
       setImportMsg("Failed to check job URLs.");
