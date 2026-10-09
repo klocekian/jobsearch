@@ -8,6 +8,7 @@ interface JobDescriptionViewProps {
   jobTitle: string;
   matched: string[];
   missing: string[];
+  hideLegend?: boolean;
 }
 
 interface Token {
@@ -42,20 +43,22 @@ function highlight(text: string, matched: Set<string>, missing: Set<string>): To
   return tokens;
 }
 
-export function JobDescriptionView({ jobText, matched, missing }: JobDescriptionViewProps) {
+export function JobDescriptionView({ jobText, matched, missing, hideLegend = false }: JobDescriptionViewProps) {
   const tokens = highlight(jobText, new Set(matched), new Set(missing));
   return (
     <div>
-      <HStack gap={4} className="mb-4">
-        <HStack gap={2} className="items-center">
-          <span className="inline-block h-1 w-5 rounded bg-rose-400" />
-          <Text type="supporting">Missing Skills</Text>
+      {!hideLegend && (
+        <HStack gap={4} className="mb-4">
+          <HStack gap={2} className="items-center">
+            <span className="inline-block h-1 w-5 rounded bg-rose-400" />
+            <Text type="supporting">Missing Skills</Text>
+          </HStack>
+          <HStack gap={2} className="items-center">
+            <span className="inline-block h-1 w-5 rounded bg-emerald-400" />
+            <Text type="supporting">Matched Skills</Text>
+          </HStack>
         </HStack>
-        <HStack gap={2} className="items-center">
-          <span className="inline-block h-1 w-5 rounded bg-emerald-400" />
-          <Text type="supporting">Matched Skills</Text>
-        </HStack>
-      </HStack>
+      )}
       <Card className="p-6">
         <pre className="whitespace-pre-wrap font-sans leading-7">
           {tokens.map((t, i) =>
