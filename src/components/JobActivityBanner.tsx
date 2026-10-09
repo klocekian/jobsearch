@@ -11,12 +11,6 @@ import { ChevronDownIcon, ChevronUpIcon } from "./icons";
 
 const COLLAPSED_KEY = "jobActivityBannerCollapsed";
 
-const SOURCE_LABELS = {
-  mcp: "Summary from Claude (MCP)",
-  ai: "AI summary",
-  derived: "From your notes and job signals",
-} as const;
-
 /**
  * Where this job stands: stage, the next scheduled event, the latest
  * interaction, and next steps. Content comes from the stored MCP/AI summary
@@ -134,26 +128,24 @@ export function JobActivityBanner({
             </Row>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
-            <span className="text-secondary">
-              {SOURCE_LABELS[activity.source]}
-              {activity.source !== "derived" && activity.written_at && <> · {formatDate(activity.written_at)}</>}
-              {activity.stale && <> · notes changed since the last summary</>}
-            </span>
-            <div className="flex items-center gap-2">
-              {error && <span className="text-rose-700 dark:text-rose-400">{error}</span>}
-              {job.notes?.trim() && (
-                <button
-                  type="button"
-                  onClick={summarize}
-                  disabled={summarizing}
-                  className="rounded px-1.5 py-0.5 font-medium text-primary hover:bg-border/60 disabled:opacity-50 cursor-pointer disabled:cursor-default"
-                >
-                  {summarizing ? "Summarizing…" : activity.source === "derived" ? "Summarize with AI" : "Refresh"}
-                </button>
-              )}
+          {(activity.stale || error || job.notes?.trim()) && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+              {activity.stale && <span className="text-secondary">Notes changed since the last summary</span>}
+              <div className="ml-auto flex items-center gap-2">
+                {error && <span className="text-rose-700 dark:text-rose-400">{error}</span>}
+                {job.notes?.trim() && (
+                  <button
+                    type="button"
+                    onClick={summarize}
+                    disabled={summarizing}
+                    className="rounded px-1.5 py-0.5 font-medium text-primary hover:bg-border/60 disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                  >
+                    {summarizing ? "Summarizing…" : activity.source === "derived" ? "Summarize with AI" : "Refresh"}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </section>
