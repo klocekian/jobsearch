@@ -100,11 +100,12 @@ export async function generateGrokText(
   return { text, model };
 }
 
-export function streamGrokText(
+export async function streamGrokText(
   apiKey: string,
   options: StreamTextOptions,
-): ReadableStream<Uint8Array> {
+): Promise<ReadableStream<Uint8Array>> {
   const model = options.model || AI_PROVIDERS.grok.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 4096, 4096);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -112,24 +113,24 @@ export function streamGrokText(
   }
   messages.push({ role: "user", content: options.prompt });
 
+  const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    stream: true,
+  });
+
+  if (!res.body) {
+    throw new Error("Grok response body is empty.");
+  }
+
+  const reader = res.body.getReader();
   const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
-          model,
-          messages,
-          max_tokens: options.maxTokens ?? 4096,
-          stream: true,
-        });
-
-        if (!res.body) {
-          throw new Error("Grok response body is empty.");
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {
@@ -164,14 +165,24 @@ export function streamGrokText(
   });
 }
 
+import { normalizeStructuredPayload, safeParseLlmJson } from "../normalize-structured";
+
 export async function generateGrokStructured<T>(
   apiKey: string,
   options: GenerateStructuredOptions<T>,
 ): Promise<{ data: T; model: string }> {
   const model = options.model || AI_PROVIDERS.grok.defaultModel;
 
+  const jsonSchema = typeof (options.schema as { toJSONSchema?: () => unknown }).toJSONSchema === "function"
+    ? (options.schema as { toJSONSchema: () => unknown }).toJSONSchema()
+    : null;
+
+  const schemaInstruction = jsonSchema
+    ? `\n\nREQUIRED JSON SCHEMA:\nYou MUST format your response as a valid JSON object strictly matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n`
+    : "";
+
   const systemPrompt = (options.system ? options.system + "\n\n" : "") +
-    "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema.";
+    `You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema. Do not include markdown code blocks or preamble.${schemaInstruction}`;
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: systemPrompt },
@@ -181,15 +192,14 @@ export async function generateGrokStructured<T>(
   const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
     model,
     messages,
-    max_tokens: options.maxTokens ?? 4096,
+    max_tokens: options.maxTokens ?? 8192,
     response_format: { type: "json_object" },
   });
 
   const data = await res.json();
-  let rawText = data.choices?.[0]?.message?.content ?? "{}";
-  rawText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-
-  const parsedJson = JSON.parse(rawText);
-  const validated = options.schema.parse(parsedJson);
+  const rawText = data.choices?.[0]?.message?.content ?? "{}";
+  const parsedJson = safeParseLlmJson(rawText);
+  const normalized = normalizeStructuredPayload(parsedJson, options.schemaName);
+  const validated = options.schema.parse(normalized);
   return { data: validated, model };
 }

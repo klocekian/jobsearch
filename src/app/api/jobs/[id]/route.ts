@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getJob, updateJob, deleteJob } from "@/lib/db/jobs";
+import { getJob, updateJob, deleteJob, statusChangeUpdates } from "@/lib/db/jobs";
 import { listSubmissions } from "@/lib/db/submissions";
 import { normalizePostingText } from "@/lib/html-text";
 
@@ -53,18 +53,9 @@ export async function PATCH(request: Request, ctx: Params) {
     if (typeof updates.posting_text === "string") {
       updates.posting_text = normalizePostingText(updates.posting_text);
     }
-    if (data.status === "applied" && !data.applied_at) {
-      updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-    }
-    const terminalStatuses = new Set(["rejected", "declined", "withdrawn", "abandoned", "closed"]);
-    if (data.status && terminalStatuses.has(data.status)) {
+    if (data.status) {
       const current = await getJob(Number(id));
-      if (current && !terminalStatuses.has(current.status)) {
-        updates.previous_status = current.status;
-      }
-    }
-    if (data.status && !terminalStatuses.has(data.status)) {
-      updates.previous_status = null;
+      Object.assign(updates, statusChangeUpdates(data.status, current?.status, { appliedAtGiven: !!data.applied_at }));
     }
     const job = await updateJob(Number(id), updates);
     if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });

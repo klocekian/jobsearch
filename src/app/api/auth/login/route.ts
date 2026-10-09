@@ -17,6 +17,15 @@ export async function GET(request: Request) {
   const store = await cookies();
   store.set("oauth_state", state, { httpOnly: true, maxAge: 600, path: "/", sameSite: "lax" });
 
+  // Where to land after sign-in (e.g. back to an MCP connector's authorize
+  // step). Relative paths only, so this can't become an open redirect.
+  const next = new URL(request.url).searchParams.get("next");
+  if (next && next.startsWith("/") && !next.startsWith("//")) {
+    store.set("login_next", next, { httpOnly: true, maxAge: 600, path: "/", sameSite: "lax" });
+  } else {
+    store.delete("login_next");
+  }
+
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: `${origin}/api/auth/callback`,

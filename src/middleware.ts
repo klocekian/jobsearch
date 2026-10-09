@@ -30,8 +30,8 @@ export function middleware(request: NextRequest) {
   }
 
   // Auth gate — redirect to login if no session cookie
-  const publicPaths = ["/login", "/api/auth/", "/chrome-extension.zip"];
-  if (publicPaths.some((p) => pathname.startsWith(p))) {
+  const publicPaths = ["/login", "/api/auth/", "/chrome-extension.zip", "/hero/", "/.well-known/", "/oauth/"];
+  if (pathname === "/" || publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 

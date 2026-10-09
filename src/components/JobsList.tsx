@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
@@ -8,6 +8,7 @@ import { STATUS_OPTIONS } from "@/lib/status";
 import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
 import { formatDate } from "@/lib/format";
 import { JobStatusDot } from "./icons";
+import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Badge } from "@astryxdesign/core/Badge";
@@ -19,6 +20,7 @@ import { Table, useTableSortable, proportional, pixel } from "@astryxdesign/core
 import type { TableColumn, TableSortState } from "@astryxdesign/core/Table";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 import { ImportSheetModal } from "./ImportSheetModal";
+import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
 
@@ -131,19 +133,31 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     fetchJobs();
   }, [fetchJobs, isDefaultView]);
 
-  useEffect(() => {
-    const key = "jobsLastUrlCheck";
-    const last = localStorage.getItem(key);
-    const today = new Date().toISOString().slice(0, 10);
-    if (last === today) return;
-    localStorage.setItem(key, today);
-    fetch("/api/jobs/check-status", { method: "POST" })
-      .then((r) => r.json())
-      .then((d: { closed?: number }) => {
-        if (d.closed && d.closed > 0) fetchJobs();
-      })
-      .catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [restoring, setRestoring] = useState(false);
+  const restorableJobs = useMemo(
+    () => jobs.filter((j) => j.status === "closed" && !!j.previous_status).length,
+    [jobs],
+  );
+
+  const undoAutoClosed = async () => {
+    setRestoring(true);
+    try {
+      const res = await fetch("/api/jobs/check-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "undo" }),
+      });
+      const data = await res.json();
+      if (data.restored) {
+        setImportMsg(`Successfully restored ${data.restored} job${data.restored === 1 ? "" : "s"} back to their active pipeline statuses.`);
+        fetchJobs();
+      }
+    } catch {
+      setImportMsg("Failed to restore jobs.");
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const updateStatusFilter = (value: string) => {
     setStatusFilter(value);
@@ -160,13 +174,13 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     setImportMsg("");
     try {
       const res = await fetch("/api/jobs/check-status", { method: "POST" });
-      const data: { checked?: number; closed?: number; closedJobs?: { company: string }[] } = await res.json();
+      const data: { checked?: number; closed?: number; closedJobs?: { company: string; title?: string; reason?: string }[] } = await res.json();
       if (data.closed && data.closed > 0) {
-        const names = data.closedJobs?.map((j) => j.company).join(", ") ?? "";
-        setImportMsg(`Checked ${data.checked} jobs — ${data.closed} now closed${names ? `: ${names}` : ""}.`);
+        const names = data.closedJobs?.map((j) => `${j.company}${j.title ? ` — ${j.title}` : ""}`).join(", ") ?? "";
+        setImportMsg(`Checked ${data.checked} jobs — ${data.closed} closed and marked${names ? `: ${names}` : ""}.`);
         fetchJobs();
       } else {
-        setImportMsg(`Checked ${data.checked ?? 0} jobs — all still open.`);
+        setImportMsg(`Checked ${data.checked ?? 0} active jobs — all postings are still open.`);
       }
     } catch {
       setImportMsg("Failed to check job URLs.");
@@ -298,20 +312,16 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           : <Text>—</Text>,
     },
     {
-      // Keyword similarity against one resume — a fact about a document, not a
-      // verdict on the job. Rendered plain on purpose: a green badge here reads
-      // as "good, apply", which is exactly the misread this column invites.
       key: "match_score",
       header: "ATS Match",
-      width: pixel(110),
+      width: pixel(90),
       sortable: true,
       renderCell: (job) =>
         job.match_score != null
           ? (
-            <Text>
-              {job.match_score}%
-              {job.match_resume_name ? ` · ${job.match_resume_name}` : ""}
-            </Text>
+            <span title={job.match_resume_name ? `Scored with: ${job.match_resume_name}` : undefined}>
+              <Badge variant="neutral" label={`${job.match_score}%`} />
+            </span>
           )
           : <Text>—</Text>,
     },
@@ -369,6 +379,21 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
             </label>
           </HStack>
 
+          {restorableJobs > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200">
+              <div className="flex items-center gap-2 text-sm">
+                <span>⚠️ <strong>{restorableJobs}</strong> job{restorableJobs === 1 ? " was" : "s were"} recently marked closed by automated check.</span>
+              </div>
+              <Button
+                label={restoring ? "Restoring…" : "Restore to active pipeline"}
+                variant="secondary"
+                size="sm"
+                onClick={undoAutoClosed}
+                isDisabled={restoring}
+              />
+            </div>
+          )}
+
           {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
         </Stack>
       </div>
@@ -406,6 +431,8 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           fetchJobs();
         }}
       />
+
+      <OnboardingWizardModal />
     </div>
   );
 }

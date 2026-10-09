@@ -144,6 +144,30 @@ export async function updateJob(id: number, data: JobUpdate): Promise<JobRow | u
   return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
+const TERMINAL_STATUSES = new Set(["rejected", "declined", "withdrawn", "abandoned", "closed"]);
+
+/**
+ * Fields that ride along with a status change: moving to "applied" stamps
+ * applied_at (unless the caller supplied one), and moving into a terminal
+ * status remembers the live status it left so the job can be restored later.
+ */
+export function statusChangeUpdates(
+  next: string,
+  currentStatus: string | undefined,
+  opts?: { appliedAtGiven?: boolean },
+): JobUpdate {
+  const updates: JobUpdate = {};
+  if (next === "applied" && !opts?.appliedAtGiven) {
+    updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  }
+  if (TERMINAL_STATUSES.has(next)) {
+    if (currentStatus && !TERMINAL_STATUSES.has(currentStatus)) updates.previous_status = currentStatus;
+  } else {
+    updates.previous_status = null;
+  }
+  return updates;
+}
+
 export async function findMatchingJob(userId: number | null, data: { company?: string; title?: string; url?: string }): Promise<JobRow | undefined> {
   const db = await getDb();
   const userClause = userId != null ? "user_id = ?" : "user_id IS NULL";
@@ -204,4 +228,40 @@ export async function claimUnownedJobs(userId: number): Promise<number> {
   const jobs = await db.execute({ sql: "UPDATE jobs SET user_id = ? WHERE user_id IS NULL", args: [userId] });
   await db.execute({ sql: "UPDATE resumes SET user_id = ? WHERE user_id IS NULL", args: [userId] });
   return jobs.rowsAffected;
+}
+
+export async function restoreClosedJobs(userId: number | null): Promise<{
+  restoredCount: number;
+  restoredJobs: { id: number; company: string; title: string; restoredTo: string }[];
+}> {
+  const db = await getDb();
+  const userClause = userId != null ? "AND user_id = ?" : "";
+  const userArgs: InValue[] = userId != null ? [userId] : [];
+
+  const candidates = await db.execute({
+    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' ${userClause}`,
+    args: userArgs,
+  });
+
+  const restoredJobs: { id: number; company: string; title: string; restoredTo: string }[] = [];
+
+  for (const row of candidates.rows) {
+    const id = Number(row.id);
+    const restoredTo = String(row.previous_status);
+    await db.execute({
+      sql: "UPDATE jobs SET status = previous_status, previous_status = NULL, updated_at = datetime('now') WHERE id = ?",
+      args: [id],
+    });
+    restoredJobs.push({
+      id,
+      company: String(row.company ?? ""),
+      title: String(row.title ?? ""),
+      restoredTo,
+    });
+  }
+
+  return {
+    restoredCount: restoredJobs.length,
+    restoredJobs,
+  };
 }

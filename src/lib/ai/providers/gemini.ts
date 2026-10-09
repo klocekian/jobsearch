@@ -97,10 +97,10 @@ export async function generateGeminiText(
   return { text, model };
 }
 
-export function streamGeminiText(
+export async function streamGeminiText(
   apiKey: string,
   options: StreamTextOptions,
-): ReadableStream<Uint8Array> {
+): Promise<ReadableStream<Uint8Array>> {
   const model = options.model || AI_PROVIDERS.gemini.defaultModel;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
@@ -114,28 +114,28 @@ export function streamGeminiText(
   const body = {
     contents,
     generationConfig: {
-      maxOutputTokens: options.maxTokens ?? 4096,
+      maxOutputTokens: Math.min(options.maxTokens ?? 4096, 8192),
     },
   };
 
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok || !res.body) {
+    const err = await res.text().catch(() => "");
+    throw new Error(formatGeminiError(res.status, err));
+  }
+
+  const reader = res.body.getReader();
   const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok || !res.body) {
-          const err = await res.text();
-          throw new Error(`Gemini Stream error (${res.status}): ${err}`);
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {
@@ -170,6 +170,8 @@ export function streamGeminiText(
   });
 }
 
+import { normalizeStructuredPayload, safeParseLlmJson } from "../normalize-structured";
+
 export async function generateGeminiStructured<T>(
   apiKey: string,
   options: GenerateStructuredOptions<T>,
@@ -177,12 +179,20 @@ export async function generateGeminiStructured<T>(
   const model = options.model || AI_PROVIDERS.gemini.defaultModel;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+  const jsonSchema = typeof (options.schema as { toJSONSchema?: () => unknown }).toJSONSchema === "function"
+    ? (options.schema as { toJSONSchema: () => unknown }).toJSONSchema()
+    : null;
+
+  const schemaInstruction = jsonSchema
+    ? `\n\nREQUIRED JSON SCHEMA:\nYou MUST format your response as a valid JSON object strictly matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n`
+    : "";
+
   const systemInstructions = (options.system ? options.system + "\n\n" : "") +
-    "IMPORTANT: You MUST respond ONLY with a single raw, valid JSON object matching the required schema. Do not enclose in markdown code blocks. Do not add conversational text.";
+    `IMPORTANT: You MUST respond ONLY with a single raw, valid JSON object matching the required schema. Do not enclose in markdown code blocks. Do not add conversational text.${schemaInstruction}`;
 
   const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [
     { role: "user", parts: [{ text: systemInstructions }] },
-    { role: "model", parts: [{ text: "Understood. I will respond with valid JSON only." }] },
+    { role: "model", parts: [{ text: "Understood. I will respond with valid JSON matching the schema." }] },
     { role: "user", parts: [{ text: options.prompt }] },
   ];
 
@@ -190,17 +200,16 @@ export async function generateGeminiStructured<T>(
     contents,
     generationConfig: {
       responseMimeType: "application/json",
-      maxOutputTokens: options.maxTokens ?? 4096,
+      maxOutputTokens: options.maxTokens ?? 8192,
     },
   };
 
   const res = await fetchGeminiWithRetry(url, body);
 
   const data = await res.json();
-  let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-  rawText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-
-  const parsedJson = JSON.parse(rawText);
-  const validated = options.schema.parse(parsedJson);
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+  const parsedJson = safeParseLlmJson(rawText);
+  const normalized = normalizeStructuredPayload(parsedJson, options.schemaName);
+  const validated = options.schema.parse(normalized);
   return { data: validated, model };
 }

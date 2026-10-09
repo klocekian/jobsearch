@@ -1,78 +1,91 @@
 import { NextResponse } from "next/server";
-import { listJobs, updateJob } from "@/lib/db/jobs";
+import { listJobs, getJob, updateJob, restoreClosedJobs } from "@/lib/db/jobs";
 import { getCurrentUserId } from "@/lib/api-auth";
+import { checkJobStatus } from "@/lib/job-status-check";
+import { getDb } from "@/lib/db";
+import type { InValue } from "@libsql/client";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
-
-const CLOSED_PHRASES = [
-  "no longer accepting",
-  "no longer available",
-  "position has been filled",
-  "position has been closed",
-  "this job has been closed",
-  "this job is no longer",
-  "this posting has been closed",
-  "this role has been filled",
-  "job has expired",
-  "listing has expired",
-  "applications are closed",
-  "application closed",
-  "job is closed",
-  "we are no longer",
-  "this position is no longer",
-  "this opportunity is no longer",
-  "job not found",
-  "page not found",
-];
+export const maxDuration = 120;
 
 const ACTIVE_STATUSES = new Set(["saved", "applying", "applied", "interview", "onsite", "offer"]);
 
-async function checkUrl(url: string): Promise<"closed" | "open" | "unknown"> {
-  try {
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(4000),
-    });
-
-    if (res.status === 404 || res.status === 410) return "closed";
-
-    const text = await res.text();
-    const lower = text.toLowerCase().slice(0, 50000);
-
-    for (const phrase of CLOSED_PHRASES) {
-      if (lower.includes(phrase)) return "closed";
-    }
-
-    return "open";
-  } catch {
-    return "unknown";
-  }
+export async function GET() {
+  const userId = await getCurrentUserId();
+  const db = await getDb();
+  const userClause = userId != null ? "AND user_id = ?" : "";
+  const userArgs: InValue[] = userId != null ? [userId] : [];
+  const res = await db.execute({
+    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' ${userClause}`,
+    args: userArgs,
+  });
+  return NextResponse.json({
+    canRestore: res.rows.length > 0,
+    restorableCount: res.rows.length,
+    jobs: res.rows,
+  });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const userId = await getCurrentUserId();
+
+  let body: Record<string, unknown> | null = null;
+  try {
+    body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  } catch {}
+
+  if (body && (body.action === "undo" || body.action === "restore")) {
+    const res = await restoreClosedJobs(userId);
+    return NextResponse.json({
+      restored: res.restoredCount,
+      restoredJobs: res.restoredJobs,
+      message: `Restored ${res.restoredCount} job${res.restoredCount === 1 ? "" : "s"} to their previous status.`,
+    });
+  }
+
+  let singleJobId: number | null = null;
+  if (body && "job_id" in body) {
+    singleJobId = Number(body.job_id);
+  }
+
+  if (singleJobId) {
+    const job = await getJob(singleJobId, userId);
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+    const result = await checkJobStatus(job);
+    if (result.status === "closed" && ACTIVE_STATUSES.has(job.status)) {
+      await updateJob(job.id, { status: "closed", previous_status: job.status });
+    }
+    return NextResponse.json({
+      checked: 1,
+      closed: result.status === "closed" ? 1 : 0,
+      results: [result],
+      closedJobs: result.status === "closed" ? [{ id: job.id, company: job.company, title: job.title, reason: result.reason }] : [],
+    });
+  }
+
   const jobs = await listJobs(userId, { sort: "created_at", order: "desc" });
+  const toCheck = jobs.filter((j) => j.url && ACTIVE_STATUSES.has(j.status)).slice(0, 50);
+  const results: { id: number; company: string; title: string; result: string; reason: string }[] = [];
 
-  const toCheck = jobs.filter((j) => j.url && ACTIVE_STATUSES.has(j.status)).slice(0, 20);
-  const results: { id: number; company: string; result: string }[] = [];
-
-  // Run in concurrent chunks of 5 to avoid connection flooding while finishing in seconds
+  // Run in concurrent chunks of 5 to avoid connection flooding while completing quickly
   const CHUNK_SIZE = 5;
   for (let i = 0; i < toCheck.length; i += CHUNK_SIZE) {
     const chunk = toCheck.slice(i, i + CHUNK_SIZE);
     const chunkResults = await Promise.all(
       chunk.map(async (job) => {
-        const result = await checkUrl(job.url);
-        if (result === "closed") {
+        const check = await checkJobStatus(job);
+        if (check.status === "closed") {
           await updateJob(job.id, { status: "closed", previous_status: job.status });
         }
-        return { id: job.id, company: job.company, result };
+        return {
+          id: job.id,
+          company: job.company,
+          title: job.title,
+          result: check.status,
+          reason: check.reason,
+        };
       })
     );
     results.push(...chunkResults);
@@ -82,6 +95,7 @@ export async function POST() {
   return NextResponse.json({
     checked: results.length,
     closed: closed.length,
-    closedJobs: closed.map((r) => ({ id: r.id, company: r.company })),
+    closedJobs: closed.map((r) => ({ id: r.id, company: r.company, title: r.title, reason: r.reason })),
   });
 }
+

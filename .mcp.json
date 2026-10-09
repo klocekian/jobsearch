@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "jobsearch": {
+      "command": "pnpm",
+      "args": ["-s", "mcp"],
+      "env": {
+        "JOBSEARCH_USER_EMAIL": "${JOBSEARCH_USER_EMAIL:-}",
+        "TURSO_DATABASE_URL": "${TURSO_DATABASE_URL:-}",
+        "TURSO_AUTH_TOKEN": "${TURSO_AUTH_TOKEN:-}"
+      }
+    }
+  }
+}

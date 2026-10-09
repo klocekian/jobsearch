@@ -13,6 +13,8 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { AIProvidersPanel } from "./AIProvidersPanel";
+import { McpConnectPanel } from "./McpConnectPanel";
+import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
 type ClaudeStatus = "connected" | "expired" | "none";
 interface AuthUser { id: number; name: string; email: string; claudeStatus: ClaudeStatus }
@@ -165,10 +167,28 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
         </div>
       </Card>
 
+      <Card>
+        <div className="p-5">
+          <Text type="label" display="block" className="mb-1">Help & Workflow Tour</Text>
+          <Text type="supporting" display="block" className="mb-3">
+            Review the complete onboarding guide covering job capturing, candidate profiles, fitness scoring, and resume tailoring.
+          </Text>
+          <Button
+            label="Launch Onboarding Wizard"
+            variant="secondary"
+            size="sm"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-onboarding-wizard"))}
+          />
+        </div>
+      </Card>
+
       <ApplicationFields initialFields={initialAutofillFields} />
       </>}
 
-      {profileTab === "ai" && <AIProvidersPanel />}
+      {profileTab === "ai" && <>
+        <AIProvidersPanel />
+        <McpConnectPanel />
+      </>}
 
       {profileTab === "extension" && <>
       <Card>
@@ -294,6 +314,8 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
         </div>
       </Card>
       </>}
+
+      <OnboardingWizardModal />
     </Stack>
   );
 }

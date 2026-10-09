@@ -15,15 +15,23 @@
   --font-mono: var(--font-geist-mono);
   --color-brand: #e9090a;
   --color-brand-dark: #c20808;
+  --color-muted-foreground: var(--color-text-secondary);
 }
 
-:root {
-  --color-background-body: #ffffff;
-  --color-background-surface: #ffffff;
+@layer astryx-theme {
+  @scope ([data-astryx-theme="neutral"]) to ([data-astryx-theme]) {
+    :scope {
+      --color-background-surface: light-dark(#ffffff, #1b1b1b);
+      --color-background-body: light-dark(#ffffff, #1b1b1b);
+      --color-background-card: light-dark(#ffffff, #1b1b1b);
+      --color-background-muted: light-dark(#f5f5f5, #222222);
+    }
+  }
 }
 
 body {
-  background-color: #ffffff;
+  background-color: var(--color-background-body);
+  color: var(--color-text-primary);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
@@ -45,7 +53,7 @@ body {
     position: sticky;
     top: var(--table-header-top, 110px);
     z-index: 10;
-    background: #ffffff !important;
+    background: var(--color-background-surface) !important;
     box-shadow: 0 1px 0 var(--color-border);
   }
 

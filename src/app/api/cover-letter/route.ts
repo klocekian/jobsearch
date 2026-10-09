@@ -79,6 +79,12 @@ export async function POST(request: Request) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to generate the cover letter.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const status =
+      message.includes("not connected") || message.includes("authentication failed") || message.includes("401")
+        ? 401
+        : message.includes("rate limit") || message.includes("429")
+        ? 429
+        : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 }

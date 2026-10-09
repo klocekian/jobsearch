@@ -87,43 +87,6 @@ const FALLBACK_MODELS = [
   "mistral-large-latest",
 ];
 
-function safeParseJSON(raw: string): unknown {
-  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch (err) {
-    // Attempt basic repair for truncated JSON strings / objects
-    let repaired = cleaned;
-    let inQuote = false;
-    for (let i = 0; i < repaired.length; i++) {
-      if (repaired[i] === '"' && (i === 0 || repaired[i - 1] !== '\\')) {
-        inQuote = !inQuote;
-      }
-    }
-    if (inQuote) {
-      repaired += '"';
-    }
-    const stack: string[] = [];
-    for (let i = 0; i < repaired.length; i++) {
-      const c = repaired[i];
-      if (c === '{') stack.push('}');
-      else if (c === '[') stack.push(']');
-      else if (c === '}' || c === ']') {
-        if (stack.length > 0 && stack[stack.length - 1] === c) {
-          stack.pop();
-        }
-      }
-    }
-    while (stack.length > 0) {
-      repaired += stack.pop();
-    }
-    try {
-      return JSON.parse(repaired);
-    } catch {
-      throw err;
-    }
-  }
-}
 
 export async function generateMistralText(
   apiKey: string,
@@ -175,12 +138,12 @@ export async function generateMistralText(
   throw lastError;
 }
 
-export function streamMistralText(
+export async function streamMistralText(
   apiKey: string,
   options: StreamTextOptions,
-): ReadableStream<Uint8Array> {
-  const model = options.model || AI_PROVIDERS.mistral.defaultModel;
-  const maxTokens = Math.min(options.maxTokens ?? 8192, 8192);
+): Promise<ReadableStream<Uint8Array>> {
+  const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 4096, 4096);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -188,24 +151,45 @@ export function streamMistralText(
   }
   messages.push({ role: "user", content: options.prompt });
 
+  const candidateModels = Array.from(new Set([initialModel, ...FALLBACK_MODELS]));
+  let lastRes: Response | null = null;
+  let lastError: unknown;
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, {
+        model,
+        messages,
+        max_tokens: maxTokens,
+        stream: true,
+      });
+      lastRes = res;
+      break;
+    } catch (err: unknown) {
+      lastError = err;
+      if (
+        err instanceof Error &&
+        (err.message.includes("404") ||
+          err.message.includes("does not exist") ||
+          err.message.includes("not available"))
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!lastRes || !lastRes.body) {
+    throw (lastError || new Error("Mistral stream response body is empty."));
+  }
+
+  const reader = lastRes.body.getReader();
   const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, {
-          model,
-          messages,
-          max_tokens: maxTokens,
-          stream: true,
-        });
-
-        if (!res.body) {
-          throw new Error("Mistral response body is empty.");
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {
@@ -240,6 +224,8 @@ export function streamMistralText(
   });
 }
 
+import { normalizeStructuredPayload, safeParseLlmJson } from "../normalize-structured";
+
 export async function generateMistralStructured<T>(
   apiKey: string,
   options: GenerateStructuredOptions<T>,
@@ -247,34 +233,83 @@ export async function generateMistralStructured<T>(
   const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
   const maxTokens = Math.min(options.maxTokens ?? 8192, 8192);
 
+  const jsonSchema = typeof (options.schema as { toJSONSchema?: () => unknown }).toJSONSchema === "function"
+    ? (options.schema as { toJSONSchema: () => unknown }).toJSONSchema()
+    : null;
+
+  const schemaInstruction = jsonSchema
+    ? `\n\nREQUIRED JSON SCHEMA:\nYou MUST format your response as a valid JSON object strictly matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n`
+    : "";
+
   const systemPrompt = (options.system ? options.system + "\n\n" : "") +
-    "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema. Keep descriptions and notes concise.";
+    `You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema. Do not include markdown code blocks or preamble.${schemaInstruction}`;
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: systemPrompt },
     { role: "user", content: options.prompt },
   ];
 
-  const body = {
-    messages,
-    max_tokens: maxTokens,
-    response_format: { type: "json_object" },
-  };
-
   const candidateModels = Array.from(new Set([initialModel, ...FALLBACK_MODELS]));
   let lastError: unknown;
 
   for (const model of candidateModels) {
+    // Attempt 1: Try with native tool calling
     try {
-      const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
+      const toolBody = {
+        model,
+        messages,
+        max_tokens: maxTokens,
+        tools: jsonSchema
+          ? [
+              {
+                type: "function",
+                function: {
+                  name: options.schemaName || "submit_analysis",
+                  description: "Submit structured result",
+                  parameters: jsonSchema,
+                },
+              },
+            ]
+          : undefined,
+        tool_choice: jsonSchema ? "any" : undefined,
+        response_format: jsonSchema ? undefined : { type: "json_object" },
+      };
+
+      const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, toolBody);
       const data = await res.json();
-      const rawText = data.choices?.[0]?.message?.content ?? "{}";
-      const parsedJson = safeParseJSON(rawText);
-      const validated = options.schema.parse(parsedJson);
+      const message = data.choices?.[0]?.message;
+
+      let rawText = "{}";
+      if (message?.tool_calls?.[0]?.function?.arguments) {
+        rawText = message.tool_calls[0].function.arguments;
+      } else if (message?.content) {
+        rawText = message.content;
+      }
+
+      const parsedJson = safeParseLlmJson(rawText);
+      const normalized = normalizeStructuredPayload(parsedJson, options.schemaName);
+      const validated = options.schema.parse(normalized);
       return { data: validated, model };
     } catch (err: unknown) {
-      lastError = err;
-      // If error was rate limit, forbidden tier, or unsupported model, try next candidate
+      // Attempt 2: Fallback to JSON mode if tool calling was unsupported
+      try {
+        const jsonBody = {
+          model,
+          messages,
+          max_tokens: maxTokens,
+          response_format: { type: "json_object" },
+        };
+        const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, jsonBody);
+        const data = await res.json();
+        const rawText = data.choices?.[0]?.message?.content ?? "{}";
+        const parsedJson = safeParseLlmJson(rawText);
+        const normalized = normalizeStructuredPayload(parsedJson, options.schemaName);
+        const validated = options.schema.parse(normalized);
+        return { data: validated, model };
+      } catch (innerErr: unknown) {
+        lastError = innerErr || err;
+      }
+
       if (
         err instanceof Error &&
         (err.message.includes("429") ||
@@ -287,7 +322,6 @@ export async function generateMistralStructured<T>(
       ) {
         continue;
       }
-      throw err;
     }
   }
 

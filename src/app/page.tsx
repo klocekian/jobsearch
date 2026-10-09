@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
+import { getSessionUserId } from "@/lib/auth";
+import { LandingPage } from "@/components/LandingPage";
 
-export default function Home() {
-  redirect("/jobs");
+export default async function Home() {
+  const userId = await getSessionUserId();
+  if (userId) {
+    redirect("/jobs");
+  }
+  return <LandingPage />;
 }

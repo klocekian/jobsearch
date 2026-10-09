@@ -23,6 +23,7 @@ import {
   loadContextMaterials,
   saveContextMaterials,
   loadAiDetection,
+  saveAiDetection,
 } from "@/lib/storage";
 import { buildPackageMarkdown } from "@/lib/package";
 import type { JobRow } from "@/lib/db/jobs";
@@ -93,13 +94,46 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }
   }, [userAnalysis, job, resumeText]);
 
-  // Derived AI detection: cached result if present, otherwise instant heuristic
+  // AI detection: cached result if present, otherwise call /api/ai-detection with fallback
+  // AI detection: cached result if present, otherwise call /api/ai-detection with fallback
+  const [asyncAiDetection, setAsyncAiDetection] = useState<{ text: string; data: import("@/lib/analysis/types").AiDetection } | null>(null);
+
   const aiDetection = useMemo<AiDetectionState>(() => {
     if (!analyzed) return { status: "loading", data: null };
     const text = analyzed.resumeText;
-    const fallback = analyzed.report.aiDetection;
+    if (asyncAiDetection && asyncAiDetection.text === text) {
+      return { status: "done", data: asyncAiDetection.data };
+    }
     const cached = typeof window !== "undefined" ? loadAiDetection(text) : null;
-    return { status: "done", data: cached ?? fallback };
+    if (cached) return { status: "done", data: cached };
+    return { status: "done", data: analyzed.report.aiDetection };
+  }, [analyzed, asyncAiDetection]);
+
+  useEffect(() => {
+    if (!analyzed) return;
+    const text = analyzed.resumeText;
+    const cached = typeof window !== "undefined" ? loadAiDetection(text) : null;
+    if (cached) return;
+
+    let active = true;
+    fetch("/api/ai-detection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: text }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { confidence?: number; band?: string; patterns?: unknown } | null) => {
+        if (!active) return;
+        if (d && typeof d.confidence === "number" && Array.isArray(d.patterns)) {
+          const det = d as unknown as import("@/lib/analysis/types").AiDetection;
+          saveAiDetection(text, det);
+          setAsyncAiDetection({ text, data: det });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [analyzed]);
 
   // Fitness check. `saved` is the report already written to the job; `pending`
@@ -461,6 +495,18 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             {job.location && <> · {job.location}</>}
             {job.salary_text && <> · {job.salary_text}</>}
           </Text>
+          {job.status === "closed" && job.previous_status && (
+            <div className="mt-2 flex items-center justify-between p-2 px-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
+              <span>This job was auto-marked closed (previously <strong>{job.previous_status}</strong>).</span>
+              <button
+                type="button"
+                onClick={() => updateStatus(job.previous_status!)}
+                className="font-medium underline hover:no-underline ml-2 cursor-pointer"
+              >
+                Restore to {job.previous_status}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -516,7 +562,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 hideLegend
               />
             ) : (
-              <Text display="block" className="whitespace-pre-wrap leading-relaxed">{job.posting_text}</Text>
+              <Card className="p-4 sm:p-5">
+                <Text display="block" className="whitespace-pre-wrap text-xs leading-relaxed">{job.posting_text}</Text>
+              </Card>
             )
           ) : (
             <Banner status="info" title="No posting text. Paste it above or use the Chrome extension." />
@@ -730,7 +778,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                     label={analyzing ? "Analyzing…" : analyzed ? "Re-run analysis" : "Analyze"}
                     variant="primary"
                     size="sm"
-                    onClick={() => runAnalysis()}
+                    onClick={() => {
+                      if (withAi) {
+                        runUnifiedAnalysis(true);
+                      } else {
+                        runAnalysis();
+                      }
+                    }}
                     isDisabled={analyzing || !job.posting_text.trim() || !resumeText.trim()}
                   />
                 </div>
@@ -926,7 +980,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   if (isMobile) {
     return (
-      <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden">
+      <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden bg-surface text-primary">
         <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
           <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
         </div>
@@ -939,12 +993,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         {mobilePane === "posting" ? (
           <>
             <div className="shrink-0 border-b border-border bg-surface px-4">{leftTabBar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">{leftPaneBody}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-4">{leftPaneBody}</div>
           </>
         ) : (
           <>
             <div className="shrink-0 border-b border-border bg-surface px-4">{rightTabBar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-4">{rightPaneBody}</div>
           </>
         )}
       </div>
@@ -954,7 +1008,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   return (
     <div
       ref={containerRef}
-      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden"
+      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden bg-surface text-primary"
       style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}
     >
       {/* Drag handle */}
@@ -972,13 +1026,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       <div className="col-start-1 row-start-2 border-b border-r border-border bg-surface px-4">{leftTabBar}</div>
 
       {/* Left content */}
-      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border p-4">{leftPaneBody}</div>
+      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border bg-surface p-4">{leftPaneBody}</div>
 
       {/* Right tabs in header */}
       <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
 
       {/* Right content */}
-      <div className="col-start-2 row-start-2 row-span-2 min-h-0 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+      <div className="col-start-2 row-start-2 row-span-2 min-h-0 overflow-y-auto bg-surface p-3 sm:p-4 text-xs">{rightPaneBody}</div>
     </div>
   );
 }

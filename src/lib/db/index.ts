@@ -119,6 +119,15 @@ export async function getDb(): Promise<Client> {
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS api_tokens (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash    TEXT NOT NULL UNIQUE,
+      label         TEXT NOT NULL DEFAULT '',
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      last_used_at  TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
@@ -127,6 +136,7 @@ export async function getDb(): Promise<Client> {
     CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_candidate_docs_user_kind ON candidate_docs(user_id, kind);
+    CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_user_ai_providers_user_provider ON user_ai_providers(user_id, provider);
   `);
 
@@ -137,6 +147,8 @@ export async function getDb(): Promise<Client> {
     client.execute("ALTER TABLE jobs ADD COLUMN fitness_report TEXT"),
     client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_at TEXT"),
     client.execute("ALTER TABLE jobs ADD COLUMN match_resume_name TEXT"),
+    client.execute("ALTER TABLE users ADD COLUMN mcp_oauth_epoch INTEGER NOT NULL DEFAULT 0"),
+    client.execute("ALTER TABLE users ADD COLUMN mcp_last_used_at TEXT"),
   ]);
 
   _initialized = true;

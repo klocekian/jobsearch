@@ -59,8 +59,8 @@ export function JobDescriptionView({ jobText, matched, missing, hideLegend = fal
           </HStack>
         </HStack>
       )}
-      <Card className="p-6">
-        <pre className="whitespace-pre-wrap font-sans leading-7">
+      <Card className="p-4 sm:p-5">
+        <div className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-primary">
           {tokens.map((t, i) =>
             t.state ? (
               <span
@@ -77,7 +77,7 @@ export function JobDescriptionView({ jobText, matched, missing, hideLegend = fal
               <span key={i}>{t.text}</span>
             )
           )}
-        </pre>
+        </div>
       </Card>
     </div>
   );

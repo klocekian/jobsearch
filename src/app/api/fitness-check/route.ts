@@ -88,13 +88,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { data: result, model, provider } = await generateStructured({
+    const { data: rawResult, model, provider } = await generateStructured({
       system: FITNESS_SYSTEM_PROMPT,
       prompt: buildFitnessUserMessage({ profile: positiveProfile, gaps: negativeGaps, posting }),
       schema: FitnessResultSchema,
       schemaName: "FitnessResult",
       maxTokens: MAX_TOKENS,
     });
+
+    const result = {
+      ...rawResult,
+      company: rawResult.company || job.company || "Unknown Company",
+      title: rawResult.title || job.title || "Job Opportunity",
+      location: rawResult.location || job.location || "Not specified",
+      salary: rawResult.salary || job.salary_text || "Not stated",
+    };
 
     return NextResponse.json({
       result,
