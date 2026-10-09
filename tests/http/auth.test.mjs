@@ -78,6 +78,7 @@ describe("another user's records", () => {
     assert.equal((await app.req("GET", `/api/jobs/${jobId}`, { as: B })).status, 404);
     assert.equal((await app.req("PATCH", `/api/jobs/${jobId}`, { as: B, body: { notes: "pwned" } })).status, 404);
     assert.equal((await app.req("DELETE", `/api/jobs/${jobId}`, { as: B })).status, 404);
+    assert.equal((await app.req("POST", `/api/jobs/${jobId}/match`, { as: B, body: { report: { score: 1 } } })).status, 404);
   });
 
   it("resumes: read, edit, tag and delete are 404", async () => {

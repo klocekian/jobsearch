@@ -52,7 +52,16 @@ describe("API", () => {
     const res = await app.req("POST", "/api/fitness-check", { body: { job_id: jobId } });
     assert.equal(res.status, 200);
     assert.equal(res.data.model, "deterministic:rule-based");
-    assert.equal(typeof res.data.run_id, "number");
+    assert.equal(typeof res.data.job.fitness_score, "number");
+    const saved = await app.req("GET", `/api/jobs/${jobId}`);
+    assert.equal(saved.data.job.fitness_score, res.data.job.fitness_score);
+  });
+
+  it("an ATS match result is saved as the job's current match", async () => {
+    const res = await app.req("POST", `/api/jobs/${jobId}/match`, { body: { report: { score: 64 }, resume_name: "Main resume" } });
+    assert.equal(res.status, 200);
+    const { job } = (await app.req("GET", `/api/jobs/${jobId}`)).data;
+    assert.deepEqual([job.match_score, job.match_resume_name], [64, "Main resume"]);
   });
 
   it("AI fitness without candidate docs says which are missing", async () => {

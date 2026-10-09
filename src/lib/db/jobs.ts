@@ -26,9 +26,6 @@ export interface JobRow {
   fitness_run_at: string | null;
   /** JSON StoredJobActivity — the job's activity banner, written via MCP or AI. See lib/job-activity.ts. */
   activity_summary: string | null;
-  /** analysis_runs.id of the current fitness / match report. See db/analysis-runs.ts. */
-  fitness_run_id: number | null;
-  match_run_id: number | null;
   created_at: string;
   updated_at: string;
   applied_at: string | null;
@@ -166,8 +163,6 @@ export async function findMatchingJob(userId: number | null, data: { company?: s
 
 export async function deleteJob(id: number): Promise<boolean> {
   const db = await getDb();
-  // Foreign keys aren't enforced on every connection, so don't rely on the cascade.
-  await db.execute({ sql: "DELETE FROM analysis_runs WHERE job_id = ?", args: [id] });
   const result = await db.execute({ sql: "DELETE FROM jobs WHERE id = ?", args: [id] });
   return result.rowsAffected > 0;
 }

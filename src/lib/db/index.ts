@@ -66,8 +66,6 @@ export async function getDb(): Promise<Client> {
       fitness_run_at TEXT,
       match_resume_name TEXT,
       activity_summary TEXT,
-      fitness_run_id INTEGER,
-      match_run_id  INTEGER,
       created_at    TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
       applied_at    TEXT
@@ -96,17 +94,6 @@ export async function getDb(): Promise<Client> {
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS analysis_runs (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      job_id      INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-      kind        TEXT NOT NULL,
-      score       INTEGER,
-      report      TEXT NOT NULL,
-      method      TEXT NOT NULL DEFAULT '',
-      resume_name TEXT,
-      resume_text TEXT,
-      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-    );
 
     CREATE TABLE IF NOT EXISTS settings (
       key         TEXT PRIMARY KEY,
@@ -148,7 +135,6 @@ export async function getDb(): Promise<Client> {
     CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_starred ON jobs(is_starred);
     CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id);
-    CREATE INDEX IF NOT EXISTS idx_analysis_runs_job ON analysis_runs(job_id, kind, created_at);
     CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_candidate_docs_user_kind ON candidate_docs(user_id, kind);
@@ -164,30 +150,8 @@ export async function getDb(): Promise<Client> {
     client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_at TEXT"),
     client.execute("ALTER TABLE jobs ADD COLUMN match_resume_name TEXT"),
     client.execute("ALTER TABLE jobs ADD COLUMN activity_summary TEXT"),
-    client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_id INTEGER"),
-    client.execute("ALTER TABLE jobs ADD COLUMN match_run_id INTEGER"),
     client.execute("ALTER TABLE users ADD COLUMN mcp_oauth_epoch INTEGER NOT NULL DEFAULT 0"),
     client.execute("ALTER TABLE users ADD COLUMN mcp_last_used_at TEXT"),
-  ]);
-
-  // Seed run history with the report each job already carries, once per job
-  // and kind, so reports from before history existed aren't orphaned, then
-  // point the job at that run as its current one.
-  await Promise.allSettled([
-    client.batch([
-      `INSERT INTO analysis_runs (job_id, kind, score, report, method, created_at)
-       SELECT id, 'fitness', fitness_score, fitness_report, '', COALESCE(fitness_run_at, updated_at)
-       FROM jobs j WHERE fitness_report IS NOT NULL AND fitness_run_id IS NULL
-         AND NOT EXISTS (SELECT 1 FROM analysis_runs r WHERE r.job_id = j.id AND r.kind = 'fitness')`,
-      `UPDATE jobs SET fitness_run_id = (SELECT MAX(id) FROM analysis_runs r WHERE r.job_id = jobs.id AND r.kind = 'fitness')
-       WHERE fitness_report IS NOT NULL AND fitness_run_id IS NULL`,
-      `INSERT INTO analysis_runs (job_id, kind, score, report, method, resume_name, created_at)
-       SELECT id, 'match', match_score, match_report, 'ats', match_resume_name, updated_at
-       FROM jobs j WHERE match_report IS NOT NULL AND match_run_id IS NULL
-         AND NOT EXISTS (SELECT 1 FROM analysis_runs r WHERE r.job_id = j.id AND r.kind = 'match')`,
-      `UPDATE jobs SET match_run_id = (SELECT MAX(id) FROM analysis_runs r WHERE r.job_id = jobs.id AND r.kind = 'match')
-       WHERE match_report IS NOT NULL AND match_run_id IS NULL`,
-    ], "write"),
   ]);
 
   _initialized = true;

@@ -10,12 +10,12 @@ import {
 } from "@/lib/db/jobs";
 import { getCandidateProfiles } from "@/lib/db/candidate-docs";
 import { getDefaultResume } from "@/lib/db/resumes";
-import { saveFitnessRun, type AnalysisRunRow } from "@/lib/db/analysis-runs";
 import { looksLikeHtml, normalizePostingText } from "@/lib/html-text";
 import { STATUS_OPTIONS } from "@/lib/status";
 import { checkJobStatus, type JobCheckResult } from "@/lib/job-status-check";
 import { evaluateFitnessDeterministic } from "@/lib/fitness/deterministic";
 import { FitnessResultSchema, type FitnessResult } from "@/lib/fitness/schema";
+import type { MatchReport } from "@/lib/analysis/types";
 import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/prompt";
 import { normalizeFitnessPayload } from "@/lib/fitness/normalize";
 import { generateStructured } from "@/lib/ai";
@@ -216,7 +216,25 @@ export function completeFitnessResult(raw: FitnessResult, job: JobRow): FitnessR
   };
 }
 
-type FitnessRun = { result: FitnessResult; model: string; run: AnalysisRunRow; job: JobRow | undefined };
+type FitnessRun = { result: FitnessResult; model: string; job: JobRow | undefined };
+
+/** Make a fitness report the job's current one. */
+export function saveFitnessResult(job: Pick<JobRow, "id">, result: FitnessResult): Promise<JobRow | undefined> {
+  return updateJob(job.id, {
+    fitness_score: Math.round(result.score),
+    fitness_report: JSON.stringify(result),
+    fitness_run_at: new Date().toISOString(),
+  });
+}
+
+/** Make an ATS match report the job's current one, noting which resume it scored. */
+export function saveMatchResult(job: Pick<JobRow, "id">, report: MatchReport, resumeName: string | null): Promise<JobRow | undefined> {
+  return updateJob(job.id, {
+    match_score: report.score,
+    match_report: JSON.stringify(report),
+    match_resume_name: resumeName,
+  });
+}
 
 function postingOf(job: JobRow): string {
   const posting = (job.posting_text ?? "").trim();
@@ -239,7 +257,7 @@ export async function runRuleBasedFitness(userId: number | null, job: JobRow): P
     resumeText: resume?.content,
   });
   const model = "deterministic:rule-based";
-  return { result, model, ...(await saveFitnessRun(job, result, model)) };
+  return { result, model, job: await saveFitnessResult(job, result) };
 }
 
 /** The full reasoned check with the user's AI provider. Throws MissingCandidateDocsError first if it can't be grounded. */
@@ -257,5 +275,5 @@ export async function runAiFitness(userId: number | null, job: JobRow): Promise<
   });
   const result = completeFitnessResult(data, job);
   const label = `${provider}:${model}`;
-  return { result, model: label, ...(await saveFitnessRun(job, result, label)) };
+  return { result, model: label, job: await saveFitnessResult(job, result) };
 }
