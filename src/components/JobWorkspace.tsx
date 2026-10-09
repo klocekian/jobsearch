@@ -376,18 +376,22 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
       />
       {/* Header */}
-      <div className="col-start-1 row-start-1 border-b border-r border-border bg-surface px-4 py-3">
+      <div className="col-start-1 row-start-1 border-b border-border bg-surface px-4 py-3">
         <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
       </div>
 
       {/* Left tabs */}
-      <div className="col-start-1 row-start-2 border-b border-r border-border bg-surface px-4">{leftTabBar}</div>
+      <div className="col-start-1 row-start-2 border-b border-border bg-surface px-4">{leftTabBar}</div>
+
+      {/* Carry the header and tab rules across the right column; the card paints over them */}
+      <div aria-hidden className="col-start-2 row-start-1 border-b border-border" />
+      <div aria-hidden className="col-start-2 row-start-2 border-b border-border" />
 
       {/* Left content */}
-      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border bg-surface p-4">{leftPaneBody}</div>
+      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto bg-surface p-4">{leftPaneBody}</div>
 
       {/* Right pane: activity banner, tabs, content */}
-      <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col bg-surface p-3 sm:p-4">
+      <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col p-3 sm:p-4">
         <div className={rightPaneCardClass}>
           <div className="shrink-0 px-4 pt-3">{activityBanner}</div>
           <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
