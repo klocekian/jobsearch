@@ -328,6 +328,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     </>
   );
 
+  const rightPaneCardClass =
+    "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-[0_0_20px_rgba(0,0,0,0.18)] dark:shadow-[0_0_20px_rgba(0,0,0,0.9)]";
+
   if (isMobile) {
     return (
       <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden bg-surface text-primary">
@@ -348,8 +351,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           </>
         ) : (
           <>
-            <div className="shrink-0 border-b border-border bg-surface px-4">{rightTabBar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-4">{rightPaneBody}</div>
+            <div className="flex min-h-0 flex-1 flex-col p-3">
+              <div className={rightPaneCardClass}>
+                <div className="shrink-0 border-b border-border px-4">{rightTabBar}</div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
+              </div>
+            </div>
           </>
         )}
       </div>
@@ -380,10 +387,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border bg-surface p-4">{leftPaneBody}</div>
 
       {/* Right pane: activity banner, tabs, content */}
-      <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col bg-surface">
-        <div className="shrink-0 px-4 pt-3">{activityBanner}</div>
-        <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+      <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col bg-surface p-3 sm:p-4">
+        <div className={rightPaneCardClass}>
+          <div className="shrink-0 px-4 pt-3">{activityBanner}</div>
+          <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+        </div>
       </div>
     </div>
   );
