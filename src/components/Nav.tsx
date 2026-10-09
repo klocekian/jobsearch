@@ -60,7 +60,7 @@ export function Nav({ user }: { user: NavUser | null }) {
   const isAdding = pathname === "/jobs" && searchParams.get("add") === "1";
   const isJobPage = pathname.startsWith("/jobs/") && pathname !== "/jobs";
   const isSubPage = pathname.startsWith("/profile") || isJobPage || isAdding || (pathname !== "/" && pathname !== "/jobs");
-  const headingText = isSubPage ? "← All jobs" : "Job Search";
+  const headingText = isSubPage ? "← All jobs" : user ? "Job Search" : "Job Search by Fieldlines";
 
   const [jobListIds, setJobListIds] = useState<number[]>([]);
 
@@ -263,20 +263,20 @@ export function Nav({ user }: { user: NavUser | null }) {
             </HStack>
           ) : (
             <HStack gap={3} className="items-center">
-              <a href="#capture" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
-                Extension
+              <a href="#capture" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+                Save jobs
               </a>
-              <a href="#fitness" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
-                Fitness
+              <a href="#fitness" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+                Understand your fit
               </a>
-              <a href="#ats-engine" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
-                ATS Match
+              <a href="#ats-engine" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+                Resume checks
               </a>
-              <a href="#rewriter" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
-                Rewriter
+              <a href="#rewriter" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+                Tailor your resume
               </a>
-              <a href="#ai" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
-                Claude & AI
+              <a href="#ai" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+                Use with Claude
               </a>
               <a href="/api/auth/login">
                 <Button label="Sign in with Google" variant="primary" size="sm" />

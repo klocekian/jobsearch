@@ -85,6 +85,7 @@ function FeatureSection({
   shot,
   imageFirst = false,
   muted = false,
+  note,
   footer,
 }: {
   id?: string;
@@ -97,6 +98,7 @@ function FeatureSection({
   shot: Shot;
   imageFirst?: boolean;
   muted?: boolean;
+  note?: React.ReactNode;
   footer?: React.ReactNode;
 }) {
   return (
@@ -111,10 +113,11 @@ function FeatureSection({
               {bullets.map((b) => (
                 <li key={b.title} className="flex items-start gap-2.5">
                   <span className={`${CHECK_COLORS[check]} font-bold mt-0.5`}>✓</span>
-                  <span><strong>{b.title}</strong>: {b.body}</span>
+                  <span><strong>{b.title}.</strong> {b.body}</span>
                 </li>
               ))}
             </ul>
+            {note && <p className="text-xs text-secondary leading-relaxed">{note}</p>}
             {footer}
           </div>
           <div className={`lg:col-span-7 ${imageFirst ? "order-2 lg:order-1" : ""}`}>
@@ -127,34 +130,48 @@ function FeatureSection({
 }
 
 const SHOTS = {
-  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Application pipeline chart, drop-off table and job list with fitness and ATS scores", width: 2400, height: 1177, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 344 } },
-  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Pipeline stage drill-down listing every job at the Recruiter stage and the path it took", width: 2400, height: 1382, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 1061 } },
-  clip: { src: "/hero/extension-clip.webp", alt: "Job Search Clipper side panel extracting company, title, salary and description from a careers page", width: 2400, height: 1182, mobile: { src: "/hero/extension-clip-mobile.webp", width: 729, height: 1174 } },
-  fitness: { src: "/hero/fitness-check.webp", alt: "Fitness check scoring a posting 9/10 with Meet and Adjacent verdicts per requirement", width: 2400, height: 1177, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 630 } },
-  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile with a positive fact canon and a negative gaps profile", width: 1788, height: 1715, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
-  ats: { src: "/hero/ats-qualification.webp", alt: "ATS pass score of 94/100 with searchability checks and highlighted skills in the posting", width: 2400, height: 1177, mobile: { src: "/hero/ats-qualification-mobile.webp", width: 1200, height: 757 } },
-  slop: { src: "/hero/ai-authenticity.webp", alt: "AI slop score of 42% broken down into negative parallelism, narrative openers and clause rhythm", width: 1851, height: 1010 },
-  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume rewrite with inline accept/dismiss diffs beside the embedded application", width: 2400, height: 1177, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 757 } },
-  coverLetter: { src: "/hero/cover-letter.webp", alt: "Cover letter generator with letter header and editable draft beside the application", width: 2400, height: 1177, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 757 } },
-  fill: { src: "/hero/extension-fill.webp", alt: "Job Search Clipper Fill tab populating an Ashby application form", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 729, height: 1227 } },
-  providers: { src: "/hero/ai-providers.webp", alt: "AI provider settings for Anthropic Claude, Google Gemini, xAI Grok and Mistral AI", width: 1946, height: 1572 },
-  connector: { src: "/hero/claude-connector.webp", alt: "Job Search connector inside claude.ai settings with its read-only and write tools", width: 1840, height: 1436 },
-  importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", width: 1018, height: 776 },
-  resumes: { src: "/hero/resumes.webp", alt: "Multiple resumes, each tagged with the companies it was used for", width: 1714, height: 1419 },
+  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Job search dashboard showing saved roles, application stages, and fit and resume-match scores.", width: 2400, height: 1177, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 344 } },
+  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Applications at the recruiter stage, with each role's progress through earlier stages.", width: 2400, height: 1382, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 1061 } },
+  clip: { src: "/hero/extension-clip.webp", alt: "Chrome side panel capturing a job's company, title, salary, and description from a careers page.", width: 2400, height: 1182, mobile: { src: "/hero/extension-clip-mobile.webp", width: 729, height: 1174 } },
+  fitness: { src: "/hero/fitness-check.webp", alt: "Role-fit review with a 1–10 score and an explanation of how the candidate's experience relates to each requirement.", width: 2400, height: 1177, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 630 } },
+  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile containing experience and accomplishments, alongside gaps and context for future applications.", width: 1788, height: 1715, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
+  ats: { src: "/hero/ats-qualification.webp", alt: "Resume-match review showing a score, highlighted skills, and checks for clear structure and searchable information.", width: 2400, height: 1177, mobile: { src: "/hero/ats-qualification-mobile.webp", width: 1200, height: 757 } },
+  slop: { src: "/hero/ai-authenticity.webp", alt: "Writing review highlighting formulaic phrases, elaborate openings, and repeated sentence patterns in a resume.", width: 1851, height: 1010 },
+  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume with individual changes available to accept or dismiss beside the employer's application form.", width: 2400, height: 1177, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 757 } },
+  coverLetter: { src: "/hero/cover-letter.webp", alt: "Editable cover letter with contact details beside an employer's application form.", width: 2400, height: 1177, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 757 } },
+  fill: { src: "/hero/extension-fill.webp", alt: "Chrome extension filling saved application details into an Ashby application form.", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 729, height: 1227 } },
+  providers: { src: "/hero/ai-providers.webp", alt: "AI settings with options to connect Anthropic Claude, Google Gemini, xAI Grok, and Mistral AI.", width: 1946, height: 1572 },
+  connector: { src: "/hero/claude-connector.webp", alt: "Job Search connected to Claude, with tools for reading and updating applications, profiles, and resumes.", width: 1840, height: 1436 },
+  importSheet: { src: "/hero/import-sheet.webp", alt: "Job import options for a Google Sheet link or CSV upload.", width: 1018, height: 776 },
+  resumes: { src: "/hero/resumes.webp", alt: "Saved resumes with tags showing the companies each version was used for.", width: 1714, height: 1419 },
 } satisfies Record<string, Shot>;
 
+const HIGHLIGHTS = [
+  { title: "Understand your fit", body: "See where your experience connects to a role." },
+  { title: "Make your experience clear", body: "Check your resume against the posting." },
+  { title: "Keep your own voice", body: "Review wording that feels generic or overstated." },
+  { title: "Spend less time repeating yourself", body: "Save postings and fill application fields with the Chrome extension." },
+];
+
 const STEPS = [
-  { n: "1", title: "Capture", body: "Clip postings from any job site with the Chrome extension, paste a URL, or import a Google Sheet.", color: "bg-sky-500/20 text-sky-400" },
-  { n: "2", title: "Qualify", body: "Score your fitness 1–10 against each role's stated minimums before you invest an hour tailoring.", color: "bg-teal-500/20 text-teal-400" },
-  { n: "3", title: "Tailor", body: "Push the ATS match past 90%, strip AI tells, and write a grounded cover letter.", color: "bg-purple-500/20 text-purple-400" },
-  { n: "4", title: "Track", body: "Advance stages, archive what you submitted, keep notes, and read the funnel.", color: "bg-emerald-500/20 text-emerald-400" },
+  { n: "1", title: "Save the role", body: "Clip a posting with the Chrome extension, paste a link, or bring in the jobs you've already collected in a spreadsheet.", color: "bg-sky-500/20 text-sky-400" },
+  { n: "2", title: "Understand your fit", body: "Compare the requirements with your experience. See your strengths, the connections you may need to explain, and the gaps to consider before applying.", color: "bg-teal-500/20 text-teal-400" },
+  { n: "3", title: "Make your case", body: "Tailor your resume and draft a cover letter around the role. Review the changes and decide what sounds right to you.", color: "bg-purple-500/20 text-purple-400" },
+  { n: "4", title: "Keep track", body: "Save what you sent, record conversations, and follow each application through to its outcome.", color: "bg-emerald-500/20 text-emerald-400" },
 ];
 
 const MORE_FEATURES = [
-  { title: "Add by URL or paste", body: "Fetch a posting from its link, or paste the full text and extract company, title, location and salary automatically." },
-  { title: "Check closed postings", body: "One click re-checks every active posting and marks the ones the employer has taken down as Closed." },
-  { title: "Thirteen pipeline statuses", body: "Saved through Accepted, plus Rejected, Declined, Withdrawn, Abandoned and Closed, so every outcome is counted honestly." },
-  { title: "Guided onboarding tour", body: "A six-step walkthrough of capture, profile, fitness, tailoring and tracking you can relaunch any time." },
+  { title: "Save from a link or pasted text", body: "Add a posting by URL or paste its description. Extract the company, title, location, and salary into the saved role." },
+  { title: "See which postings have closed", body: "Recheck your active postings in one step and mark the roles an employer has taken down." },
+  { title: "Record how each application ended", body: "Use thirteen statuses to track progress and outcomes, including accepted offers, rejections, withdrawals, declined opportunities, and closed postings." },
+  { title: "Get your bearings with a short tour", body: "A six-step walkthrough introduces saving jobs, building your profile, reviewing fit, tailoring applications, and tracking progress. Return to it whenever you need a refresher." },
+];
+
+const PRINCIPLES = [
+  { letter: "A", title: "Find a pace you can keep", body: "Set a realistic rhythm for finding roles, applying, and following up. Leave room for research and interview preparation, and adjust as your circumstances change.", color: "bg-sky-500/20 text-sky-400" },
+  { letter: "B", title: "Make the connection clear", body: "Help the reader see why your experience matters for this role. Use relevant language from the posting where it accurately describes your work, and support it with specific examples.", color: "bg-emerald-500/20 text-emerald-400" },
+  { letter: "C", title: "Learn as you go", body: "Notice which applications lead to conversations and which questions come up in interviews. Use those experiences to refine your materials and get more comfortable explaining your work.", color: "bg-amber-500/20 text-amber-400" },
+  { letter: "D", title: "Let your priorities become clearer", body: "Talking with teams can change what you're looking for. Revisit your priorities as you learn, and put more of your attention toward work and working conditions that fit you.", color: "bg-purple-500/20 text-purple-400" },
 ];
 
 export function LandingPage() {
@@ -170,24 +187,29 @@ export function LandingPage() {
         <div className="text-center space-y-6 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3.5 py-1 text-xs font-medium text-sky-600 dark:text-sky-300">
             <span className="flex h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
-            Executive Career Command Center
+            A little more clarity in your job search
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.1] text-balance">
-            <span className="block">Stop applying blindly into the void.</span>
+            <span className="block">Find work you want.</span>
             <span className="block mt-1 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500 bg-clip-text text-transparent">
-              Take command of your search.
+              Make a clearer case for yourself.
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-secondary leading-relaxed">
-            The end-to-end qualification and tailoring engine. Target high-conviction roles, beat ATS filters with 90%+ precision, eliminate AI fluff, and convert applications into offers.
-          </p>
+          <div className="space-y-3">
+            <p className="text-base sm:text-lg text-secondary leading-relaxed">
+              You find an interesting role. Then come the questions: Does my experience fit? What should I emphasize? Which resume did I send last time?
+            </p>
+            <p className="text-base sm:text-lg text-secondary leading-relaxed">
+              Job Search brings those pieces together. Save roles, work through the requirements, tailor your application using what you&apos;ve actually done, and keep track of what happens next.
+            </p>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
             <a href="/api/auth/login" className="w-full sm:w-auto">
               <Button
-                label="Sign in with Google"
+                label="Start with Google"
                 icon={<GoogleIcon />}
                 size="lg"
                 variant="primary"
@@ -196,7 +218,7 @@ export function LandingPage() {
             </a>
             <a href="#how-it-works" className="w-full sm:w-auto">
               <Button
-                label="Explore Features"
+                label="See how it works"
                 size="lg"
                 variant="secondary"
                 className="w-full sm:w-auto"
@@ -204,28 +226,18 @@ export function LandingPage() {
             </a>
           </div>
 
-          {/* Social Proof / Stats Bar */}
+          {/* Highlights */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-8 border-t border-border/50 text-left">
-            <div className="p-3 rounded-lg border border-border/40 bg-muted/40">
-              <div className="text-lg font-bold text-primary">90%+</div>
-              <div className="text-xs text-secondary">ATS match threshold</div>
-            </div>
-            <div className="p-3 rounded-lg border border-border/40 bg-muted/40">
-              <div className="text-lg font-bold text-primary">Fit 1–10</div>
-              <div className="text-xs text-secondary">Scored against your profile</div>
-            </div>
-            <div className="p-3 rounded-lg border border-border/40 bg-muted/40">
-              <div className="text-lg font-bold text-primary">AI Slop 0%</div>
-              <div className="text-xs text-secondary">Authenticity verification</div>
-            </div>
-            <div className="p-3 rounded-lg border border-border/40 bg-muted/40">
-              <div className="text-lg font-bold text-primary">1-Click</div>
-              <div className="text-xs text-secondary">Clip &amp; autofill extension</div>
-            </div>
+            {HIGHLIGHTS.map((h) => (
+              <div key={h.title} className="p-3 rounded-lg border border-border/40 bg-muted/40">
+                <div className="text-sm font-semibold text-primary">{h.title}</div>
+                <div className="mt-1 text-xs text-secondary leading-snug">{h.body}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Hero Shot: Pipeline Command Center */}
+        {/* Hero Shot */}
         <div id="pipeline" className="mt-14 scroll-mt-20">
           <Screenshot shot={SHOTS.dashboard} priority />
         </div>
@@ -235,9 +247,9 @@ export function LandingPage() {
       <section id="how-it-works" className="border-t border-border/50 bg-muted/30 py-16 sm:py-20 scroll-mt-20">
         <div className="mx-auto max-w-5xl px-5 text-center space-y-8">
           <div className="space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-bold text-primary">Not a tracking spreadsheet. A qualification engine.</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary text-balance">From an interesting role to an application you feel ready to send</h2>
             <p className="text-sm text-secondary max-w-xl mx-auto">
-              Every role moves through the same four steps, so you spend your hours on the jobs you can actually win.
+              Keep the research, writing, and follow-up together, so each application is easier to pick up where you left off.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
@@ -256,37 +268,38 @@ export function LandingPage() {
 
       <FeatureSection
         id="capture"
-        badge="Chrome Extension"
+        badge="Save jobs as you find them"
         badgeVariant="cyan"
         check="cyan"
-        title="Clip any posting in one click, from any job site."
-        intro="Job boards, ATS portals, company career pages: the Job Search Clipper sits in Chrome's side panel and turns whatever posting you're reading into a tracked job with its full description."
+        title="Found an interesting role? Keep it in one click."
+        intro="When you're browsing a job board or a company careers page, save the posting from Chrome's side panel. The role and its description stay together, ready for you to review when you have time."
         bullets={[
-          { title: "Structured Extraction", body: "Company, title, location, remote policy, salary and the complete description are pulled out for you. Re-extract with AI when a page is messy." },
-          { title: "Duplicate Detection", body: "Already-saved roles are flagged with their current status, and your recent clips stay one glance away." },
-          { title: "Bulk Import", body: "Bring an existing search with you from a Google Sheet or a CSV upload." },
+          { title: "Keep the details together", body: "Capture the company, title, location, remote policy, salary, and full description. If a page is difficult to read, try extracting it again with AI." },
+          { title: "See what you've already saved", body: "Duplicate postings are flagged with their current status, and your recent saves are easy to find." },
+          { title: "Bring your existing search", body: "Import jobs from a Google Sheet or CSV file." },
         ]}
         shot={SHOTS.clip}
         footer={
           <>
             <p className="pt-2 text-xs text-secondary sm:hidden">Works in desktop Chrome. Open this page on your computer to install it.</p>
             <a href="/chrome-extension.zip" download className="hidden sm:inline-block pt-2 text-xs font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-300 dark:hover:text-cyan-200 transition-colors">
-            Download the Chrome extension →
-          </a>
+              Download the Chrome extension →
+            </a>
           </>
         }
       />
 
       <FeatureSection
-        badge="Funnel Intelligence"
+        id="track"
+        badge="Know where things stand"
         badgeVariant="blue"
-        title="Turn your job search into a predictable numbers game."
-        intro="Job searching is stressful when you don't know where you stand. The visual pipeline models your entire lifecycle from initial bookmark to signed offer, helping you pace applications and uncover conversion bottlenecks."
+        title="See what's moving, what's waiting, and where to follow up."
+        intro="A job search can feel hard to read when applications and conversations are scattered. See them together, from the first saved posting to an offer, and get a clearer view of how your search is going."
         bullets={[
-          { title: "Full Conversion Funnel", body: "Track Saved → Applying → Applied → Recruiter Screen → Interview → Onsite → Offer." },
-          { title: "Stage Drill-down", body: "Click any stage to list every role sitting there and the path each one took to get there." },
-          { title: "Drop-off Diagnostics", body: "Clearly distinguish between rejections, expired postings, and intentional abandonments." },
-          { title: "Adaptive Strategy Coaching", body: "A rotating banner nudges you: apply to 5 jobs a day, 25 a week, and calibrate selectivity as interviews ramp." },
+          { title: "Follow every stage", body: "Track roles through Saved, Applying, Applied, Recruiter Screen, Interview, Onsite, and Offer." },
+          { title: "Look closer when you need to", body: "Open any stage to see the roles there and how each one arrived." },
+          { title: "Understand how applications ended", body: "Keep rejections, closed postings, and roles you chose to leave behind distinct." },
+          { title: "Find a pace you can sustain", body: "Get prompts to keep your search moving and reconsider your focus as interviews begin to fill your calendar." },
         ]}
         shot={SHOTS.drilldown}
         imageFirst
@@ -295,32 +308,34 @@ export function LandingPage() {
 
       <FeatureSection
         id="fitness"
-        badge="Fitness Check"
+        badge="Is this role worth pursuing?"
         badgeVariant="teal"
         check="teal"
-        title="Know whether you fit before you spend an hour tailoring."
-        intro="Every posting is scored 1–10 against your candidate profile, one requirement at a time. You see exactly which minimums you meet, which you can argue, and which you can't."
+        title="Understand the fit before you spend an evening on the application."
+        intro="Some roles look promising until you read the requirements closely. Others are a better fit than their title suggests. Compare each posting with your profile, requirement by requirement, with a 1–10 score to help you get your bearings."
         bullets={[
-          { title: "Requirement-by-Requirement Verdicts", body: "Stated minimums, preferred qualifications and dispositional traits are each marked Meet, Adjacent or Miss. Dispositional traits never move the score." },
-          { title: "Gaps & Framings", body: "Each gap comes with a prepared, honest response to rehearse aloud before the recruiter call." },
-          { title: "Outcome Spectrum & Tradeoffs", body: "Best, probable and worst case for the application, plus what you gain and give up by pursuing it." },
-          { title: "Rule-based or AI", body: "Runs deterministically out of the box; tick “with AI” for a deeper read." },
+          { title: "See the reasoning", body: "Review the minimum and preferred qualifications you meet, the ones your experience is adjacent to, and the ones you don't currently meet. Personality and working-style expectations are shown separately and don't affect the score." },
+          { title: "Prepare to discuss the gaps", body: "Get suggested ways to explain relevant experience and acknowledge what you still need to learn before a recruiter conversation." },
+          { title: "Consider the trade-offs", body: "Explore possible outcomes and what pursuing the role could mean for you." },
+          { title: "Choose how to assess it", body: "Start with the built-in rules, or add an AI review for a more detailed interpretation." },
         ]}
+        note="The score is a starting point for your judgment. Your interest in the work, transferable experience, and conversations with the team still matter."
         shot={SHOTS.fitness}
       />
 
       <FeatureSection
         id="profile"
-        badge="Candidate Profile"
+        badge="Start with your experience"
         badgeVariant="orange"
         check="orange"
-        title="One source of truth about you. Nothing invented."
-        intro="Fitness checks, rewrites and cover letters all draw on a single profile you control, so nothing ever claims experience you don't have."
+        title="Tell your story once. Build each application from there."
+        intro="Keep a profile of your experience, accomplishments, and skills, along with the gaps or constraints you want to address honestly. Fit reviews, resume suggestions, and cover letters use that profile as their starting point."
         bullets={[
-          { title: "Positive Profile (the Fact Canon)", body: "Verified figures, ownership scope and the technologies you actually hold." },
-          { title: "Negative Profile", body: "Your gaps and standing reframes, such as on-site requirements or tools you haven't used, so they're flagged honestly instead of papered over." },
-          { title: "Start from a Template", body: "Download sample profile.md and gaps.md files and fill them in." },
+          { title: "Keep the facts close", body: "Record the results, responsibilities, and tools you can speak to from experience." },
+          { title: "Be clear about the gaps", body: "Note tools you haven't used, requirements you don't meet, or working arrangements that need discussion. Add context you'd like future drafts to consider." },
+          { title: "Get started with examples", body: "Download the profile and gaps templates, then fill them in with your own experience." },
         ]}
+        note="Review every draft before sending it, so each claim reflects what you've actually done."
         shot={SHOTS.profile}
         imageFirst
         muted
@@ -328,31 +343,33 @@ export function LandingPage() {
 
       <FeatureSection
         id="ats-engine"
-        badge="ATS Qualification"
+        badge="Help your experience come through"
         badgeVariant="success"
-        title={<>Score &gt;90% before you apply. Never get screened out by robots.</>}
-        intro="Over 75% of resumes are culled by automated applicant tracking filters before a human ever looks at them. Don't submit low-scoring resumes into the void."
+        title="Check whether your resume makes the connection clear."
+        intro="You may have the experience a role needs without describing it in the language the posting uses. Compare your resume with the job description to find relevant skills you haven't made clear and details that could be easier to read or search."
         bullets={[
-          { title: "Hard & Soft Skill Taxonomy", body: "Matched skills are underlined in emerald and missing keywords in rose, right in the posting." },
-          { title: "Recruiter Searchability Check", body: "Verifies job title match, summary effectiveness, contact fields, section headings and standard date formatting." },
-          { title: "Recruiter Tips", body: "Checks for measurable results, resume tone, web presence and word count, with the evidence quoted back." },
-          { title: "Over-indexing Alerts", body: "Catches keyword stuffing before automated scanners flag your resume." },
+          { title: "Compare the language", body: "See the skills your resume already mentions and the relevant terms you may want to include, highlighted directly in the posting." },
+          { title: "Check the basics", body: "Review your job titles, summary, contact information, section headings, and date formatting." },
+          { title: "Make your evidence easier to find", body: "Get feedback on results, tone, length, and professional links, with the relevant passages shown alongside it." },
+          { title: "Keep it readable", body: "Spot repeated keywords and language that feels forced." },
         ]}
+        note="Use the match score to guide your edits. It reflects this tool's comparison with the posting; it doesn't predict an employer's screening decision."
         shot={SHOTS.ats}
       />
 
       <FeatureSection
         id="authenticity"
-        badge="AI Slop Detection"
+        badge="Keep your own voice"
         badgeVariant="warning"
         check="amber"
-        title="Sound like a seasoned human leader, not a generic chatbot."
-        intro="Recruiters and hiring managers have developed acute fatigue for generic ChatGPT prose. The Authenticity Engine scans your materials for dead giveaways so your own voice shines."
+        title="Send something you'd feel comfortable saying out loud."
+        intro="AI can help you get a draft started. It can also make your experience sound like everyone else's. Review stock phrases, repetitive sentence patterns, and wording that could be more direct or specific."
         bullets={[
-          { title: "Probabilistic AI Signal Score", body: "Quantifies how closely your phrasing resembles default LLM output." },
-          { title: "Negative Parallelism Detector", body: <>Flags repetitive tropes like <em>&quot;X, not Y&quot;</em> and <em>&quot;rather than&quot;</em> that recruiters instantly recognize.</> },
-          { title: "Openers & Clause Rhythm", body: "Catches narrative opener flourishes and evenly balanced clause cadence, with the offending lines quoted." },
+          { title: "Find generic wording", body: "See passages that resemble common AI writing patterns and decide whether they need another pass." },
+          { title: "Notice repeated formulas", body: "Catch recurring contrast structures that make the writing feel templated." },
+          { title: "Read for rhythm", body: "Review elaborate openings and sentences that all follow the same cadence, with the passages highlighted for you." },
         ]}
+        note="The writing score flags patterns to review. It doesn't establish who wrote the text or how a recruiter will respond."
         shot={SHOTS.slop}
         imageFirst
         muted
@@ -360,31 +377,31 @@ export function LandingPage() {
 
       <FeatureSection
         id="rewriter"
-        badge="Precision Rewriter"
+        badge="Bring the relevant experience forward"
         badgeVariant="purple"
         check="purple"
-        title="Tailor in minutes with word-by-word visual diffs."
-        intro="Forget maintaining a dozen separate Word documents. Generate a targeted resume with surgical word-level edits that bring in role-specific language while preserving your voice."
+        title="Tailor your resume without starting over."
+        intro="Use the posting, your profile, and any supporting notes to draft a version for this role. See exactly which words changed, then keep the edits that help you tell your story clearly."
         bullets={[
-          { title: "One-Click Inline Diffs", body: "Click a green suggestion to accept it or × to dismiss it, then Accept all or Reset to original." },
-          { title: "Context-Aware Synthesis", body: "Drop in docs or paste notes alongside your candidate profile for grounded rewrites." },
-          { title: "Apply Side by Side", body: "The employer's application opens in the left pane next to your tailored resume." },
-          { title: "Print-Ready PDF Export", body: "Download a clean PDF, or save the result as a new resume." },
+          { title: "Review each change", body: "Accept or dismiss suggestions individually, accept them together, or return to the original." },
+          { title: "Add useful context", body: "Include documents or notes with the details you want the rewrite to draw from." },
+          { title: "Work beside the application", body: "Open the employer's form alongside your tailored resume to keep both in view." },
+          { title: "Save a version you're ready to send", body: "Download a PDF or keep the rewrite as another resume in your account." },
         ]}
         shot={SHOTS.rewriter}
       />
 
       <FeatureSection
         id="application"
-        badge="Application Kit"
+        badge="Make it personal. Keep a copy."
         badgeVariant="pink"
         check="pink"
-        title="Cover letters that sound like you, and a record of what you sent."
-        intro="Write the letter next to the live application, then keep the exact package you submitted with the job, so you're never guessing which version a recruiter is holding."
+        title="Explain why you're interested, and remember what you sent."
+        intro="Start a cover letter with the role, your experience, and a few words about what draws you to the opportunity. Edit it beside the application, then save the final package with the job so you can return to it before a conversation."
         bullets={[
-          { title: "Grounded Cover Letters", body: "Generated from the posting and your resume, steered by a line on what interests you about the role, and never inventing experience." },
-          { title: "Letter Header & PDF", body: "Contact details fill in from your resume; edit the draft, copy it, or download a PDF." },
-          { title: "Submission Archive & Notes", body: "Save the application package you sent and log recruiter replies and interview notes per job." },
+          { title: "Give the draft a reason to exist", body: "Add what interests you about the role so the letter can connect that interest to your experience." },
+          { title: "Finish it in one place", body: "Bring in contact details from your resume, edit the letter, and copy it or download a PDF." },
+          { title: "Keep the conversation together", body: "Save your submitted materials, recruiter replies, and interview notes with the role." },
         ]}
         shot={SHOTS.coverLetter}
         imageFirst
@@ -393,67 +410,73 @@ export function LandingPage() {
 
       <FeatureSection
         id="autofill"
-        badge="Autofill"
+        badge="Less retyping"
         badgeVariant="green"
-        title="Fill application forms in one click."
-        intro="The same Chrome extension stores your application fields and drops them into the form you're looking at. No more retyping your LinkedIn URL for the hundredth time."
+        title="Your LinkedIn URL hasn't changed since the last application."
+        intro="Save the details you use repeatedly and let the Chrome extension fill them into application forms. Keep them available to copy when a form needs a little more help."
         bullets={[
-          { title: "Fill Application Fields", body: "Name, contact details, current title and company, LinkedIn, website, work authorization and sponsorship." },
-          { title: "Quick Copy", body: "Every saved field is listed in the panel for anything a form won't let the extension reach." },
-          { title: "Set Once", body: "Edit the fields from your profile; the extension and the web app stay in sync." },
+          { title: "Fill the recurring fields", body: "Reuse your name, contact details, current title and company, LinkedIn, website, work authorization, and sponsorship information." },
+          { title: "Copy what a form won't accept", body: "Find every saved field in the side panel for quick copying." },
+          { title: "Update your details in one place", body: "Changes to your profile stay in sync between the web app and extension." },
         ]}
         shot={SHOTS.fill}
       />
 
-      {/* Bring your own AI + Claude MCP */}
+      {/* AI options + Claude connector */}
       <section id="ai" className="border-t border-border/50 bg-muted/20 py-16 sm:py-24 scroll-mt-20">
         <div className="mx-auto max-w-6xl px-5 space-y-10">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <Badge variant="info" label="Your AI, Your Choice" />
-            <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-              Bring your own model, or run your search from inside Claude.
+            <Badge variant="info" label="Work with the tools you prefer" />
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight text-balance">
+              Use AI when it helps. Choose how it fits into your search.
             </h2>
             <p className="text-sm text-secondary leading-relaxed">
-              Core scoring works without any AI at all. When you want generation, you pick the provider and keep the key.
+              The built-in scoring works without AI. For drafting, rewriting, and deeper reviews, connect a supported provider with your own API key or work through the Claude connector.
             </p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-4">
               <Screenshot shot={SHOTS.providers} fill="aspect-[5/4]" />
-              <h3 className="text-lg font-semibold text-primary">Connect Claude, Gemini, Grok or Mistral</h3>
+              <h3 className="text-lg font-semibold text-primary">Connect your preferred AI provider</h3>
               <p className="text-sm text-secondary leading-relaxed">
-                Add one or more API keys and choose your active default. That provider powers cover letters, resume rewriting, AI fitness checks and smart parsing.
+                Add an API key for Claude, Gemini, Grok, or Mistral and choose the provider you want to use. It can help draft cover letters, tailor resumes, review role fit, and extract details from postings.
               </p>
             </div>
             <div className="space-y-4">
               <Screenshot shot={SHOTS.connector} fill="aspect-[5/4]" />
-              <h3 className="text-lg font-semibold text-primary">Work from Claude with the MCP connector</h3>
+              <h3 className="text-lg font-semibold text-primary">Keep working from Claude</h3>
               <p className="text-sm text-secondary leading-relaxed">
-                Add Job Search as a custom connector in claude.ai, the Claude apps or Claude Code. Claude can read your pipeline, resumes and profile, add and update jobs, and run ATS and fitness checks on your Claude plan, with no API key needed.
+                Connect Job Search to claude.ai, the Claude apps, or Claude Code. Ask Claude to review your pipeline, work with your resumes and profile, add or update jobs, and run resume-match and role-fit checks.
               </p>
-              <code className="block overflow-x-auto rounded-md border border-border/60 bg-zinc-950/80 px-3 py-2 text-[11px] font-mono text-zinc-300">
-                claude mcp add --transport http jobsearch https://jobs.fieldlines.org/api/mcp
-              </code>
+              <p className="text-sm text-secondary leading-relaxed">
+                The connector uses your Claude plan, with no separate API key needed.
+              </p>
+              <div className="space-y-1.5">
+                <div className="text-xs font-semibold text-primary">Add the connector in Claude Code</div>
+                <code className="block overflow-x-auto rounded-md border border-border/60 bg-zinc-950/80 px-3 py-2 text-[11px] font-mono text-zinc-300">
+                  claude mcp add --transport http jobsearch https://jobs.fieldlines.org/api/mcp
+                </code>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Everything else */}
+      {/* Additional features */}
       <section className="border-t border-border/50 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-5 space-y-10">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-bold text-primary">And the details that save you hours</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary text-balance">The small details that make it easier to keep going</h2>
             <p className="text-sm text-secondary max-w-xl mx-auto">
-              Small things that add up over a 200-application search.
+              As your search grows, keep the versions, notes, and loose ends easy to find.
             </p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-4">
               <Screenshot shot={SHOTS.resumes} fill="aspect-[5/4]" />
-              <h3 className="text-lg font-semibold text-primary">Multiple resumes, tagged by where they went</h3>
+              <h3 className="text-lg font-semibold text-primary">Keep different resumes for different kinds of work</h3>
               <p className="text-sm text-secondary leading-relaxed">
-                Keep a resume per job type, upload PDFs or text, set a default, and see at a glance which companies each version has been used for.
+                Upload resumes as PDFs or text, choose a default, and see which companies received each version.
               </p>
             </div>
             <div className="space-y-4">
@@ -469,9 +492,9 @@ export function LandingPage() {
                   />
                 </div>
               </BrowserFrame>
-              <h3 className="text-lg font-semibold text-primary">Import from Google Sheets or CSV</h3>
+              <h3 className="text-lg font-semibold text-primary">Bring your spreadsheet with you</h3>
               <p className="text-sm text-secondary leading-relaxed">
-                Paste a shared spreadsheet link or upload a CSV and your existing search lands in the pipeline intact.
+                Import jobs from a shared Google Sheet or CSV file and continue your search here.
               </p>
             </div>
           </div>
@@ -486,56 +509,26 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* The 4 Strategic Pillars */}
+      {/* Principles */}
       <section className="border-t border-border/50 bg-muted/30 py-16 sm:py-20">
         <div className="mx-auto max-w-5xl px-5 text-center space-y-8">
           <div className="space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-bold text-primary">The Four Job Search Principles</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary text-balance">A few ways to make the search more manageable</h2>
             <p className="text-sm text-secondary max-w-xl mx-auto">
-              Our platform is built around proven principles that help candidates secure high-paying, high-conviction roles.
+              A job search takes time and energy. These principles can help you decide where to spend both.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold">A</span>
-                <span className="font-semibold text-primary text-sm">This is a numbers game</span>
+            {PRINCIPLES.map((pr) => (
+              <div key={pr.letter} className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${pr.color}`}>{pr.letter}</span>
+                  <span className="font-semibold text-primary text-sm">{pr.title}</span>
+                </div>
+                <p className="text-xs text-secondary leading-relaxed">{pr.body}</p>
               </div>
-              <p className="text-xs text-secondary leading-relaxed">
-                Apply to at least 5 jobs a day. No more. No less. 25 a week. Sustainable pacing prevents burnout and builds compounding interview pipeline.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold">B</span>
-                <span className="font-semibold text-primary text-sm">Tune your resume to &gt;90% match</span>
-              </div>
-              <p className="text-xs text-secondary leading-relaxed">
-                Don&apos;t submit low score resumes. No one will ever see them. Tailor your resume until the ATS match passes 90% before you click apply.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold">C</span>
-                <span className="font-semibold text-primary text-sm">Practice first on low-stakes roles</span>
-              </div>
-              <p className="text-xs text-secondary leading-relaxed">
-                Apply to jobs you don&apos;t love early on. Figure out your resume and your interview approach on them. Then apply to the ones that make you excited.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold">D</span>
-                <span className="font-semibold text-primary text-sm">Get picky over time</span>
-              </div>
-              <p className="text-xs text-secondary leading-relaxed">
-                Say yes to any interview or recruiter screen up front. Later, when you are well practiced and have a lay of the land, you can be selective.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -545,15 +538,15 @@ export function LandingPage() {
         <div className="mx-auto max-w-4xl px-5 text-center">
           <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-b from-sky-500/10 via-surface to-surface p-8 sm:p-12 shadow-2xl space-y-6">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-primary tracking-tight">
-              Ready to take control of your career search?
+              Start with one role you&apos;re interested in.
             </h2>
             <p className="text-sm sm:text-base text-secondary max-w-xl mx-auto leading-relaxed">
-              Sign in with your Google account and start qualifying roles, perfecting your match scores, and accelerating your interview pipeline today.
+              Save the posting, add your experience, and see how the two connect. Build the rest of your search from there.
             </p>
             <div className="pt-2">
               <a href="/api/auth/login">
                 <Button
-                  label="Sign in with Google"
+                  label="Start with Google"
                   icon={<GoogleIcon />}
                   size="lg"
                   variant="primary"
@@ -568,7 +561,7 @@ export function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border/40 py-8 text-center text-xs text-secondary">
         <div className="mx-auto max-w-6xl px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>© {new Date().getFullYear()} Job Search — Resume Match Engine. All rights reserved.</div>
+          <div>© {new Date().getFullYear()} Job Search by Fieldlines. All rights reserved.</div>
           <div className="flex items-center gap-4">
             <a href="/chrome-extension.zip" download className="hover:text-primary transition-colors">
               Download Chrome Extension
