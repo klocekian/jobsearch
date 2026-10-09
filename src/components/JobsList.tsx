@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
@@ -33,36 +33,23 @@ function formatSalary(job: JobRow): string {
   return "";
 }
 
-export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
+// Bypass the browser cache: /api/jobs allows a short private cache, and lists
+// are refetched right after mutations (restore, confirm, import, status checks).
+const NO_STORE: RequestInit = { cache: "no-store" };
+
+interface JobsListProps {
+  /** The page's full list, newest first (null until it loads) — the default view. */
+  allJobs: JobRow[] | null;
+  setAllJobs: Dispatch<SetStateAction<JobRow[] | null>>;
+  refreshAllJobs: () => Promise<void>;
+}
+
+export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  // fetchJobs (the client-side sort/filter-aware fetch below) is the
-  // authoritative source once it resolves. jobsPromise — already in flight
-  // from the server before this component even mounted — is purely a faster
-  // first paint for the default view; if fetchJobs somehow wins the race,
-  // don't let the slower default-sorted promise clobber its result.
-  const fetchedFromClient = useRef(false);
-  useEffect(() => {
-    jobsPromise.then((initial) => {
-      if (fetchedFromClient.current) return;
-      setJobs(initial);
-      setLoading(false);
-      try {
-        sessionStorage.setItem("jobListIds", JSON.stringify(initial.map((j) => j.id)));
-      } catch {}
-    });
-  }, [jobsPromise]);
-
-  useEffect(() => {
-    if (jobs.length > 0) {
-      try {
-        sessionStorage.setItem("jobListIds", JSON.stringify(jobs.map((j) => j.id)));
-      } catch {}
-    }
-  }, [jobs]);
+  // Any other sort/filter/search is fetched from the server into viewJobs.
+  const [viewJobs, setViewJobs] = useState<JobRow[] | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>(() =>
     (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey") as SortKey) || "created_at"
   );
@@ -105,36 +92,62 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     return () => clearTimeout(t);
   }, [search]);
 
-  // If we are on the default view, jobsPromise (server-streamed) provides the data.
-  // We only fetch from client if filters/sorting differ from the default or change.
+  // The default view is the page's shared list; anything else comes from the
+  // server. Until the first filtered fetch lands, keep showing the full list.
   const isDefaultView = sortKey === "created_at" && sortOrder === "desc" && !statusFilter && !debouncedSearch && !starredOnly;
-  const isFirstRun = useRef(true);
+  const jobs = useMemo(
+    () => (isDefaultView ? allJobs : viewJobs ?? allJobs) ?? [],
+    [isDefaultView, allJobs, viewJobs],
+  );
+  const loading = allJobs === null && (isDefaultView || viewJobs === null);
 
-  const fetchJobs = useCallback(async () => {
+  useEffect(() => {
+    if (jobs.length > 0) {
+      try {
+        sessionStorage.setItem("jobListIds", JSON.stringify(jobs.map((j) => j.id)));
+      } catch {}
+    }
+  }, [jobs]);
+
+  const viewUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("sort", sortKey);
     params.set("order", sortOrder);
     if (statusFilter && !starredOnly) params.set("status", statusFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (starredOnly) params.set("starred", "1");
-    // Bypass the browser cache: /api/jobs allows a short private cache, and
-    // this runs right after mutations (restore, confirm, import, status checks).
-    const data = await apiGet<{ jobs?: JobRow[] }>(`/api/jobs?${params}`, { cache: "no-store" });
-    fetchedFromClient.current = true;
-    setJobs(data.jobs ?? []);
-    setLoading(false);
+    return `/api/jobs?${params}`;
   }, [sortKey, sortOrder, statusFilter, debouncedSearch, starredOnly]);
 
   useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      if (isDefaultView) {
-        // jobsPromise will supply the initial list
-        return;
-      }
+    if (isDefaultView) return;
+    let ignore = false;
+    apiGet<{ jobs?: JobRow[] }>(viewUrl, NO_STORE)
+      .then((data) => { if (!ignore) setViewJobs(data.jobs ?? []); })
+      .catch(() => {}); // keep showing the last list
+    return () => { ignore = true; };
+  }, [isDefaultView, viewUrl]);
+
+  const fetchView = useCallback(async () => {
+    try {
+      const data = await apiGet<{ jobs?: JobRow[] }>(viewUrl, NO_STORE);
+      setViewJobs(data.jobs ?? []);
+    } catch {
+      // keep showing the last list
     }
-    fetchJobs();
-  }, [fetchJobs, isDefaultView]);
+  }, [viewUrl]);
+
+  // After a write: reload the shared list (banner, funnel, default view) and
+  // the filtered view if one is showing.
+  const fetchJobs = useCallback(async () => {
+    await Promise.all([refreshAllJobs(), isDefaultView ? null : fetchView()]);
+  }, [refreshAllJobs, isDefaultView, fetchView]);
+
+  const patchLocal = (id: number, fields: Partial<JobRow>) => {
+    const patch = (list: JobRow[] | null) => list?.map((j) => (j.id === id ? { ...j, ...fields } : j)) ?? null;
+    setAllJobs(patch);
+    setViewJobs(patch);
+  };
 
   const [restoring, setRestoring] = useState(false);
   const autoClosedJobs = useMemo(
@@ -251,18 +264,22 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
       setActionError(errorMessage(err, "Could not update the star."));
       return;
     }
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, is_starred: newVal } : j));
+    patchLocal(job.id, { is_starred: newVal });
   };
 
   const changeStatus = async (job: JobRow, status: string) => {
     setActionError("");
+    let updated: JobRow;
     try {
-      await apiSend(`/api/jobs/${job.id}`, "PATCH", { status });
+      ({ job: updated } = await apiSend<{ job: JobRow }>(`/api/jobs/${job.id}`, "PATCH", { status }));
     } catch (err) {
       setActionError(errorMessage(err, "Could not change the status."));
       return;
     }
-    fetchJobs();
+    // The route returns the row with its status side effects (applied_at,
+    // previous_status) applied, so the shared list updates without a refetch.
+    patchLocal(job.id, updated);
+    if (!isDefaultView) fetchView();
   };
 
   const allColumns: TableColumn<JobRow & Record<string, unknown>>[] = [

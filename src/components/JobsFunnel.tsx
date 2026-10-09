@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import { STATUS_OPTIONS, STATUS_DOT_COLORS, STATUS_TEXT_COLORS } from "@/lib/status";
@@ -76,23 +76,8 @@ function GateStepper({ job }: { job: JobRow }) {
   );
 }
 
-export function JobsFunnel() {
-  const [jobs, setJobs] = useState<JobRow[]>([]);
+export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
   const [selected, setSelected] = useState<{ status: string; stage?: string } | null>(null);
-
-  // Not the default tab, so unlike JobsList there's no server-streamed
-  // promise to seed from here — the user already navigated within the app to
-  // reach it, so a quick client fetch is unnoticeable. (A shared jobsPromise
-  // consumed here too would also break: Next's Flight promise wire format
-  // doesn't support a second component calling .then() on the same
-  // already-resolved reference — it crashes with "reading 'catch' of
-  // undefined", which is why this fetches independently instead.)
-  useEffect(() => {
-    fetch("/api/jobs?sort=created_at&order=desc")
-      .then((r) => r.json())
-      .then((d) => setJobs(d.jobs ?? []))
-      .catch(() => {});
-  }, []);
 
   const counts: Record<string, number> = {};
   for (const j of jobs) counts[j.status] = (counts[j.status] ?? 0) + 1;

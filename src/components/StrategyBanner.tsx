@@ -53,31 +53,13 @@ const SUBMITTED_STATUSES = new Set([
 ]);
 
 interface StrategyBannerProps {
-  jobs?: JobRow[];
+  jobs: JobRow[];
 }
 
-export function StrategyBanner({ jobs: initialJobs }: StrategyBannerProps) {
-  const [fetchedJobs, setFetchedJobs] = useState<JobRow[] | null>(null);
-  const jobs = useMemo(() => initialJobs ?? fetchedJobs ?? [], [initialJobs, fetchedJobs]);
+export function StrategyBanner({ jobs }: StrategyBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-
-  useEffect(() => {
-    if (initialJobs) return;
-    let cancelled = false;
-    fetch("/api/jobs?sort=created_at&order=desc")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled && data.jobs) {
-          setFetchedJobs(data.jobs);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [initialJobs]);
 
   const { appliedCount, has90Match } = useMemo(() => {
     let applied = 0;

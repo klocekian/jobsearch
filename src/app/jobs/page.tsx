@@ -9,7 +9,7 @@ export default async function JobsPage() {
   if (!userId) redirect("/login");
   // Not awaited — the promise streams to the client so the page shell (nav,
   // title, filter bar) paints immediately instead of blocking on the DB
-  // round-trip. JobsList/JobsFunnel resolve it client-side once it lands.
+  // round-trip. JobsPageClient resolves it client-side once it lands.
   const jobsPromise = listJobs(userId, { sort: "created_at", order: "desc" });
 
   return <JobsPageClient jobsPromise={jobsPromise} />;
