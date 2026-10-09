@@ -38,13 +38,13 @@ const VERDICT_TONES: Record<string, keyof typeof PILL_TONES> = {
 
 function Pill({ tone, label }: { tone: keyof typeof PILL_TONES; label: string }) {
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${PILL_TONES[tone]}`}>{label}</span>
+    <span className={`inline-block rounded-full px-1.5 text-[9px] font-semibold leading-4 tracking-wide ${PILL_TONES[tone]}`}>{label}</span>
   );
 }
 
 function VerdictRow({ item }: { item: FitnessRequirement }) {
   return (
-    <div className="grid grid-cols-[80px_1fr] gap-2 py-2.5 text-xs">
+    <div className="grid grid-cols-[64px_1fr] gap-2 py-2.5 text-xs">
       <div>
         <Pill tone={VERDICT_TONES[item.verdict] ?? "neutral"} label={item.verdict} />
       </div>
@@ -225,7 +225,7 @@ export function FitnessReportView({
         <Section title="Preferred" subtitle="Informs the score modestly, never decisively.">
           <div className="divide-y divide-border">
             {result.preferred.map((p, i) => (
-              <div key={`${i}-${p.verbatim.slice(0, 24)}`} className="grid grid-cols-[80px_1fr] gap-2 py-2.5 text-xs">
+              <div key={`${i}-${p.verbatim.slice(0, 24)}`} className="grid grid-cols-[64px_1fr] gap-2 py-2.5 text-xs">
                 <div>
                   <Pill tone={VERDICT_TONES[p.verdict] ?? "neutral"} label={p.verdict} />
                 </div>

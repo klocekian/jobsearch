@@ -73,7 +73,7 @@ export function PostingPane({ tab, job, report, paste, onSavePaste }: PostingPan
           onChange={(e) => paste.set(e.target.value)}
           placeholder="Paste job posting text…"
           autoFocus
-          className="-mx-2 block min-h-[50vh] w-[calc(100%+1rem)] resize-none rounded-md bg-transparent p-2 font-sans text-xs leading-relaxed text-primary outline-none ring-1 ring-border [field-sizing:content] focus:ring-2 focus:ring-brand/50"
+          className="-mx-2 block min-h-[50vh] w-[calc(100%+1rem)] resize-none rounded-md bg-transparent p-2 font-sans text-xs leading-relaxed text-primary outline-none ring-1 ring-border [field-sizing:content] focus:ring-2 focus:ring-blue-500/40"
         />
       ) : job.posting_text ? (
         report ? (
