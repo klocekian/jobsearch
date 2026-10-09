@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { STATUS_OPTIONS } from "@/lib/status";
+import { STATUS_OPTIONS, statusLabel } from "@/lib/status";
 import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatSalary } from "@/lib/format";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 import { JobStatusDot } from "./icons";
 import { Button } from "@astryxdesign/core/Button";
@@ -24,14 +24,6 @@ import { ImportSheetModal } from "./ImportSheetModal";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
-
-function formatSalary(job: JobRow): string {
-  if (job.salary_text) return job.salary_text;
-  if (job.salary_min && job.salary_max) return `$${(job.salary_min / 1000).toFixed(0)}k–$${(job.salary_max / 1000).toFixed(0)}k`;
-  if (job.salary_min) return `$${(job.salary_min / 1000).toFixed(0)}k+`;
-  if (job.salary_max) return `Up to $${(job.salary_max / 1000).toFixed(0)}k`;
-  return "";
-}
 
 // Bypass the browser cache: /api/jobs allows a short private cache, and lists
 // are refetched right after mutations (restore, confirm, import, status checks).
@@ -470,7 +462,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
                     <Link href={`/jobs/${j.id}`} className="font-medium hover:underline">
                       {j.company || "Unknown company"} — {j.title || "Untitled"}
                     </Link>
-                    <span className="text-xs text-amber-900/80 dark:text-amber-100/80">was {STATUS_OPTIONS.find((s) => s.value === j.previous_status)?.label ?? j.previous_status}</span>
+                    <span className="text-xs text-amber-900/80 dark:text-amber-100/80">was {j.previous_status && statusLabel(j.previous_status)}</span>
                     {j.url && (
                       <a href={j.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline hover:no-underline">
                         View posting ↗

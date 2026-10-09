@@ -212,6 +212,16 @@ export class PdfBuilder {
   }
 }
 
-export function sanitizeFileName(name: string): string {
+function sanitizeFileName(name: string): string {
   return name.replace(/[^A-Za-z0-9 _-]+/g, "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Download file name (no extension) for a generated document:
+ * "{name} - {kind} - {company}", leaving out whichever of name/company is
+ * blank, reduced to filename-safe characters. Falls back to just `kind`.
+ */
+export function documentFileBase(kind: string, name?: string | null, company?: string | null): string {
+  const parts = [name?.trim(), kind, company?.trim()].filter(Boolean);
+  return sanitizeFileName(parts.join(" - ")) || kind;
 }

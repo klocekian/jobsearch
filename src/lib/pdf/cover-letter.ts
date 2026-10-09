@@ -3,7 +3,7 @@
 
 import type { jsPDF } from "jspdf";
 import type { Contact } from "../contact";
-import { PdfBuilder, sanitizeFileName } from "./shared";
+import { PdfBuilder, documentFileBase } from "./shared";
 
 export interface CoverPdfInput {
   contact: Contact;
@@ -11,14 +11,6 @@ export interface CoverPdfInput {
   /** Display date, e.g. "June 16, 2026". */
   date: string;
   company?: string;
-}
-
-function fileBase(input: CoverPdfInput): string {
-  return (
-    sanitizeFileName(
-      `${input.contact.name ? input.contact.name + " - " : ""}Cover Letter${input.company ? " - " + input.company : ""}`
-    ) || "Cover Letter"
-  );
 }
 
 /** Build the cover-letter PDF document (no download — testable in any runtime). */
@@ -52,5 +44,5 @@ export async function buildCoverLetterDoc(input: CoverPdfInput): Promise<jsPDF> 
 
 export async function downloadCoverLetterPdf(input: CoverPdfInput): Promise<void> {
   const doc = await buildCoverLetterDoc(input);
-  doc.save(`${fileBase(input)}.pdf`);
+  doc.save(`${documentFileBase("Cover Letter", input.contact.name, input.company)}.pdf`);
 }

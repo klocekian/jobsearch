@@ -4,7 +4,7 @@
 
 import type { jsPDF } from "jspdf";
 import type { ResumeData } from "../resume/types";
-import { PdfBuilder, sanitizeFileName, stripMarkdown } from "./shared";
+import { PdfBuilder, documentFileBase, stripMarkdown } from "./shared";
 
 const md = stripMarkdown;
 
@@ -68,9 +68,5 @@ export async function buildResumeDoc(data: ResumeData): Promise<jsPDF> {
 
 export async function downloadResumePdf(data: ResumeData, company = ""): Promise<void> {
   const doc = await buildResumeDoc(data);
-  const base =
-    sanitizeFileName(
-      `${data.name ? data.name + " - " : ""}Resume${company.trim() ? " - " + company.trim() : ""}`
-    ) || "Resume";
-  doc.save(`${base}.pdf`);
+  doc.save(`${documentFileBase("Resume", data.name, company)}.pdf`);
 }

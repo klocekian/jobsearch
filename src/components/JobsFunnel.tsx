@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { STATUS_OPTIONS, STATUS_DOT_COLORS, STATUS_TEXT_COLORS } from "@/lib/status";
+import { PIPELINE_STATUSES, STATUS_DOT_COLORS, STATUS_TEXT_COLORS, reachedStage, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
@@ -12,7 +12,6 @@ import { Text } from "@astryxdesign/core/Text";
 import { Badge } from "@astryxdesign/core/Badge";
 import { HStack } from "@astryxdesign/core/Stack";
 
-const PIPELINE = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
 const TERMINAL_LINES = [
   { status: "rejected", label: "Rejected", color: STATUS_TEXT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
   { status: "abandoned", label: "Abandoned", color: STATUS_TEXT_COLORS.abandoned, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
@@ -32,18 +31,11 @@ const GATES = [
   { key: "onsite", label: "Onsite" },
 ];
 
-function labelFor(status: string): string {
-  return STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
-}
-
 /** How many of the 5 GATES a job has reached, based on its furthest pipeline
  * stage — for terminal statuses (rejected/withdrawn/etc.), that's wherever
  * previous_status left off, matching the terminal-rows breakdown above. */
 function gatesReached(job: JobRow): number {
-  const effective = PIPELINE.includes(job.status) ? job.status : (job.previous_status ?? "saved");
-  const rank = PIPELINE.indexOf(effective);
-  if (rank === -1) return 0;
-  return GATES.filter((g) => PIPELINE.indexOf(g.key) <= rank).length;
+  return GATES.filter((g) => reachedStage(job, g.key)).length;
 }
 
 function GateStepper({ job }: { job: JobRow }) {
@@ -84,7 +76,7 @@ export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
 
   const pipelineStages = [
     { status: "total", label: "Total", count: jobs.length },
-    ...PIPELINE.map((s) => ({ status: s, label: labelFor(s), count: counts[s] ?? 0 })),
+    ...PIPELINE_STATUSES.map((s) => ({ status: s, label: statusLabel(s), count: counts[s] ?? 0 })),
   ];
   const max = Math.max(...pipelineStages.map((s) => s.count), 1);
 
@@ -130,10 +122,10 @@ export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
       selectedLabel = "Total";
     } else if (selected.stage) {
       selectedJobs = jobs.filter((j) => j.status === selected.status && j.previous_status === selected.stage);
-      selectedLabel = `${labelFor(selected.status)} (from ${labelFor(selected.stage)})`;
+      selectedLabel = `${statusLabel(selected.status)} (from ${statusLabel(selected.stage)})`;
     } else {
       selectedJobs = jobs.filter((j) => j.status === selected.status);
-      selectedLabel = labelFor(selected.status);
+      selectedLabel = statusLabel(selected.status);
     }
   }
 
@@ -184,7 +176,7 @@ export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
             const stageCounts = tl.stages.map((stage) => ({
               stage,
               count: terminalByStage[tl.status][stage],
-              pipeIdx: PIPELINE.indexOf(stage) + 1,
+              pipeIdx: PIPELINE_STATUSES.indexOf(stage) + 1,
             }));
             const total = stageCounts.reduce((s, c) => s + c.count, 0);
             return (

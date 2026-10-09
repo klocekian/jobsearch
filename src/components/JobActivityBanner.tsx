@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
-import { STATUS_COLORS } from "@/lib/status";
+import { STATUS_COLORS, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
 import { apiSend, errorMessage } from "@/lib/api-client";
-import { formatEventWhen, relativeDay, resolveJobActivity, statusLabel } from "@/lib/job-activity";
+import { formatEventWhen, relativeDay, resolveJobActivity } from "@/lib/job-activity";
 import { ChevronDownIcon, ChevronUpIcon } from "./icons";
 
 const COLLAPSED_KEY = "jobActivityBannerCollapsed";
