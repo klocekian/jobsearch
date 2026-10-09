@@ -595,97 +595,89 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     <>
       {rightTab === "profile" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <SegmentedControl
-              value={profileSubTab}
-              onChange={(v) => setProfileSubTab(v as ProfileSubTab)}
-              label="Profile view"
-            >
-              <SegmentedControlItem
-                value="score"
-                label={fitnessSaved ? `Score (${fitnessSaved.score}/10)` : "Score"}
-              />
-              <SegmentedControlItem
-                value="edit"
-                label="Edit"
-              />
-            </SegmentedControl>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={withAi}
-                  onChange={(e) => {
-                    setWithAi(e.target.checked);
-                    if (typeof window !== "undefined") {
-                      localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
-                    }
-                  }}
-                  className="accent-primary rounded cursor-pointer"
+          {profileSubTab === "score" ? (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Button
+                  label="Edit"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setProfileSubTab("edit")}
                 />
-                <span>with AI</span>
-              </label>
-              <Button
-                label={fitnessRunning ? "Analyzing…" : fitnessSaved ? "Re-run analysis" : "Analyze"}
-                variant="primary"
-                size="sm"
-                onClick={() => runFitnessCheck(withAi)}
-                isDisabled={fitnessRunning || !job.posting_text.trim()}
-              />
-            </div>
-          </div>
 
-          {profileSubTab === "score" && (
-            <div className="py-2">
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                {job.fitness_run_at && !fitnessRunning && (
-                  <Text type="supporting" color="secondary">
-                    Last run {new Date(job.fitness_run_at).toLocaleString()}
-                  </Text>
-                )}
-                {notesFlash && <Badge variant="success" label="Added to notes" />}
+                <div className="flex shrink-0 items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={withAi}
+                      onChange={(e) => {
+                        setWithAi(e.target.checked);
+                        if (typeof window !== "undefined") {
+                          localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
+                        }
+                      }}
+                      className="accent-primary rounded cursor-pointer"
+                    />
+                    <span>with AI</span>
+                  </label>
+                  <Button
+                    label={fitnessRunning ? "Analyzing…" : fitnessSaved ? "Re-run analysis" : "Analyze"}
+                    variant="primary"
+                    size="sm"
+                    onClick={() => runFitnessCheck(withAi)}
+                    isDisabled={fitnessRunning || !job.posting_text.trim()}
+                  />
+                </div>
               </div>
 
-              {fitnessError && (
-                <div className="mb-4">
-                  <Banner status="error" title={fitnessError} />
+              <div className="py-2">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  {job.fitness_run_at && !fitnessRunning && (
+                    <Text type="supporting" color="secondary">
+                      Last run {new Date(job.fitness_run_at).toLocaleString()}
+                    </Text>
+                  )}
+                  {notesFlash && <Badge variant="success" label="Added to notes" />}
                 </div>
-              )}
-              {fitnessRunning && (
-                <div className="flex items-center gap-2 py-8">
-                  <Spinner />
-                  <Text type="supporting" color="secondary">
-                    Scoring against your profile and gaps…
-                  </Text>
-                </div>
-              )}
 
-              {!fitnessRunning && !fitnessSaved && !fitnessError && (
-                <Banner
-                  status="info"
-                  title={job.posting_text.trim()
-                    ? 'Click "Analyze" to run fitness check against your candidate profile.'
-                    : "Add the posting text first — the fitness check reads the posting, not the resume."}
-                />
-              )}
+                {fitnessError && (
+                  <div className="mb-4">
+                    <Banner status="error" title={fitnessError} />
+                  </div>
+                )}
+                {fitnessRunning && (
+                  <div className="flex items-center gap-2 py-8">
+                    <Spinner />
+                    <Text type="supporting" color="secondary">
+                      Scoring against your profile and gaps…
+                    </Text>
+                  </div>
+                )}
 
-              {!fitnessRunning && fitnessSaved && (
-                <FitnessReportView
-                  result={fitnessSaved}
-                  runAt={job.fitness_run_at}
-                  model={fitnessRunModel}
-                  busy={fitnessSaving}
-                  onAddToNotes={() => addFitnessToNotes(false)}
-                  onAbandon={() => addFitnessToNotes(true)}
-                />
-              )}
-            </div>
-          )}
+                {!fitnessRunning && !fitnessSaved && !fitnessError && (
+                  <Banner
+                    status="info"
+                    title={job.posting_text.trim()
+                      ? 'Click "Analyze" to run fitness check against your candidate profile.'
+                      : "Add the posting text first — the fitness check reads the posting, not the resume."}
+                  />
+                )}
 
-          {profileSubTab === "edit" && (
+                {!fitnessRunning && fitnessSaved && (
+                  <FitnessReportView
+                    result={fitnessSaved}
+                    runAt={job.fitness_run_at}
+                    model={fitnessRunModel}
+                    busy={fitnessSaving}
+                    onAddToNotes={() => addFitnessToNotes(false)}
+                    onAbandon={() => addFitnessToNotes(true)}
+                  />
+                )}
+              </div>
+            </>
+          ) : (
             <div className="py-2">
-              <CandidateProfilePanel />
+              <CandidateProfilePanel onBack={() => setProfileSubTab("score")} />
             </div>
           )}
         </div>
