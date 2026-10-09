@@ -134,10 +134,21 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   }, [fetchJobs, isDefaultView]);
 
   const [restoring, setRestoring] = useState(false);
-  const restorableJobs = useMemo(
-    () => jobs.filter((j) => j.status === "closed" && !!j.previous_status).length,
+  const autoClosedJobs = useMemo(
+    () => jobs.filter((j) => j.status === "closed" && !!j.previous_status),
     [jobs],
   );
+  // Dismissal is remembered per set of jobs, so a newly auto-closed job brings the banner back.
+  const [dismissedAutoClosed, setDismissedAutoClosed] = useState<Set<number>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem("dismissedAutoClosed") ?? "[]") as number[]); } catch { return new Set(); }
+  });
+  const showAutoClosed = autoClosedJobs.some((j) => !dismissedAutoClosed.has(j.id));
+  const dismissAutoClosed = () => {
+    const ids = new Set(autoClosedJobs.map((j) => j.id));
+    localStorage.setItem("dismissedAutoClosed", JSON.stringify([...ids]));
+    setDismissedAutoClosed(ids);
+  };
 
   const undoAutoClosed = async () => {
     setRestoring(true);
@@ -379,18 +390,49 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
             </label>
           </HStack>
 
-          {restorableJobs > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200">
-              <div className="flex items-center gap-2 text-sm">
-                <span>⚠️ <strong>{restorableJobs}</strong> job{restorableJobs === 1 ? " was" : "s were"} recently marked closed by automated check.</span>
+          {showAutoClosed && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-100">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm">
+                  ⚠️ <strong>{autoClosedJobs.length}</strong> job{autoClosedJobs.length === 1 ? " was" : "s were"} recently marked closed by an automated check — the posting looks to be taken down. Check it before restoring.
+                </span>
+                <HStack gap={2} className="items-center">
+                  <Button
+                    label={restoring ? "Restoring…" : "Restore to active pipeline"}
+                    variant="secondary"
+                    size="sm"
+                    onClick={undoAutoClosed}
+                    isDisabled={restoring}
+                  />
+                  <button
+                    type="button"
+                    onClick={dismissAutoClosed}
+                    aria-label="Dismiss"
+                    title="Dismiss"
+                    className="rounded p-1 text-amber-900/70 hover:bg-amber-500/15 hover:text-amber-900 dark:text-amber-100/70 dark:hover:text-amber-100 cursor-pointer"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </HStack>
               </div>
-              <Button
-                label={restoring ? "Restoring…" : "Restore to active pipeline"}
-                variant="secondary"
-                size="sm"
-                onClick={undoAutoClosed}
-                isDisabled={restoring}
-              />
+              <ul className="mt-2 space-y-1 text-sm">
+                {autoClosedJobs.map((j) => (
+                  <li key={j.id} className="flex flex-wrap items-baseline gap-x-2">
+                    <Link href={`/jobs/${j.id}`} className="font-medium hover:underline">
+                      {j.company || "Unknown company"} — {j.title || "Untitled"}
+                    </Link>
+                    <span className="text-xs text-amber-900/70 dark:text-amber-100/70">was {STATUS_OPTIONS.find((s) => s.value === j.previous_status)?.label ?? j.previous_status}</span>
+                    {j.url && (
+                      <a href={j.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline hover:no-underline">
+                        View posting ↗
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
