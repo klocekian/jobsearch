@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       if (clientId && clientId !== refresh.cid) return oauthError("invalid_grant", "Token was issued to another client.");
       const user = await getUserById(refresh.sub);
       if (!user || (user.mcp_oauth_epoch ?? 0) !== refresh.ep) {
-        return oauthError("invalid_grant", "Access was revoked. Reconnect from Claude.");
+        return oauthError("invalid_grant", "Access was revoked. Reconnect from your assistant.");
       }
       ({ sub: userId, cid, scope } = refresh);
       break;

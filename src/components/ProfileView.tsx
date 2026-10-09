@@ -146,7 +146,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                 <Text type="supporting" display="block">{user.email}</Text>
               </div>
               <form action="/api/auth/logout" method="POST">
-                <Button label="Sign out of Google" variant="ghost" size="sm" />
+                <Button type="submit" label="Sign out of Google" variant="ghost" size="sm" />
               </form>
             </div>
           ) : (

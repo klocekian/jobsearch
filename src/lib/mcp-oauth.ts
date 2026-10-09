@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 /**
- * OAuth 2.1 for the MCP endpoint, the shape claude.ai custom connectors and
+ * OAuth 2.1 for the MCP endpoint, the shape Claude and ChatGPT connectors and
  * Claude Code expect: protected-resource metadata → authorization-server
  * metadata → dynamic client registration → authorization code + PKCE → bearer
  * access token, with refresh.
@@ -12,7 +12,7 @@ import crypto from "node:crypto";
  *  - a client id carries its registered redirect URIs, so /authorize only
  *    sends codes back to where the client said it lives;
  *  - access and refresh tokens carry the user's mcp_oauth_epoch, so
- *    "Disconnect Claude" in settings revokes everything issued so far.
+ *    "Disconnect all apps" in settings revokes everything issued so far.
  */
 
 const SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";

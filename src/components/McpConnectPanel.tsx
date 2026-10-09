@@ -6,7 +6,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
-import { Stack, HStack } from "@astryxdesign/core/Stack";
+import { HStack } from "@astryxdesign/core/Stack";
 import { CodeBlock } from "@astryxdesign/core/CodeBlock";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { formatDate } from "@/lib/format";
@@ -25,7 +25,7 @@ interface McpSettings {
 }
 
 /**
- * Profile → AI: connect Claude to this job search over MCP. Connectors sign in
+ * Profile → AI: connect Claude, ChatGPT, or any MCP client to this job search. Connectors sign in
  * through the app (OAuth), so the URL itself is safe to share; personal access
  * tokens are the fallback for scripts and clients that can't do the sign-in.
  */
@@ -83,7 +83,7 @@ export function McpConnectPanel() {
   if (!settings) {
     return (
       <Card>
-        <div className="flex items-center justify-center p-12">
+        <div className="flex items-center justify-center p-8">
           <Spinner label="Loading MCP settings…" />
         </div>
       </Card>
@@ -93,32 +93,42 @@ export function McpConnectPanel() {
   return (
     <Card>
       <div className="p-5">
-        <HStack gap={2} className="mb-1 items-center">
-          <Text type="label">Connect Claude (MCP)</Text>
-          {settings.last_used_at && <Badge variant="success" label={`Last used ${formatDate(settings.last_used_at)}`} />}
-        </HStack>
-        <Text type="supporting" display="block" className="mb-4">
-          Give Claude direct access to your job search — pipeline, resumes, candidate profile, ATS
-          match and fitness checks — from claude.ai, the Claude apps, or Claude Code. Claude runs
-          on your Claude plan; no API key needed here.
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <HStack gap={2} className="items-center">
+            <Text type="label">Connect Claude &amp; ChatGPT (MCP)</Text>
+            {settings.last_used_at && <Badge variant="success" label={`Last used ${formatDate(settings.last_used_at)}`} />}
+          </HStack>
+          <Button
+            label="Disconnect all apps"
+            variant="ghost"
+            size="sm"
+            isDisabled={busy}
+            onClick={() => act(
+              { action: "disconnect_clients" },
+              "Sign out every connected app (Claude, ChatGPT, …)? Each will need to sign in again. Access tokens are not affected.",
+            )}
+          />
+        </div>
+        <Text type="supporting" display="block" className="mb-3">
+          Use your job search from Claude, ChatGPT, or any MCP client — on your own plan, no API key needed.
         </Text>
 
-        <Stack gap={4}>
-          <div>
-            <Text type="supporting" display="block" className="mb-1">MCP server URL</Text>
+        <div className="divide-y divide-border rounded-md border border-border">
+          <div className="px-3 py-2.5">
+            <Text weight="semibold" display="block" className="mb-1.5">Server URL</Text>
             <CodeBlock code={settings.url} hasCopyButton isWrapped width="100%" size="sm" />
-          </div>
-
-          <div>
-            <Text weight="semibold" display="block" className="mb-1">claude.ai, Claude Desktop &amp; mobile</Text>
-            <Text type="supporting" display="block">
-              Settings → Connectors → Add custom connector. Name it &ldquo;Job Search&rdquo;, paste the
-              URL, then sign in with Google and allow access when prompted.
+            <Text type="supporting" display="block" className="mt-1.5">
+              <span className="font-semibold">Claude</span> (web, desktop, mobile): Settings → Connectors → Add custom
+              connector, paste the URL, sign in, Allow.
+            </Text>
+            <Text type="supporting" display="block" className="mt-0.5">
+              <span className="font-semibold">ChatGPT</span>: Settings → Apps &amp; Connectors → Advanced → turn on
+              Developer mode, then Create: paste the URL, Authentication OAuth, sign in, Allow.
             </Text>
           </div>
 
-          <div>
-            <Text weight="semibold" display="block" className="mb-1">Claude Code</Text>
+          <div className="px-3 py-2.5">
+            <Text weight="semibold" display="block" className="mb-1.5">Claude Code</Text>
             <CodeBlock
               code={`claude mcp add --transport http jobsearch ${settings.url}`}
               language="bash"
@@ -128,77 +138,56 @@ export function McpConnectPanel() {
               width="100%"
               size="sm"
             />
-            <Text type="supporting" display="block" className="mt-1">
-              Then run <code className="text-xs">/mcp</code> in Claude Code and choose Authenticate.
+            <Text type="supporting" display="block" className="mt-1.5">
+              Then <code className="text-xs">/mcp</code> → Authenticate.
             </Text>
           </div>
 
-          <div>
-            <Button
-              label="Disconnect all connected apps"
-              variant="ghost"
-              size="sm"
-              isDisabled={busy}
-              onClick={() => act(
-                { action: "disconnect_clients" },
-                "Sign out every connected Claude app? Each will need to sign in again. Access tokens below are not affected.",
-              )}
-            />
-          </div>
-
-          <div className="border-t border-border pt-4">
-            <Text weight="semibold" display="block" className="mb-1">Access tokens</Text>
-            <Text type="supporting" display="block" className="mb-3">
-              For scripts and clients that can&apos;t sign in: send as{" "}
-              <code className="text-xs">Authorization: Bearer &lt;token&gt;</code>. Anyone holding a
-              token can read and change your job search.
+          <div className="px-3 py-2.5">
+            <Text weight="semibold" display="block">Access tokens</Text>
+            <Text type="supporting" display="block" className="mb-2">
+              For scripts that can&apos;t sign in, sent as <code className="text-xs">Authorization: Bearer</code>. Treat like a password.
             </Text>
 
             {newToken && (
-              <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
-                <Text type="supporting" display="block" className="mb-2">
-                  Copy this token now — it won&apos;t be shown again.
-                </Text>
+              <div className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
+                <Text type="supporting" display="block" className="mb-1.5">Copy it now — it won&apos;t be shown again.</Text>
                 <CodeBlock code={newToken} hasCopyButton isWrapped width="100%" size="sm" />
               </div>
             )}
 
-            {settings.tokens.length > 0 && (
-              <div className="mb-3 divide-y divide-border rounded-md border border-border">
-                {settings.tokens.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                    <div className="min-w-0">
-                      <Text weight="semibold" display="block" className="truncate">{t.label}</Text>
-                      <Text type="supporting" display="block">
-                        Created {formatDate(t.created_at)} ·{" "}
-                        {t.last_used_at ? `last used ${formatDate(t.last_used_at)}` : "never used"}
-                      </Text>
-                    </div>
-                    <Button
-                      label="Revoke"
-                      variant="ghost"
-                      size="sm"
-                      isDisabled={busy}
-                      onClick={() => act({ action: "revoke_token", id: t.id }, `Revoke "${t.label}"? Anything using it loses access immediately.`)}
-                    />
-                  </div>
-                ))}
+            {settings.tokens.map((t) => (
+              <div key={t.id} className="flex items-center justify-between gap-3 py-1">
+                <Text display="block" className="min-w-0 truncate">
+                  <span className="font-semibold">{t.label}</span>{" "}
+                  <span className="text-secondary">
+                    · created {formatDate(t.created_at)} · {t.last_used_at ? `used ${formatDate(t.last_used_at)}` : "never used"}
+                  </span>
+                </Text>
+                <Button
+                  label="Revoke"
+                  variant="ghost"
+                  size="sm"
+                  isDisabled={busy}
+                  onClick={() => act({ action: "revoke_token", id: t.id }, `Revoke "${t.label}"? Anything using it loses access immediately.`)}
+                />
               </div>
-            )}
+            ))}
 
-            <HStack gap={2} className="items-end">
+            <HStack gap={2} className="mt-1 items-center">
               <div className="flex-1">
                 <TextInput
                   label="Token name"
                   isLabelHidden
+                  size="sm"
                   value={label}
                   onChange={setLabel}
-                  placeholder="Token name, e.g. Laptop script"
+                  placeholder="New token name, e.g. Laptop script"
                   onEnter={() => label.trim() && createToken()}
                 />
               </div>
               <Button
-                label="Create token"
+                label="Create"
                 variant="secondary"
                 size="sm"
                 isDisabled={busy || !label.trim()}
@@ -206,7 +195,7 @@ export function McpConnectPanel() {
               />
             </HStack>
           </div>
-        </Stack>
+        </div>
 
         {error && <Text type="supporting" display="block" className="mt-3 text-rose-600">{error}</Text>}
       </div>

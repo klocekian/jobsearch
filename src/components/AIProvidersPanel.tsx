@@ -7,7 +7,7 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Text } from "@astryxdesign/core/Text";
-import { Stack, HStack } from "@astryxdesign/core/Stack";
+import { HStack } from "@astryxdesign/core/Stack";
 import { Link } from "@astryxdesign/core/Link";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -129,133 +129,107 @@ export function AIProvidersPanel() {
   if (loading) {
     return (
       <Card>
-        <div className="flex items-center justify-center p-12">
+        <div className="flex items-center justify-center p-8">
           <Spinner label="Loading AI providers…" />
         </div>
       </Card>
     );
   }
 
-  const activeProvider = providers.find((p) => p.isActive && p.isConfigured);
+  const hasActive = providers.some((p) => p.isActive && p.isConfigured);
+
+  const startEditing = (p: ProviderConfig) => {
+    setEditingId(p.id);
+    setInputKey("");
+    setSelectedModel(p.isConfigured ? p.model : p.defaultModel);
+    setStatusMsg(null);
+  };
 
   return (
-    <Stack gap={5}>
-      <Card>
-        <div className="p-5">
-          <Text type="label" display="block" className="mb-1">AI Providers & Keys</Text>
-          <Text type="supporting" display="block" className="mb-4">
-            Connect one or more API keys to power AI features: cover letter generation, resume rewriting,
-            fitness checks, and smart parsing. Choose your active default provider below.
-          </Text>
+    <Card>
+      <div className="p-5">
+        <Text type="label" display="block" className="mb-1">AI Providers &amp; Keys</Text>
+        <Text type="supporting" display="block" className="mb-3">
+          API keys for in-app AI: cover letters, resume rewrites, fitness checks, and parsing.
+          {!hasActive && " Connect one to unlock AI tools."}
+        </Text>
 
-          {activeProvider ? (
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3">
-              <HStack gap={2} className="items-center">
-                <Badge variant="success" label="Active Provider" />
-                <Text weight="semibold">{activeProvider.name}</Text>
-                <Text type="supporting">({activeProvider.model})</Text>
-              </HStack>
-            </div>
-          ) : (
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
-              <Text type="supporting">
-                No active provider connected. Connect at least one API key below to unlock AI tools.
-              </Text>
-            </div>
-          )}
-        </div>
-      </Card>
+        {statusMsg && (
+          <div className="mb-3">
+            <Banner
+              status={statusMsg.type === "success" ? "success" : "error"}
+              title={statusMsg.text}
+              isDismissable
+              onDismiss={() => setStatusMsg(null)}
+            />
+          </div>
+        )}
 
-      {statusMsg && (
-        <Banner
-          status={statusMsg.type === "success" ? "success" : "error"}
-          title={statusMsg.text}
-          isDismissable
-          onDismiss={() => setStatusMsg(null)}
-        />
-      )}
+        <div className="divide-y divide-border rounded-md border border-border">
+          {providers.map((p) => {
+            const isEditing = editingId === p.id;
+            const isActive = p.isActive && p.isConfigured;
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {providers.map((p) => {
-          const isEditing = editingId === p.id;
-
-          return (
-            <Card key={p.id} className={`transition ${p.isActive && p.isConfigured ? "ring-2 ring-accent" : ""}`}>
-              <div className="flex h-full flex-col justify-between p-5">
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
+            return (
+              <div key={p.id} className="px-3 py-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
                     <HStack gap={2} className="items-center">
-                      <Text weight="semibold" type="label">{p.name}</Text>
+                      <Text weight="semibold">{p.name}</Text>
                       {p.isConfigured && (
-                        <Badge
-                          variant={p.isActive ? "success" : "neutral"}
-                          label={p.isActive ? "Active Default" : "Connected"}
-                        />
+                        <Badge variant={isActive ? "success" : "neutral"} label={isActive ? "Active" : "Connected"} />
                       )}
                     </HStack>
-
-                    {p.isConfigured && !p.isActive && !isEditing && (
-                      <Button
-                        label="Set Active"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSetActive(p.id)}
-                      />
-                    )}
+                    <Text type="supporting" display="block" className="truncate">
+                      {p.isConfigured ? (
+                        <code className="text-xs">{p.maskedKey} · {p.model}</code>
+                      ) : (
+                        p.description
+                      )}
+                    </Text>
                   </div>
 
-                  <Text type="supporting" display="block" className="mb-4">
-                    {p.description}
-                  </Text>
-
-                  {p.isConfigured && !isEditing ? (
-                    <div className="mb-4 space-y-2 rounded-md border border-border bg-surface p-3 text-sm">
-                      <div className="flex items-center justify-between">
-                        <Text type="supporting">Key:</Text>
-                        <code className="text-xs">{p.maskedKey}</code>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Text type="supporting">Default Model:</Text>
-                        <code className="text-xs">{p.model}</code>
-                      </div>
-                    </div>
-                  ) : isEditing ? (
-                    <Stack gap={3} className="mb-4">
-                      <div>
-                        <TextInput
-                          label="API Key"
-                          value={inputKey}
-                          onChange={setInputKey}
-                          placeholder={p.placeholder}
-                        />
-                      </div>
-
-                      {p.availableModels.length > 1 && (
-                        <div>
-                          <Selector
-                            label="Model"
-                            options={p.availableModels.map((m) => ({ value: m, label: m }))}
-                            value={selectedModel || p.model}
-                            onChange={(v) => setSelectedModel(v as string)}
-                          />
-                        </div>
+                  {!isEditing && (
+                    <HStack gap={1} className="shrink-0">
+                      {p.isConfigured ? (
+                        <>
+                          {!isActive && (
+                            <Button label="Set Active" variant="ghost" size="sm" onClick={() => handleSetActive(p.id)} />
+                          )}
+                          <Button label="Update" variant="ghost" size="sm" onClick={() => startEditing(p)} />
+                          <Button label="Disconnect" variant="ghost" size="sm" onClick={() => handleDelete(p.id)} />
+                        </>
+                      ) : (
+                        <Button label="Connect" variant="secondary" size="sm" onClick={() => startEditing(p)} />
                       )}
-
-                      <div className="text-xs text-secondary">
-                        Get your API key at{" "}
-                        <Link href={p.helpUrl} isExternalLink>
-                          {new URL(p.helpUrl).hostname}
-                        </Link>
-                      </div>
-                    </Stack>
-                  ) : null}
+                    </HStack>
+                  )}
                 </div>
 
-                <div>
-                  {isEditing ? (
+                {isEditing && (
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <div className="min-w-[16rem] flex-1">
+                      <TextInput
+                        label="API Key"
+                        value={inputKey}
+                        onChange={setInputKey}
+                        placeholder={p.placeholder}
+                        onEnter={() => handleSave(p.id)}
+                      />
+                    </div>
+                    {p.availableModels.length > 1 && (
+                      <div className="min-w-[12rem]">
+                        <Selector
+                          label="Model"
+                          options={p.availableModels.map((m) => ({ value: m, label: m }))}
+                          value={selectedModel || p.model}
+                          onChange={(v) => setSelectedModel(v as string)}
+                        />
+                      </div>
+                    )}
                     <HStack gap={2}>
                       <Button
-                        label={saving ? "Validating…" : "Save & Connect"}
+                        label={saving ? "Validating…" : "Save"}
                         variant="primary"
                         size="sm"
                         onClick={() => handleSave(p.id)}
@@ -263,7 +237,7 @@ export function AIProvidersPanel() {
                       />
                       <Button
                         label="Cancel"
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setEditingId(null);
@@ -272,45 +246,19 @@ export function AIProvidersPanel() {
                         }}
                       />
                     </HStack>
-                  ) : p.isConfigured ? (
-                    <HStack gap={2}>
-                      <Button
-                        label="Update Key"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setEditingId(p.id);
-                          setInputKey("");
-                          setSelectedModel(p.model);
-                          setStatusMsg(null);
-                        }}
-                      />
-                      <Button
-                        label="Disconnect"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(p.id)}
-                      />
-                    </HStack>
-                  ) : (
-                    <Button
-                      label={`Connect ${p.badgeName}`}
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setEditingId(p.id);
-                        setInputKey("");
-                        setSelectedModel(p.defaultModel);
-                        setStatusMsg(null);
-                      }}
-                    />
-                  )}
-                </div>
+                    <div className="w-full text-xs text-secondary">
+                      Get a key at{" "}
+                      <Link href={p.helpUrl} isExternalLink>
+                        {new URL(p.helpUrl).hostname}
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
-            </Card>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </Stack>
+    </Card>
   );
 }
