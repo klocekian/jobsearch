@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "@/lib/anthropic";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateStructured } from "@/lib/ai";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -46,7 +44,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = await getAnthropicClient();
     const userContent = [
       url ? `Source URL: ${url}\n` : "",
       `=== PAGE TEXT ===\n${text}`,
@@ -54,15 +51,14 @@ export async function POST(request: Request) {
       "Extract the company, job title, location, remote type, salary, and full job description.",
     ].join("\n");
 
-    const message = await client.messages.parse({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8000,
+    const { data: result } = await generateStructured({
       system: SYSTEM,
-      messages: [{ role: "user", content: userContent }],
-      output_config: { format: zodOutputFormat(ResultSchema) },
+      prompt: userContent,
+      schema: ResultSchema,
+      schemaName: "JobExtractResult",
+      maxTokens: 4096,
     });
 
-    const result = message.parsed_output;
     if (!result || (!result.jobTitle.trim() && !result.jobDescription.trim())) {
       return NextResponse.json(
         { error: "Couldn't extract job details from that text." },
@@ -71,13 +67,13 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(result);
   } catch (err: unknown) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Anthropic auth failed." }, { status: 502 });
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited. Try again shortly." }, { status: 429 });
-    }
     const message = err instanceof Error ? err.message : "Extraction failed.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const status =
+      message.includes("not connected") || message.includes("authentication failed") || message.includes("401")
+        ? 401
+        : message.includes("rate limit") || message.includes("429")
+        ? 429
+        : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 }
