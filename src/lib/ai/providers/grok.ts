@@ -100,11 +100,12 @@ export async function generateGrokText(
   return { text, model };
 }
 
-export function streamGrokText(
+export async function streamGrokText(
   apiKey: string,
   options: StreamTextOptions,
-): ReadableStream<Uint8Array> {
+): Promise<ReadableStream<Uint8Array>> {
   const model = options.model || AI_PROVIDERS.grok.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 4096, 4096);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -112,24 +113,24 @@ export function streamGrokText(
   }
   messages.push({ role: "user", content: options.prompt });
 
+  const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    stream: true,
+  });
+
+  if (!res.body) {
+    throw new Error("Grok response body is empty.");
+  }
+
+  const reader = res.body.getReader();
   const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetchGrokWithRetry(`${XAI_BASE_URL}/chat/completions`, apiKey, {
-          model,
-          messages,
-          max_tokens: options.maxTokens ?? 4096,
-          stream: true,
-        });
-
-        if (!res.body) {
-          throw new Error("Grok response body is empty.");
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {

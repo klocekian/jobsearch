@@ -39,7 +39,7 @@ async function setSetting(key: string, value: string): Promise<void> {
   });
 }
 
-async function getGlobalToken(): Promise<string | null> {
+export async function getGlobalToken(): Promise<string | null> {
   // 1. Check env var (set at deploy time)
   const envToken = process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
 
@@ -76,7 +76,7 @@ async function getGlobalToken(): Promise<string | null> {
  * refresh token is available, persisting the refreshed token. Returns the
  * token to use right now.
  */
-async function freshUserToken(user: UserRow): Promise<string | null> {
+export async function freshUserToken(user: UserRow): Promise<string | null> {
   if (!user.anthropic_token) return null;
   if (!user.token_expires) return user.anthropic_token; // manual API key — no expiry to track
   const now = Math.floor(Date.now() / 1000);

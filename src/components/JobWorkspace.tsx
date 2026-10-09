@@ -23,6 +23,7 @@ import {
   loadContextMaterials,
   saveContextMaterials,
   loadAiDetection,
+  saveAiDetection,
 } from "@/lib/storage";
 import { buildPackageMarkdown } from "@/lib/package";
 import type { JobRow } from "@/lib/db/jobs";
@@ -93,13 +94,46 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }
   }, [userAnalysis, job, resumeText]);
 
-  // Derived AI detection: cached result if present, otherwise instant heuristic
+  // AI detection: cached result if present, otherwise call /api/ai-detection with fallback
+  // AI detection: cached result if present, otherwise call /api/ai-detection with fallback
+  const [asyncAiDetection, setAsyncAiDetection] = useState<{ text: string; data: import("@/lib/analysis/types").AiDetection } | null>(null);
+
   const aiDetection = useMemo<AiDetectionState>(() => {
     if (!analyzed) return { status: "loading", data: null };
     const text = analyzed.resumeText;
-    const fallback = analyzed.report.aiDetection;
+    if (asyncAiDetection && asyncAiDetection.text === text) {
+      return { status: "done", data: asyncAiDetection.data };
+    }
     const cached = typeof window !== "undefined" ? loadAiDetection(text) : null;
-    return { status: "done", data: cached ?? fallback };
+    if (cached) return { status: "done", data: cached };
+    return { status: "done", data: analyzed.report.aiDetection };
+  }, [analyzed, asyncAiDetection]);
+
+  useEffect(() => {
+    if (!analyzed) return;
+    const text = analyzed.resumeText;
+    const cached = typeof window !== "undefined" ? loadAiDetection(text) : null;
+    if (cached) return;
+
+    let active = true;
+    fetch("/api/ai-detection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resumeText: text }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { confidence?: number; band?: string; patterns?: unknown } | null) => {
+        if (!active) return;
+        if (d && typeof d.confidence === "number" && Array.isArray(d.patterns)) {
+          const det = d as unknown as import("@/lib/analysis/types").AiDetection;
+          saveAiDetection(text, det);
+          setAsyncAiDetection({ text, data: det });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [analyzed]);
 
   // Fitness check. `saved` is the report already written to the job; `pending`
@@ -730,7 +764,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                     label={analyzing ? "Analyzing…" : analyzed ? "Re-run analysis" : "Analyze"}
                     variant="primary"
                     size="sm"
-                    onClick={() => runAnalysis()}
+                    onClick={() => {
+                      if (withAi) {
+                        runUnifiedAnalysis(true);
+                      } else {
+                        runAnalysis();
+                      }
+                    }}
                     isDisabled={analyzing || !job.posting_text.trim() || !resumeText.trim()}
                   />
                 </div>

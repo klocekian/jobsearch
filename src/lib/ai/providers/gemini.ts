@@ -97,10 +97,10 @@ export async function generateGeminiText(
   return { text, model };
 }
 
-export function streamGeminiText(
+export async function streamGeminiText(
   apiKey: string,
   options: StreamTextOptions,
-): ReadableStream<Uint8Array> {
+): Promise<ReadableStream<Uint8Array>> {
   const model = options.model || AI_PROVIDERS.gemini.defaultModel;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
@@ -114,28 +114,28 @@ export function streamGeminiText(
   const body = {
     contents,
     generationConfig: {
-      maxOutputTokens: options.maxTokens ?? 4096,
+      maxOutputTokens: Math.min(options.maxTokens ?? 4096, 8192),
     },
   };
 
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok || !res.body) {
+    const err = await res.text().catch(() => "");
+    throw new Error(formatGeminiError(res.status, err));
+  }
+
+  const reader = res.body.getReader();
   const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok || !res.body) {
-          const err = await res.text();
-          throw new Error(`Gemini Stream error (${res.status}): ${err}`);
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {

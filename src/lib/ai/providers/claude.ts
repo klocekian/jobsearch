@@ -37,25 +37,49 @@ export async function generateClaudeText(
   return { text: textBlock ? textBlock.text : "", model };
 }
 
-export function streamClaudeText(
+export async function streamClaudeText(
   apiKey: string,
   options: StreamTextOptions,
-): ReadableStream<Uint8Array> {
+): Promise<ReadableStream<Uint8Array>> {
   const client = getClient(apiKey);
   const model = options.model || AI_PROVIDERS.claude.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 4096, 8192);
 
-  const stream = client.messages.stream({
+  const rawStream = client.messages.stream({
     model,
-    max_tokens: options.maxTokens ?? 4096,
+    max_tokens: maxTokens,
     system: options.system,
     messages: [{ role: "user", content: options.prompt }],
   });
+
+  const iterator = rawStream[Symbol.asyncIterator]();
+  let firstEvent: IteratorResult<Anthropic.MessageStreamEvent, unknown>;
+  try {
+    firstEvent = await iterator.next();
+  } catch (err: unknown) {
+    if (err instanceof Anthropic.APIError) {
+      if (err.status === 401) {
+        throw new Error("Anthropic Claude authentication failed. Please check your API key in Profile > AI.");
+      }
+      if (err.status === 429) {
+        throw new Error("Anthropic Claude rate limit exceeded. Please wait a moment and try again.");
+      }
+      throw new Error(`Claude API error (${err.status}): ${err.message}`);
+    }
+    throw err;
+  }
 
   const encoder = new TextEncoder();
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const event of stream) {
+        if (!firstEvent.done && firstEvent.value) {
+          const ev = firstEvent.value;
+          if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+            controller.enqueue(encoder.encode(ev.delta.text));
+          }
+        }
+        for await (const event of rawStream) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
             controller.enqueue(encoder.encode(event.delta.text));
           }

@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import net from "node:net";
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "@/lib/anthropic";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateStructured } from "@/lib/ai";
 import { z } from "zod";
 
 // Fetch a job posting by URL and extract company / title / description. Runs
@@ -195,7 +193,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const client = await getAnthropicClient();
     const userContent = [
       jsonLd ? `=== JSON-LD JobPosting ===\n${jsonLd}\n` : "",
       `=== PAGE TEXT ===\n${text}`,
@@ -203,15 +200,14 @@ export async function POST(request: Request) {
       "Extract the company, job title, and full job description.",
     ].join("\n");
 
-    const message = await client.messages.parse({
-      model: "claude-opus-4-8",
-      max_tokens: 8000,
+    const { data: result } = await generateStructured({
       system: SYSTEM,
-      messages: [{ role: "user", content: userContent }],
-      output_config: { format: zodOutputFormat(ResultSchema) },
+      prompt: userContent,
+      schema: ResultSchema,
+      schemaName: "FetchJobResult",
+      maxTokens: 4096,
     });
 
-    const result = message.parsed_output;
     if (!result || (!result.jobTitle.trim() && !result.jobDescription.trim())) {
       return NextResponse.json(
         { error: "Couldn't find a job posting at that URL. Paste the description instead." },
@@ -220,13 +216,13 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(result);
   } catch (err: unknown) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Claude is not connected. Go to Profile and add your API key to use AI features." }, { status: 401 });
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Rate limited by the Anthropic API. Try again shortly." }, { status: 429 });
-    }
     const message = err instanceof Error ? err.message : "Failed to extract the posting.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const status =
+      message.includes("not connected") || message.includes("authentication failed") || message.includes("401")
+        ? 401
+        : message.includes("rate limit") || message.includes("429")
+        ? 429
+        : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 }

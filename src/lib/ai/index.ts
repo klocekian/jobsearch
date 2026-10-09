@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { getActiveAIProvider, getUserAIProviders } from "@/lib/db/ai-providers";
+import { freshUserToken, getGlobalToken } from "@/lib/anthropic";
 import type {
   AIProviderId,
   GenerateStructuredOptions,
@@ -64,21 +65,23 @@ export async function getActiveAICredentials(): Promise<ResolvedAICredentials> {
       };
     }
 
-    // 2. Legacy fallback to users.anthropic_token
+    // 2. Legacy fallback to users.anthropic_token (with OAuth refresh)
     if (user.anthropic_token) {
+      const freshToken = await freshUserToken(user).catch(() => null);
       return {
         provider: "claude",
-        apiKey: user.anthropic_token,
+        apiKey: freshToken || user.anthropic_token,
         model: AI_PROVIDERS.claude.defaultModel,
       };
     }
   }
 
   // 3. Fallback to server environment variables
-  if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) {
+  const globalClaude = await getGlobalToken().catch(() => null);
+  if (globalClaude || process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) {
     return {
       provider: "claude",
-      apiKey: (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)!,
+      apiKey: (globalClaude || process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)!,
       model: AI_PROVIDERS.claude.defaultModel,
     };
   }
@@ -142,16 +145,16 @@ export async function streamText(options: StreamTextOptions): Promise<{ stream: 
   let stream: ReadableStream<Uint8Array>;
   switch (creds.provider) {
     case "claude":
-      stream = streamClaudeText(creds.apiKey, mergedOptions);
+      stream = await streamClaudeText(creds.apiKey, mergedOptions);
       break;
     case "gemini":
-      stream = streamGeminiText(creds.apiKey, mergedOptions);
+      stream = await streamGeminiText(creds.apiKey, mergedOptions);
       break;
     case "grok":
-      stream = streamGrokText(creds.apiKey, mergedOptions);
+      stream = await streamGrokText(creds.apiKey, mergedOptions);
       break;
     case "mistral":
-      stream = streamMistralText(creds.apiKey, mergedOptions);
+      stream = await streamMistralText(creds.apiKey, mergedOptions);
       break;
   }
 
@@ -203,6 +206,16 @@ export async function getUserAIStatus(userId: number | null): Promise<UserAIStat
       activeProvider: active.provider,
       providerName: AI_PROVIDERS[active.provider]?.badgeName ?? active.provider,
       configuredCount: providers.length,
+    };
+  }
+
+  const user = await getSession().catch(() => null);
+  if (user && user.id === userId && user.anthropic_token) {
+    return {
+      connected: true,
+      activeProvider: "claude",
+      providerName: AI_PROVIDERS.claude.badgeName,
+      configuredCount: 1,
     };
   }
 

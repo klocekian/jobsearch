@@ -138,12 +138,12 @@ export async function generateMistralText(
   throw lastError;
 }
 
-export function streamMistralText(
+export async function streamMistralText(
   apiKey: string,
   options: StreamTextOptions,
-): ReadableStream<Uint8Array> {
-  const model = options.model || AI_PROVIDERS.mistral.defaultModel;
-  const maxTokens = Math.min(options.maxTokens ?? 8192, 8192);
+): Promise<ReadableStream<Uint8Array>> {
+  const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
+  const maxTokens = Math.min(options.maxTokens ?? 4096, 4096);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -151,24 +151,45 @@ export function streamMistralText(
   }
   messages.push({ role: "user", content: options.prompt });
 
+  const candidateModels = Array.from(new Set([initialModel, ...FALLBACK_MODELS]));
+  let lastRes: Response | null = null;
+  let lastError: unknown;
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, {
+        model,
+        messages,
+        max_tokens: maxTokens,
+        stream: true,
+      });
+      lastRes = res;
+      break;
+    } catch (err: unknown) {
+      lastError = err;
+      if (
+        err instanceof Error &&
+        (err.message.includes("404") ||
+          err.message.includes("does not exist") ||
+          err.message.includes("not available"))
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!lastRes || !lastRes.body) {
+    throw (lastError || new Error("Mistral stream response body is empty."));
+  }
+
+  const reader = lastRes.body.getReader();
   const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, {
-          model,
-          messages,
-          max_tokens: maxTokens,
-          stream: true,
-        });
-
-        if (!res.body) {
-          throw new Error("Mistral response body is empty.");
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {

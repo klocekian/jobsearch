@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     const { stream } = await streamText({
       system: buildSystemPrompt(),
       prompt: buildUserPrompt(parsed),
-      maxTokens: 8000,
+      maxTokens: 4096,
     });
 
     return new Response(stream, {
@@ -102,6 +102,12 @@ export async function POST(request: Request) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to rewrite the resume.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const status =
+      message.includes("not connected") || message.includes("authentication failed") || message.includes("401")
+        ? 401
+        : message.includes("rate limit") || message.includes("429")
+        ? 429
+        : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 }
