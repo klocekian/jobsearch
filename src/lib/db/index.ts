@@ -65,6 +65,7 @@ export async function getDb(): Promise<Client> {
       fitness_report TEXT,
       fitness_run_at TEXT,
       match_resume_name TEXT,
+      activity_summary TEXT,
       created_at    TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
       applied_at    TEXT
@@ -147,6 +148,7 @@ export async function getDb(): Promise<Client> {
     client.execute("ALTER TABLE jobs ADD COLUMN fitness_report TEXT"),
     client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_at TEXT"),
     client.execute("ALTER TABLE jobs ADD COLUMN match_resume_name TEXT"),
+    client.execute("ALTER TABLE jobs ADD COLUMN activity_summary TEXT"),
     client.execute("ALTER TABLE users ADD COLUMN mcp_oauth_epoch INTEGER NOT NULL DEFAULT 0"),
     client.execute("ALTER TABLE users ADD COLUMN mcp_last_used_at TEXT"),
   ]);
