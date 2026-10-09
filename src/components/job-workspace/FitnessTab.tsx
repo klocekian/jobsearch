@@ -45,14 +45,11 @@ export function FitnessTab({ job, fitness, withAi, onWithAiChange, onEditProfile
       </div>
 
       <div className="py-2">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {!running && runAt && (
-            <Text type="supporting" color="secondary">
-              Last run {new Date(runAt).toLocaleString()}
-            </Text>
-          )}
-          {notesFlash && <Badge variant="success" label="Added to notes" />}
-        </div>
+        {notesFlash && (
+          <div className="mb-4">
+            <Badge variant="success" label="Added to notes" />
+          </div>
+        )}
 
         {error && (
           <div className="mb-4">
