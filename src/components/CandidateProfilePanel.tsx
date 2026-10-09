@@ -6,6 +6,7 @@ import { TextArea } from "@astryxdesign/core/TextArea";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Text } from "@astryxdesign/core/Text";
 import { Heading } from "@astryxdesign/core/Heading";
+import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 
 /**
  * Editor for the two documents the fitness check runs against.
@@ -120,9 +121,8 @@ export function CandidateProfilePanel({ onBack }: CandidateProfilePanelProps = {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/candidate-docs")
-      .then((r) => r.json())
-      .then((d: DocsResponse) => {
+    apiGet<DocsResponse>("/api/candidate-docs")
+      .then((d) => {
         if (!active) return;
         setDocs(d);
         setProfile(d.profile ?? "");
@@ -139,16 +139,7 @@ export function CandidateProfilePanel({ onBack }: CandidateProfilePanelProps = {
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/candidate-docs", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, gaps }),
-      });
-      const d = await res.json() as Partial<DocsResponse> & { error?: string };
-      if (!res.ok) {
-        setMessage({ kind: "error", text: d.error ?? "Save failed." });
-        return;
-      }
+      const d = await apiSend<Partial<DocsResponse>>("/api/candidate-docs", "PUT", { profile, gaps });
       setDocs((prev) => prev ? {
         ...prev,
         profile: d.profile ?? profile,
@@ -157,8 +148,8 @@ export function CandidateProfilePanel({ onBack }: CandidateProfilePanelProps = {
         gaps_updated_at: d.gaps_updated_at ?? prev.gaps_updated_at,
       } : prev);
       setMessage({ kind: "success", text: "Saved." });
-    } catch {
-      setMessage({ kind: "error", text: "Save failed." });
+    } catch (err) {
+      setMessage({ kind: "error", text: errorMessage(err, "Save failed.") });
     } finally {
       setSaving(false);
     }

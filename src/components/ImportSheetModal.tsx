@@ -7,6 +7,7 @@ import { Stack, HStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Spinner } from "@astryxdesign/core/Spinner";
+import { apiSend, errorMessage } from "@/lib/api-client";
 
 interface ImportSheetModalProps {
   isOpen: boolean;
@@ -51,22 +52,15 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
         bodyPayload = { sheetUrl: sheetUrl.trim() };
       }
 
-      const res = await fetch("/api/jobs/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload),
-      });
-
-      const data: { imported?: number; skipped?: number; total?: number; error?: string } = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Failed to import spreadsheet.");
-      }
+      const data = await apiSend<{ imported?: number; skipped?: number; total?: number }>(
+        "/api/jobs/import", "POST", bodyPayload,
+      );
 
       const msg = `Successfully imported ${data.imported ?? 0} jobs${data.skipped ? ` (${data.skipped} already existed)` : ""}.`;
       onSuccess(msg);
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to import.");
+      setError(errorMessage(err, "Failed to import."));
     } finally {
       setLoading(false);
     }

@@ -43,6 +43,12 @@ export async function extractFileText(file: File): Promise<ExtractedFile> {
   throw new Error(`Unsupported file type. Upload a ${SUPPORTED_FORMATS} file.`);
 }
 
+/** An uploaded resume's text plus its file name without the extension. */
+export async function readResumeFile(file: File): Promise<{ text: string; name: string }> {
+  const { text } = await extractFileText(file);
+  return { text, name: file.name.replace(/\.[^.]+$/, "") };
+}
+
 // --- DOCX (a ZIP of XML; we read word/document.xml and strip the markup) ---
 
 async function extractDocxText(file: File): Promise<string> {

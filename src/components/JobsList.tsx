@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { STATUS_OPTIONS } from "@/lib/status";
+import { STATUS_OPTIONS, statusLabel } from "@/lib/status";
 import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatSalary } from "@/lib/format";
+import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 import { JobStatusDot } from "./icons";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -24,44 +25,23 @@ import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
 
-function formatSalary(job: JobRow): string {
-  if (job.salary_text) return job.salary_text;
-  if (job.salary_min && job.salary_max) return `$${(job.salary_min / 1000).toFixed(0)}k–$${(job.salary_max / 1000).toFixed(0)}k`;
-  if (job.salary_min) return `$${(job.salary_min / 1000).toFixed(0)}k+`;
-  if (job.salary_max) return `Up to $${(job.salary_max / 1000).toFixed(0)}k`;
-  return "";
+// Bypass the browser cache: /api/jobs allows a short private cache, and lists
+// are refetched right after mutations (restore, confirm, import, status checks).
+const NO_STORE: RequestInit = { cache: "no-store" };
+
+interface JobsListProps {
+  /** The page's full list, newest first (null until it loads) — the default view. */
+  allJobs: JobRow[] | null;
+  setAllJobs: Dispatch<SetStateAction<JobRow[] | null>>;
+  refreshAllJobs: () => Promise<void>;
 }
 
-export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
+export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const [jobs, setJobs] = useState<JobRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  // fetchJobs (the client-side sort/filter-aware fetch below) is the
-  // authoritative source once it resolves. jobsPromise — already in flight
-  // from the server before this component even mounted — is purely a faster
-  // first paint for the default view; if fetchJobs somehow wins the race,
-  // don't let the slower default-sorted promise clobber its result.
-  const fetchedFromClient = useRef(false);
-  useEffect(() => {
-    jobsPromise.then((initial) => {
-      if (fetchedFromClient.current) return;
-      setJobs(initial);
-      setLoading(false);
-      try {
-        sessionStorage.setItem("jobListIds", JSON.stringify(initial.map((j) => j.id)));
-      } catch {}
-    });
-  }, [jobsPromise]);
-
-  useEffect(() => {
-    if (jobs.length > 0) {
-      try {
-        sessionStorage.setItem("jobListIds", JSON.stringify(jobs.map((j) => j.id)));
-      } catch {}
-    }
-  }, [jobs]);
+  // Any other sort/filter/search is fetched from the server into viewJobs.
+  const [viewJobs, setViewJobs] = useState<JobRow[] | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>(() =>
     (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey") as SortKey) || "created_at"
   );
@@ -78,6 +58,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [starredOnly, setStarredOnly] = useState(false);
   const [importMsg, setImportMsg] = useState("");
+  const [actionError, setActionError] = useState("");
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -103,37 +84,62 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     return () => clearTimeout(t);
   }, [search]);
 
-  // If we are on the default view, jobsPromise (server-streamed) provides the data.
-  // We only fetch from client if filters/sorting differ from the default or change.
+  // The default view is the page's shared list; anything else comes from the
+  // server. Until the first filtered fetch lands, keep showing the full list.
   const isDefaultView = sortKey === "created_at" && sortOrder === "desc" && !statusFilter && !debouncedSearch && !starredOnly;
-  const isFirstRun = useRef(true);
+  const jobs = useMemo(
+    () => (isDefaultView ? allJobs : viewJobs ?? allJobs) ?? [],
+    [isDefaultView, allJobs, viewJobs],
+  );
+  const loading = allJobs === null && (isDefaultView || viewJobs === null);
 
-  const fetchJobs = useCallback(async () => {
+  useEffect(() => {
+    if (jobs.length > 0) {
+      try {
+        sessionStorage.setItem("jobListIds", JSON.stringify(jobs.map((j) => j.id)));
+      } catch {}
+    }
+  }, [jobs]);
+
+  const viewUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("sort", sortKey);
     params.set("order", sortOrder);
     if (statusFilter && !starredOnly) params.set("status", statusFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (starredOnly) params.set("starred", "1");
-    // Bypass the browser cache: /api/jobs allows a short private cache, and
-    // this runs right after mutations (restore, confirm, import, status checks).
-    const res = await fetch(`/api/jobs?${params}`, { cache: "no-store" });
-    const data = await res.json();
-    fetchedFromClient.current = true;
-    setJobs(data.jobs ?? []);
-    setLoading(false);
+    return `/api/jobs?${params}`;
   }, [sortKey, sortOrder, statusFilter, debouncedSearch, starredOnly]);
 
   useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      if (isDefaultView) {
-        // jobsPromise will supply the initial list
-        return;
-      }
+    if (isDefaultView) return;
+    let ignore = false;
+    apiGet<{ jobs?: JobRow[] }>(viewUrl, NO_STORE)
+      .then((data) => { if (!ignore) setViewJobs(data.jobs ?? []); })
+      .catch(() => {}); // keep showing the last list
+    return () => { ignore = true; };
+  }, [isDefaultView, viewUrl]);
+
+  const fetchView = useCallback(async () => {
+    try {
+      const data = await apiGet<{ jobs?: JobRow[] }>(viewUrl, NO_STORE);
+      setViewJobs(data.jobs ?? []);
+    } catch {
+      // keep showing the last list
     }
-    fetchJobs();
-  }, [fetchJobs, isDefaultView]);
+  }, [viewUrl]);
+
+  // After a write: reload the shared list (banner, funnel, default view) and
+  // the filtered view if one is showing.
+  const fetchJobs = useCallback(async () => {
+    await Promise.all([refreshAllJobs(), isDefaultView ? null : fetchView()]);
+  }, [refreshAllJobs, isDefaultView, fetchView]);
+
+  const patchLocal = (id: number, fields: Partial<JobRow>) => {
+    const patch = (list: JobRow[] | null) => list?.map((j) => (j.id === id ? { ...j, ...fields } : j)) ?? null;
+    setAllJobs(patch);
+    setViewJobs(patch);
+  };
 
   const [restoring, setRestoring] = useState(false);
   const autoClosedJobs = useMemo(
@@ -156,13 +162,10 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const confirmAutoClosed = async () => {
     setConfirming(true);
     try {
-      const res = await fetch("/api/jobs/check-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "confirm", job_ids: autoClosedJobs.map((j) => j.id) }),
+      const data = await apiSend<{ confirmed: number }>("/api/jobs/check-status", "POST", {
+        action: "confirm",
+        job_ids: autoClosedJobs.map((j) => j.id),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error();
       setImportMsg(`Saved — ${data.confirmed} job${data.confirmed === 1 ? " stays" : "s stay"} closed.`);
       fetchJobs();
     } catch {
@@ -175,12 +178,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const undoAutoClosed = async () => {
     setRestoring(true);
     try {
-      const res = await fetch("/api/jobs/check-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "undo" }),
-      });
-      const data = await res.json();
+      const data = await apiSend<{ restored?: number }>("/api/jobs/check-status", "POST", { action: "undo" });
       if (data.restored) {
         setImportMsg(`Successfully restored ${data.restored} job${data.restored === 1 ? "" : "s"} back to their active pipeline statuses.`);
         fetchJobs();
@@ -206,8 +204,9 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { checking: true } }));
     setImportMsg("");
     try {
-      const res = await fetch("/api/jobs/check-status", { method: "POST" });
-      const data: { checked?: number; closed?: number; closedJobs?: { company: string; title?: string; reason?: string }[] } = await res.json();
+      const data = await apiSend<{ checked?: number; closed?: number; closedJobs?: { company: string; title?: string; reason?: string }[] }>(
+        "/api/jobs/check-status", "POST",
+      );
       if (data.closed && data.closed > 0) {
         const names = data.closedJobs?.map((j) => `${j.company}${j.title ? ` — ${j.title}` : ""}`).join(", ") ?? "";
         setImportMsg(`Checked ${data.checked} jobs — ${data.closed} closed and marked${names ? `: ${names}` : ""}.`);
@@ -250,12 +249,29 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
 
   const toggleStar = async (job: JobRow) => {
     const newVal = job.is_starred ? 0 : 1;
-    await fetch(`/api/jobs/${job.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_starred: newVal }),
-    });
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, is_starred: newVal } : j));
+    setActionError("");
+    try {
+      await apiSend(`/api/jobs/${job.id}`, "PATCH", { is_starred: newVal });
+    } catch (err) {
+      setActionError(errorMessage(err, "Could not update the star."));
+      return;
+    }
+    patchLocal(job.id, { is_starred: newVal });
+  };
+
+  const changeStatus = async (job: JobRow, status: string) => {
+    setActionError("");
+    let updated: JobRow;
+    try {
+      ({ job: updated } = await apiSend<{ job: JobRow }>(`/api/jobs/${job.id}`, "PATCH", { status }));
+    } catch (err) {
+      setActionError(errorMessage(err, "Could not change the status."));
+      return;
+    }
+    // The route returns the row with its status side effects (applied_at,
+    // previous_status) applied, so the shared list updates without a refetch.
+    patchLocal(job.id, updated);
+    if (!isDefaultView) fetchView();
   };
 
   const allColumns: TableColumn<JobRow & Record<string, unknown>>[] = [
@@ -307,14 +323,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           startIcon={<JobStatusDot status={job.status} />}
           options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
           value={job.status}
-          onChange={async (v) => {
-            await fetch(`/api/jobs/${job.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: v }),
-            });
-            fetchJobs();
-          }}
+          onChange={(v) => changeStatus(job, v)}
         />
       ),
     },
@@ -453,7 +462,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
                     <Link href={`/jobs/${j.id}`} className="font-medium hover:underline">
                       {j.company || "Unknown company"} — {j.title || "Untitled"}
                     </Link>
-                    <span className="text-xs text-amber-900/80 dark:text-amber-100/80">was {STATUS_OPTIONS.find((s) => s.value === j.previous_status)?.label ?? j.previous_status}</span>
+                    <span className="text-xs text-amber-900/80 dark:text-amber-100/80">was {j.previous_status && statusLabel(j.previous_status)}</span>
                     {j.url && (
                       <a href={j.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline hover:no-underline">
                         View posting ↗
@@ -466,6 +475,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           )}
 
           {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
+          {actionError && <Banner status="error" title={actionError} isDismissable onDismiss={() => setActionError("")} />}
         </Stack>
       </div>
 

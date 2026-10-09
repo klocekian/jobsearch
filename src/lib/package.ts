@@ -81,28 +81,3 @@ export function buildPackageMarkdown(p: PackageInput): string {
 
   return parts.join("\n") + "\n";
 }
-
-function sanitizeFileName(name: string): string {
-  return name.replace(/[^A-Za-z0-9 _-]+/g, "").replace(/\s+/g, " ").trim();
-}
-
-export function packageFileName(p: Pick<PackageInput, "company" | "resume">): string {
-  const name = p.resume?.name?.trim();
-  const base =
-    sanitizeFileName(
-      `${name ? name + " - " : ""}Application${p.company.trim() ? " - " + p.company.trim() : ""}`
-    ) || "Application";
-  return `${base}.md`;
-}
-
-export function downloadTextFile(filename: string, content: string, mime = "text/markdown;charset=utf-8"): void {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}

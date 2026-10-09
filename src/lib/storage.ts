@@ -5,16 +5,12 @@
 import type { ResumeData } from "./resume/types";
 import type { Contact } from "./contact";
 import type { ContextMaterial } from "./context";
-import type { AnalyzeInput, AiDetection } from "./analysis/types";
+import type { AiDetection } from "./analysis/types";
 
 // v3: bust older caches (broken heuristic parse / pre-LinkedIn-field shape).
 export const RESUME_STORAGE_KEY = "jobsearch.resume.v3";
 // v2: now stores the full draft (letter + interests + header + date), not just text.
 export const COVER_LETTER_STORAGE_KEY = "jobsearch.coverletter.v2";
-// Whole input session: form fields + the last analysis, so a refresh/crash/close
-// restores exactly where the user left off. (Resume edits, cover letter,
-// suggestions and context persist under their own keys.)
-export const SESSION_STORAGE_KEY = "jobsearch.session.v1";
 // Candidate-level supplementary materials, shared by the cover letter + suggestions.
 export const CONTEXT_MATERIALS_STORAGE_KEY = "jobsearch.context.v1";
 // Job-specific tailored resume rewrite (with the user's manual edits).
@@ -185,43 +181,5 @@ export function saveAiDetection(resumeText: string, detection: AiDetection): voi
     localStorage.setItem(`jobsearch.aidetect.${hashText(resumeText)}`, JSON.stringify(detection));
   } catch {
     // ignore
-  }
-}
-
-// --- Whole input session (form fields + last analysis) ---
-
-export interface SavedSession {
-  company: string;
-  jobTitle: string;
-  jobUrl: string;
-  /** Source filename when a PDF was uploaded; drives the File Type ATS check. */
-  fileName: string;
-  /** Raw resume text (the last upload/paste). */
-  resumeText: string;
-  jobText: string;
-  /** Active results tab. */
-  tab: string;
-  /** Inputs of the last completed analysis, or null if none has been run. */
-  analyzed: AnalyzeInput | null;
-}
-
-export function loadSession(): SavedSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const v: unknown = JSON.parse(localStorage.getItem(SESSION_STORAGE_KEY) ?? "null");
-    if (v && typeof v === "object" && typeof (v as SavedSession).resumeText === "string") {
-      return v as SavedSession;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveSession(session: SavedSession): void {
-  try {
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-  } catch {
-    // ignore quota / unavailable storage
   }
 }

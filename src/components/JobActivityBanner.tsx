@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
-import { STATUS_COLORS } from "@/lib/status";
+import { STATUS_COLORS, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
-import { formatEventWhen, relativeDay, resolveJobActivity, statusLabel } from "@/lib/job-activity";
+import { apiSend, errorMessage } from "@/lib/api-client";
+import { formatEventWhen, relativeDay, resolveJobActivity } from "@/lib/job-activity";
 import { ChevronDownIcon, ChevronUpIcon } from "./icons";
 
 const COLLAPSED_KEY = "jobActivityBannerCollapsed";
@@ -53,12 +54,10 @@ export function JobActivityBanner({
     setSummarizing(true);
     setError(null);
     try {
-      const res = await fetch(`/api/jobs/${job.id}/activity-summary`, { method: "POST" });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) setError(d.error ?? `Could not summarize (${res.status}).`);
-      else onJobUpdated(d.job);
-    } catch {
-      setError("Could not summarize — no response from the server.");
+      const d = await apiSend<{ job: JobRow }>(`/api/jobs/${job.id}/activity-summary`, "POST");
+      onJobUpdated(d.job);
+    } catch (err) {
+      setError(errorMessage(err, "Could not summarize — no response from the server."));
     } finally {
       setSummarizing(false);
     }

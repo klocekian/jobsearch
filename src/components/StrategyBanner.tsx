@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import type { JobRow } from "@/lib/db/jobs";
+import { wasSubmitted } from "@/lib/status";
 import { TipIcon, type TipIconName } from "@/components/icons";
 
 export interface StrategyBannerItem {
@@ -43,51 +44,20 @@ export const STRATEGY_ITEMS: Record<"A" | "B" | "C" | "D", StrategyBannerItem> =
   },
 };
 
-const SUBMITTED_STATUSES = new Set([
-  "applied",
-  "interview",
-  "interview2",
-  "onsite",
-  "offer",
-  "accepted",
-]);
-
 interface StrategyBannerProps {
-  jobs?: JobRow[];
+  jobs: JobRow[];
 }
 
-export function StrategyBanner({ jobs: initialJobs }: StrategyBannerProps) {
-  const [fetchedJobs, setFetchedJobs] = useState<JobRow[] | null>(null);
-  const jobs = useMemo(() => initialJobs ?? fetchedJobs ?? [], [initialJobs, fetchedJobs]);
+export function StrategyBanner({ jobs }: StrategyBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-
-  useEffect(() => {
-    if (initialJobs) return;
-    let cancelled = false;
-    fetch("/api/jobs?sort=created_at&order=desc")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled && data.jobs) {
-          setFetchedJobs(data.jobs);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [initialJobs]);
 
   const { appliedCount, has90Match } = useMemo(() => {
     let applied = 0;
     let match90 = false;
     for (const j of jobs) {
-      const isApplied =
-        Boolean(j.applied_at) ||
-        SUBMITTED_STATUSES.has(j.status) ||
-        (j.previous_status ? SUBMITTED_STATUSES.has(j.previous_status) : false);
-      if (isApplied) applied++;
+      if (wasSubmitted(j)) applied++;
       if ((j.match_score ?? 0) >= 90) match90 = true;
     }
     return { appliedCount: applied, has90Match: match90 };

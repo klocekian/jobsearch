@@ -14,6 +14,45 @@ export const STATUS_OPTIONS = [
   { value: "closed", label: "Closed" },
 ] as const;
 
+export function statusLabel(status: string): string {
+  return STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
+}
+
+/**
+ * The forward pipeline, in order. Every other status is terminal: it ends a
+ * job's run, and previous_status records the stage it stopped at.
+ */
+export const PIPELINE_STATUSES: readonly string[] = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
+
+/** Statuses that mean an application went in. */
+export const SUBMITTED_STATUSES: ReadonlySet<string> = new Set(["applied", "interview", "interview2", "onsite", "offer", "accepted"]);
+
+type StatusFields = { status: string; previous_status: string | null };
+
+/**
+ * Index in PIPELINE_STATUSES of the furthest stage a job reached — for a
+ * terminal status, wherever previous_status left off. -1 if unknown.
+ */
+export function furthestStageIndex(job: StatusFields): number {
+  const effective = PIPELINE_STATUSES.includes(job.status) ? job.status : (job.previous_status ?? "saved");
+  return PIPELINE_STATUSES.indexOf(effective);
+}
+
+/** Whether a job got at least as far as pipeline `stage`. */
+export function reachedStage(job: StatusFields, stage: string): boolean {
+  const rank = furthestStageIndex(job);
+  return rank !== -1 && PIPELINE_STATUSES.indexOf(stage) <= rank;
+}
+
+/** Whether the job was ever applied to, even if it has since ended. */
+export function wasSubmitted(job: StatusFields & { applied_at: string | null }): boolean {
+  return (
+    Boolean(job.applied_at) ||
+    SUBMITTED_STATUSES.has(job.status) ||
+    (job.previous_status ? SUBMITTED_STATUSES.has(job.previous_status) : false)
+  );
+}
+
 /**
  * Canonical per-status color, shared by the funnel chart's dots/lines and
  * the status pill in the jobs table — the single source of truth so the two

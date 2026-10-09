@@ -12,6 +12,7 @@ import { Link } from "@astryxdesign/core/Link";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Banner } from "@astryxdesign/core/Banner";
 import type { AIProviderId } from "@/lib/ai";
+import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 
 interface ProviderConfig {
   id: AIProviderId;
@@ -39,11 +40,8 @@ export function AIProvidersPanel() {
 
   const fetchProviders = async () => {
     try {
-      const res = await fetch("/api/ai/providers");
-      if (res.ok) {
-        const data = await res.json();
-        setProviders(data.providers ?? []);
-      }
+      const data = await apiGet<{ providers?: ProviderConfig[] }>("/api/ai/providers");
+      setProviders(data.providers ?? []);
     } catch {} finally {
       setLoading(false);
     }
@@ -51,13 +49,12 @@ export function AIProvidersPanel() {
 
   useEffect(() => {
     let ignore = false;
-    fetch("/api/ai/providers")
-      .then((res) => (res.ok ? res.json() : null))
+    apiGet<{ providers?: ProviderConfig[] }>("/api/ai/providers")
       .then((data) => {
-        if (!ignore && data?.providers) setProviders(data.providers);
-        if (!ignore) setLoading(false);
+        if (!ignore && data.providers) setProviders(data.providers);
       })
-      .catch(() => {
+      .catch(() => {})
+      .finally(() => {
         if (!ignore) setLoading(false);
       });
     return () => {
@@ -71,20 +68,11 @@ export function AIProvidersPanel() {
     setStatusMsg(null);
 
     try {
-      const res = await fetch("/api/ai/providers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: providerId,
-          apiKey: inputKey.trim(),
-          model: selectedModel || undefined,
-        }),
+      const data = await apiSend<{ message?: string }>("/api/ai/providers", "POST", {
+        provider: providerId,
+        apiKey: inputKey.trim(),
+        model: selectedModel || undefined,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "Failed to save key");
-      }
 
       setStatusMsg({ type: "success", text: data.message ?? "Provider connected!" });
       setEditingId(null);
@@ -92,8 +80,7 @@ export function AIProvidersPanel() {
       await fetchProviders();
       window.dispatchEvent(new Event("auth-change"));
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to connect provider";
-      setStatusMsg({ type: "error", text: message });
+      setStatusMsg({ type: "error", text: errorMessage(err, "Failed to connect provider") });
     } finally {
       setSaving(false);
     }
@@ -101,29 +88,23 @@ export function AIProvidersPanel() {
 
   const handleSetActive = async (providerId: AIProviderId) => {
     try {
-      const res = await fetch("/api/ai/providers/active", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: providerId }),
-      });
-      if (res.ok) {
-        await fetchProviders();
-        window.dispatchEvent(new Event("auth-change"));
-      }
-    } catch {}
+      await apiSend("/api/ai/providers/active", "POST", { provider: providerId });
+      await fetchProviders();
+      window.dispatchEvent(new Event("auth-change"));
+    } catch (err: unknown) {
+      setStatusMsg({ type: "error", text: errorMessage(err, "Could not switch the active provider.") });
+    }
   };
 
   const handleDelete = async (providerId: AIProviderId) => {
     if (!confirm(`Disconnect ${providerId.toUpperCase()} API key?`)) return;
     try {
-      const res = await fetch(`/api/ai/providers/${providerId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        await fetchProviders();
-        window.dispatchEvent(new Event("auth-change"));
-      }
-    } catch {}
+      await apiSend(`/api/ai/providers/${providerId}`, "DELETE");
+      await fetchProviders();
+      window.dispatchEvent(new Event("auth-change"));
+    } catch (err: unknown) {
+      setStatusMsg({ type: "error", text: errorMessage(err, "Could not disconnect the provider.") });
+    }
   };
 
   if (loading) {

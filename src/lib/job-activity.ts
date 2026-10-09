@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { STATUS_OPTIONS } from "./status";
+import { statusLabel } from "./status";
 
 /**
  * The at-a-glance activity banner at the top of a job: where it stands, what's
@@ -78,10 +78,6 @@ export function notesFingerprint(job: Pick<JobLike, "notes" | "status">): string
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
-}
-
-export function statusLabel(status: string): string {
-  return STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
 }
 
 export function parseStoredActivity(raw: string | null | undefined): StoredJobActivity | null {
