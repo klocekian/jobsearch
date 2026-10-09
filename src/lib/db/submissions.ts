@@ -24,9 +24,11 @@ export async function listSubmissions(jobId: number): Promise<SubmissionRow[]> {
   return result.rows.map(rowToSub);
 }
 
-export async function getSubmission(id: number): Promise<SubmissionRow | undefined> {
+// Submissions are owned through their job: callers load the job with the
+// user's id first, then pass job.id here.
+export async function getSubmission(id: number, jobId: number): Promise<SubmissionRow | undefined> {
   const db = await getDb();
-  const result = await db.execute({ sql: "SELECT * FROM submissions WHERE id = ?", args: [id] });
+  const result = await db.execute({ sql: "SELECT * FROM submissions WHERE id = ? AND job_id = ?", args: [id, jobId] });
   return result.rows[0] ? rowToSub(result.rows[0]) : undefined;
 }
 
@@ -46,8 +48,8 @@ export async function createSubmission(data: {
   return rowToSub(result.rows[0]);
 }
 
-export async function deleteSubmission(id: number): Promise<boolean> {
+export async function deleteSubmission(id: number, jobId: number): Promise<boolean> {
   const db = await getDb();
-  const result = await db.execute({ sql: "DELETE FROM submissions WHERE id = ?", args: [id] });
+  const result = await db.execute({ sql: "DELETE FROM submissions WHERE id = ? AND job_id = ?", args: [id, jobId] });
   return result.rowsAffected > 0;
 }

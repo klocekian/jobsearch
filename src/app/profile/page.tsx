@@ -14,7 +14,7 @@ async function ProfileData() {
   const user = await getSession().catch(() => null);
   const [claudeStatus, autofillFields] = await Promise.all([
     user ? getUserClaudeStatus(user) : Promise.resolve("none" as const),
-    getAutofillFields(user?.id ?? null, user?.email),
+    user ? getAutofillFields(user.id, user.email) : Promise.resolve({ error: "Not signed in" }),
   ]);
   const initialUser = user ? { id: user.id, name: user.name, email: user.email, claudeStatus } : null;
   return <ProfileView initialUser={initialUser} initialAutofillFields={autofillFields} />;

@@ -1,4 +1,4 @@
-import { listResumes } from "./db/resumes";
+import { getDefaultResume } from "./db/resumes";
 import { getProfileData } from "./db/users";
 
 /**
@@ -7,19 +7,16 @@ import { getProfileData } from "./db/users";
  * the API route (client refetch after Save) and the Profile page's
  * server-rendered initial load, so the form never shows a loading flash.
  */
-export async function getAutofillFields(userId: number | null, fallbackEmail?: string): Promise<Record<string, unknown> | { error: string }> {
-  if (userId) {
-    const stored = await getProfileData(userId);
-    if (stored && stored.first_name) {
-      if (!stored.full_name && stored.first_name) {
-        stored.full_name = `${stored.first_name} ${stored.last_name ?? ""}`.trim();
-      }
-      return stored;
+export async function getAutofillFields(userId: number, fallbackEmail?: string): Promise<Record<string, unknown> | { error: string }> {
+  const stored = await getProfileData(userId);
+  if (stored && stored.first_name) {
+    if (!stored.full_name && stored.first_name) {
+      stored.full_name = `${stored.first_name} ${stored.last_name ?? ""}`.trim();
     }
+    return stored;
   }
 
-  const resumes = await listResumes(userId);
-  const def = resumes.find((r) => r.is_default) ?? resumes[0];
+  const def = await getDefaultResume(userId);
 
   if (!def) {
     return { error: "No resume saved" };

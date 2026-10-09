@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateStructured } from "@/lib/ai";
+import { withUser } from "@/lib/api-auth";
 
 // AI-authorship detection via the model itself — more reliable than surface
 // heuristics. Returns a calibrated confidence plus the specific LLM stylistic
@@ -40,7 +41,7 @@ const SYSTEM = [
   "Return an overall confidence 0-100 reflecting how AI-authored the writing reads.",
 ].join("\n");
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request) => {
   let resumeText: string;
   try {
     const body: unknown = await request.json();
@@ -70,4 +71,4 @@ export async function POST(request: Request) {
   } catch (err: unknown) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed to analyze." }, { status: 502 });
   }
-}
+});

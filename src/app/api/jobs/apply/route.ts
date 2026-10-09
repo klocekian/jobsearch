@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,7 @@ const RequestSchema = z.object({
   date: z.string().min(1).max(20),
 });
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request) => {
   if (!SCRIPT_URL) {
     return NextResponse.json(
       { error: "APPS_SCRIPT_URL is not configured. Deploy the Apps Script and set the env var." },
@@ -47,4 +48,4 @@ export async function POST(request: Request) {
       { status: 502 }
     );
   }
-}
+});

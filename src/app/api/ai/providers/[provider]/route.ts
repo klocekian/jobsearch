@@ -1,22 +1,16 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withUser } from "@/lib/api-auth";
 import { deleteUserAIProvider } from "@/lib/db/ai-providers";
 import { type AIProviderId, AI_PROVIDERS } from "@/lib/ai";
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ provider: string }> },
-) {
-  const user = await getSession().catch(() => null);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+type Params = { params: Promise<{ provider: string }> };
 
+export const DELETE = withUser<Params>(async (_request, userId, { params }) => {
   const { provider } = await params;
   if (!provider || !AI_PROVIDERS[provider as AIProviderId]) {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
   }
 
-  await deleteUserAIProvider(user.id, provider as AIProviderId);
+  await deleteUserAIProvider(userId, provider as AIProviderId);
   return NextResponse.json({ success: true });
-}
+});

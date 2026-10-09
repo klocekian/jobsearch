@@ -1,33 +1,23 @@
 import { NextResponse } from "next/server";
-import { listJobs, getJob, updateJob, restoreClosedJobs, confirmClosedJobs } from "@/lib/db/jobs";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { listJobs, getJob, updateJob, listRestorableJobs, restoreClosedJobs, confirmClosedJobs } from "@/lib/db/jobs";
+import { withUser } from "@/lib/api-auth";
 import { checkJobStatus } from "@/lib/job-status-check";
-import { getDb } from "@/lib/db";
-import type { InValue } from "@libsql/client";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const ACTIVE_STATUSES = new Set(["saved", "applying", "applied", "interview", "onsite", "offer"]);
 
-export async function GET() {
-  const userId = await getCurrentUserId();
-  const db = await getDb();
-  const userClause = userId != null ? "AND user_id = ?" : "";
-  const userArgs: InValue[] = userId != null ? [userId] : [];
-  const res = await db.execute({
-    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' ${userClause}`,
-    args: userArgs,
-  });
+export const GET = withUser(async (_request, userId) => {
+  const jobs = await listRestorableJobs(userId);
   return NextResponse.json({
-    canRestore: res.rows.length > 0,
-    restorableCount: res.rows.length,
-    jobs: res.rows,
+    canRestore: jobs.length > 0,
+    restorableCount: jobs.length,
+    jobs,
   });
-}
+});
 
-export async function POST(request: Request) {
-  const userId = await getCurrentUserId();
+export const POST = withUser(async (request, userId) => {
 
   let body: Record<string, unknown> | null = null;
   try {
@@ -103,5 +93,5 @@ export async function POST(request: Request) {
     closed: closed.length,
     closedJobs: closed.map((r) => ({ id: r.id, company: r.company, title: r.title, reason: r.reason })),
   });
-}
+});
 

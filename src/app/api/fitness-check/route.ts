@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { withUser } from "@/lib/api-auth";
 import { getJob } from "@/lib/db/jobs";
 import { getCandidateProfiles } from "@/lib/db/candidate-docs";
 import { FitnessResultSchema } from "@/lib/fitness/schema";
@@ -22,7 +22,7 @@ const RequestSchema = z.object({
   use_ai: z.boolean().optional(),
 });
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request, userId) => {
   let jobId: number;
   let useAi = false;
   try {
@@ -35,7 +35,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const userId = await getCurrentUserId();
   const job = await getJob(jobId, userId);
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -124,4 +123,4 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : "Fitness check failed.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
-}
+});

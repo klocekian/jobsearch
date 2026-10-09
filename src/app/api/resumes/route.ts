@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { listResumes, createResume } from "@/lib/db/resumes";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -13,15 +13,13 @@ const CreateSchema = z.object({
   tags: z.array(z.string().max(100)).optional(),
 });
 
-export async function GET() {
-  const userId = await getCurrentUserId();
+export const GET = withUser(async (_request, userId) => {
   const resumes = await listResumes(userId);
   return NextResponse.json({ resumes });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request, userId) => {
   try {
-    const userId = await getCurrentUserId();
     const body: unknown = await request.json();
     const data = CreateSchema.parse(body);
     const resume = await createResume(userId, data);
@@ -30,4 +28,4 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : "Invalid request.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});
