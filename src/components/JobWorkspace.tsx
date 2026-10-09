@@ -212,7 +212,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   );
 
   const activityBanner = (
-    <JobActivityBanner job={job} submissions={submissions} onJobUpdated={setJob} defaultCollapsed={isMobile} flush={!isMobile} />
+    <JobActivityBanner job={job} submissions={submissions} defaultCollapsed={isMobile} flush={!isMobile} />
   );
 
   const rightTabBar = (

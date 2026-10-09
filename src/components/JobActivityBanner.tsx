@@ -5,7 +5,6 @@ import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 import { STATUS_COLORS, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
-import { apiSend, errorMessage } from "@/lib/api-client";
 import { formatEventWhen, relativeDay, resolveJobActivity } from "@/lib/job-activity";
 import { ChevronDownIcon, ChevronUpIcon } from "./icons";
 
@@ -20,13 +19,11 @@ const COLLAPSED_KEY = "jobActivityBannerCollapsed";
 export function JobActivityBanner({
   job,
   submissions,
-  onJobUpdated,
   defaultCollapsed = false,
   flush = false,
 }: {
   job: JobRow;
   submissions: SubmissionRow[];
-  onJobUpdated: (job: JobRow) => void;
   /** Used until the user toggles it; after that their choice sticks. */
   defaultCollapsed?: boolean;
   /** Drawn as a card's header: edge to edge, with only a bottom rule. */
@@ -37,27 +34,12 @@ export function JobActivityBanner({
     const stored = typeof window !== "undefined" ? localStorage.getItem(COLLAPSED_KEY) : null;
     return stored ? stored === "1" : defaultCollapsed;
   });
-  const [summarizing, setSummarizing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const toggle = () => {
     setCollapsed((c) => {
       localStorage.setItem(COLLAPSED_KEY, c ? "0" : "1");
       return !c;
     });
-  };
-
-  const summarize = async () => {
-    setSummarizing(true);
-    setError(null);
-    try {
-      const d = await apiSend<{ job: JobRow }>(`/api/jobs/${job.id}/activity-summary`, "POST");
-      onJobUpdated(d.job);
-    } catch (err) {
-      setError(errorMessage(err, "Could not summarize — no response from the server."));
-    } finally {
-      setSummarizing(false);
-    }
   };
 
   const next = activity.upcoming[0];
@@ -126,25 +108,6 @@ export function JobActivityBanner({
                 {activity.next_steps.map((s, i) => <li key={i}>{s}</li>)}
               </ul>
             </Row>
-          )}
-
-          {(activity.stale || error || job.notes?.trim()) && (
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
-              {activity.stale && <span className="text-secondary">Notes changed since the last summary</span>}
-              <div className="ml-auto flex items-center gap-2">
-                {error && <span className="text-rose-700 dark:text-rose-400">{error}</span>}
-                {job.notes?.trim() && (
-                  <button
-                    type="button"
-                    onClick={summarize}
-                    disabled={summarizing}
-                    className="rounded px-1.5 py-0.5 font-medium text-primary hover:bg-border/60 disabled:opacity-50 cursor-pointer disabled:cursor-default"
-                  >
-                    {summarizing ? "Summarizing…" : activity.source === "derived" ? "Summarize with AI" : "Refresh"}
-                  </button>
-                )}
-              </div>
-            </div>
           )}
         </div>
       )}
