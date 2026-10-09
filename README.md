@@ -33,6 +33,18 @@ Plus two more tabs:
   support. Generation runs server-side via `POST /api/cover-letter`, so the API key never reaches
   the browser.
 
+## Tests
+
+```
+pnpm typecheck && pnpm lint
+pnpm test:unit     # AI layer against faked provider responses (no keys needed)
+pnpm build && pnpm test:http   # API + MCP against `next start` on a throwaway SQLite file
+```
+
+`tests/http` covers sign-in and per-user ownership on every route, the shared job rules through
+both the API and the MCP endpoint, and the server-AI-key allowlist. CI
+(`.github/workflows/ci.yml`) runs all of it on every pull request.
+
 ## Architecture
 
 The analysis engine is pure, deterministic TypeScript with no external API

@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm test:unit && pnpm test:http",
+    "test:unit": "tsx --tsconfig tsconfig.json --test 'tests/unit/*.test.mts'",
+    "test:http": "node --test --test-concurrency=1 'tests/http/*.test.mjs'",
     "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
     "mcp": "tsx --tsconfig tsconfig.json src/mcp/stdio.mts"
   },
