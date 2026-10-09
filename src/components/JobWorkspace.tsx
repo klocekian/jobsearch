@@ -478,7 +478,19 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       {leftTab === "posting" && (
         <div className="space-y-3">
           {!pasting && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
+              {analyzed && (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-block h-1 w-4 rounded bg-rose-400" />
+                    <Text type="supporting">Missing Skills</Text>
+                  </div>
+                  <div className="flex items-center gap-1.5 mr-1">
+                    <span className="inline-block h-1 w-4 rounded bg-emerald-400" />
+                    <Text type="supporting">Matched Skills</Text>
+                  </div>
+                </>
+              )}
               <Button label={job.posting_text ? "Update posting" : "Paste posting"} variant="secondary" size="sm" onClick={() => setPasting(true)} />
               {job.url && (
                 <AstryxLink href={job.url} isExternalLink>Open original</AstryxLink>
@@ -501,6 +513,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 jobTitle={job.title}
                 matched={analyzed.report.highlights.matched}
                 missing={analyzed.report.highlights.missing}
+                hideLegend
               />
             ) : (
               <Text display="block" className="whitespace-pre-wrap leading-relaxed">{job.posting_text}</Text>
