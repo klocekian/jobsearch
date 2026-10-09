@@ -53,18 +53,12 @@ export default async function ConsentPage({ searchParams }: Props) {
             You&apos;ll be sent back to <code className="text-xs">{destination}</code>. Disconnect any
             time from Profile → AI.
           </Text>
-          <div className="flex gap-2">
-            <form action="/api/oauth/authorize" method="POST">
-              {hidden}
-              <input type="hidden" name="decision" value="allow" />
-              <Button label="Allow" variant="primary" />
-            </form>
-            <form action="/api/oauth/authorize" method="POST">
-              {hidden}
-              <input type="hidden" name="decision" value="deny" />
-              <Button label="Cancel" variant="secondary" />
-            </form>
-          </div>
+          {/* Astryx Button defaults to type="button" — submit must be explicit. */}
+          <form action="/api/oauth/authorize" method="POST" className="flex gap-2">
+            {hidden}
+            <Button type="submit" name="decision" value="allow" label="Allow" variant="primary" />
+            <Button type="submit" name="decision" value="deny" label="Cancel" variant="secondary" />
+          </form>
         </div>
       </Card>
     </main>

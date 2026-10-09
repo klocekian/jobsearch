@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const { req } = parsed;
 
   const userId = await getSessionUserId();
-  if (!userId) return badRequest("you're signed out. Start the connection again from Claude.");
+  if (!userId) return badRequest("you're signed out. Start the connection again from your assistant.");
 
   if (params.get("decision") !== "allow") {
     return NextResponse.redirect(redirectWith(req.redirectUri, { error: "access_denied", state: req.state }), 303);

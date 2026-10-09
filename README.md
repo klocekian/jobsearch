@@ -70,8 +70,8 @@ sample resume and job description so you can analyze immediately.
 
 ## MCP server
 
-The job tracker is exposed to MCP clients (claude.ai, the Claude apps, Claude Code) so Claude
-can read and update the search directly. Tools live in `src/mcp/server.ts`:
+The job tracker is exposed to MCP clients (Claude, ChatGPT, Claude Code) so an assistant can
+read and update the search directly. Tools live in `src/mcp/server.ts`:
 
 | Area | Tools |
 | --- | --- |
@@ -85,7 +85,7 @@ schema, and `save_fitness_report` validates and stores the result.
 
 ### Hosted (`/api/mcp`)
 
-Streamable HTTP, stateless. The URL and setup steps are in **Profile → AI → Connect Claude**.
+Streamable HTTP, stateless. The URL and setup steps are in **Profile → AI → Connect Claude & ChatGPT**.
 
 - **OAuth 2.1** for connectors: `/.well-known/oauth-protected-resource` →
   `/.well-known/oauth-authorization-server` → `/api/oauth/register` (dynamic registration) →
