@@ -1,33 +1,30 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Implementation } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import {
-  listJobs,
-  getJob,
-  createJob,
-  updateJob,
-  deleteJob,
-  findMatchingJob,
-  mergeJob,
-  statusChangeUpdates,
-  type JobInsert,
-  type JobRow,
-  type JobUpdate,
-} from "@/lib/db/jobs";
+import { listJobs, getJob, updateJob, deleteJob, type JobRow } from "@/lib/db/jobs";
 import { listResumes, createResume, addResumeTag, type ResumeRow } from "@/lib/db/resumes";
 import { getCandidateProfiles, upsertCandidateDoc } from "@/lib/db/candidate-docs";
 import { listSubmissions, createSubmission } from "@/lib/db/submissions";
 import { getProfileData } from "@/lib/db/users";
-import { normalizePostingText } from "@/lib/html-text";
 import { analyze } from "@/lib/analysis/analyze";
 import type { MatchReport } from "@/lib/analysis/types";
-import { evaluateFitnessDeterministic } from "@/lib/fitness/deterministic";
 import { FitnessResultSchema, type FitnessResult } from "@/lib/fitness/schema";
 import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/prompt";
 import { renderFitnessText } from "@/lib/fitness/render";
-import { checkJobStatus } from "@/lib/job-status-check";
 import { STATUS_OPTIONS } from "@/lib/status";
 import { saveFitnessRun, saveMatchRun } from "@/lib/db/analysis-runs";
+import {
+  ACTIVE_STATUSES,
+  JobFieldsSchema,
+  STATUS_VALUES,
+  MissingCandidateDocsError,
+  addJob,
+  checkAndCloseJob,
+  completeFitnessResult,
+  editJob,
+  requireCandidateDocs,
+  runRuleBasedFitness,
+} from "@/lib/services/jobs";
 import { JobActivitySchema, resolveJobActivity, serializeActivity } from "@/lib/job-activity";
 
 // MCP surface over the job tracker. Every tool is scoped to one user, resolved
@@ -39,9 +36,6 @@ import { JobActivitySchema, resolveJobActivity, serializeActivity } from "@/lib/
 // over the exact prompt the app uses (get_fitness_brief) and validates what
 // comes back (save_fitness_report), so a report written from Claude reads the
 // same as one written from the app.
-
-const STATUS_VALUES = STATUS_OPTIONS.map((s) => s.value) as [string, ...string[]];
-const ACTIVE_STATUSES = new Set(["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"]);
 
 const SORT_KEYS = [
   "company", "title", "status", "salary_min", "salary_max", "location",
@@ -256,34 +250,13 @@ export function createJobsearchMcpServer(
       description:
         "Add a job to the tracker. If one with the same URL, or the same company + title, already exists, the new details are merged into it instead of creating a duplicate.",
       inputSchema: {
-        company: z.string().max(500),
-        title: z.string().max(500),
-        url: z.string().max(2000).optional(),
-        location: z.string().max(500).optional(),
-        remote_type: z.string().max(50).optional().describe("e.g. remote, hybrid, onsite"),
-        salary_text: z.string().max(500).optional(),
-        salary_min: z.number().int().optional(),
-        salary_max: z.number().int().optional(),
-        status: z.enum(STATUS_VALUES).optional().describe("Defaults to saved."),
-        posting_text: z.string().optional().describe("The full job description. Needed for ATS match and fitness checks."),
-        notes: z.string().optional(),
+        ...JobFieldsSchema.required({ company: true, title: true }).shape,
+        status: JobFieldsSchema.shape.status.describe("Defaults to saved."),
       },
     },
     safe(async (args) => {
-      const insert: JobInsert = { source: "mcp", user_id: userId };
-      for (const [k, v] of Object.entries(args)) {
-        if (v !== undefined) (insert as Record<string, unknown>)[k] = v;
-      }
-      if (insert.posting_text) insert.posting_text = normalizePostingText(insert.posting_text);
-      if (insert.status) Object.assign(insert, statusChangeUpdates(insert.status, undefined));
-
-      const existing = await findMatchingJob(userId, args);
-      if (existing) {
-        const job = await mergeJob(existing, insert);
-        return json({ merged: true, job: jobSummary(job) });
-      }
-      const job = await createJob(insert);
-      return json({ merged: false, job: jobSummary(job) });
+      const { job, merged } = await addJob(userId, { ...args, source: "mcp" });
+      return json({ merged, job: jobSummary(job) });
     }),
   );
 
@@ -295,41 +268,17 @@ export function createJobsearchMcpServer(
         "Update fields on a job. Changing status follows the app's rules: 'applied' stamps applied_at, and closing statuses remember the prior status so it can be restored. Use append_note to add a dated line to the notes without replacing them. After logging activity (an interview booked or held, a reply, an offer), call update_job_summary so the job's banner in the app reflects it.",
       inputSchema: {
         job_id: z.number().int(),
-        status: z.enum(STATUS_VALUES).optional(),
+        ...JobFieldsSchema.shape,
         starred: z.boolean().optional(),
-        company: z.string().max(500).optional(),
-        title: z.string().max(500).optional(),
-        url: z.string().max(2000).optional(),
-        location: z.string().max(500).optional(),
-        remote_type: z.string().max(50).optional(),
-        salary_text: z.string().max(500).optional(),
-        salary_min: z.number().int().nullable().optional(),
-        salary_max: z.number().int().nullable().optional(),
-        posting_text: z.string().optional(),
         notes: z.string().optional().describe("Replaces the notes entirely."),
         append_note: z.string().optional().describe("Appended to the existing notes with today's date."),
-        applied_at: z.string().optional().describe("YYYY-MM-DD"),
       },
     },
-    safe(async ({ job_id, starred, append_note, ...fields }) => {
+    safe(async ({ job_id, starred, ...changes }) => {
       const job = await requireJob(job_id);
-      const updates: JobUpdate = {};
-      for (const [k, v] of Object.entries(fields)) {
-        if (v !== undefined) (updates as Record<string, unknown>)[k] = v;
-      }
-      if (starred !== undefined) updates.is_starred = starred ? 1 : 0;
-      if (typeof updates.posting_text === "string") updates.posting_text = normalizePostingText(updates.posting_text);
-      if (append_note) {
-        const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-        const base = (updates.notes ?? job.notes).trimEnd();
-        updates.notes = `${base}${base ? "\n\n" : ""}[${today}] ${append_note.trim()}`;
-      }
-      if (fields.status) {
-        Object.assign(updates, statusChangeUpdates(fields.status, job.status, { appliedAtGiven: !!fields.applied_at }));
-      }
-      if (Object.keys(updates).length === 0) return fail("Nothing to update.");
-      const updated = await updateJob(job.id, updates);
-      return json({ job: jobSummary(updated!) });
+      const updated = await editJob(job, { ...changes, is_starred: starred === undefined ? undefined : starred ? 1 : 0 });
+      if (!updated) return fail("Nothing to update.");
+      return json({ job: jobSummary(updated) });
     }),
   );
 
@@ -374,9 +323,7 @@ export function createJobsearchMcpServer(
     safe(async ({ job_id }) => {
       const job = await requireJob(job_id);
       if (!job.url) return fail("This job has no URL to check.");
-      const result = await checkJobStatus(job);
-      const closed = result.status === "closed" && ACTIVE_STATUSES.has(job.status);
-      if (closed) await updateJob(job.id, { status: "closed", previous_status: job.status });
+      const { result, closed } = await checkAndCloseJob(job);
       return json({ ...result, status_changed: closed ? `${job.status} → closed` : undefined });
     }),
   );
@@ -521,21 +468,8 @@ export function createJobsearchMcpServer(
     },
     safe(async ({ job_id }) => {
       const job = await requireJob(job_id);
-      const posting = job.posting_text.trim();
-      if (!posting) return fail("This job has no posting text. Add it with update_job first.");
-      const { profile, gaps } = await getCandidateProfiles(userId);
-      const resume = (await listResumes(userId))[0];
-      const result = evaluateFitnessDeterministic({
-        company: job.company || "Unknown Company",
-        title: job.title || "Job Opportunity",
-        location: job.location || "",
-        salary: job.salary_text || "",
-        posting,
-        profile,
-        gaps,
-        resumeText: resume?.content,
-      });
-      await saveFitnessRun(job, result, "deterministic:rule-based");
+      if (!job.posting_text.trim()) return fail("This job has no posting text. Add it with update_job first.");
+      const { result } = await runRuleBasedFitness(userId, job);
       return { content: [{ type: "text" as const, text: renderFitnessText(result) }] };
     }),
   );
@@ -544,13 +478,12 @@ export function createJobsearchMcpServer(
     const job = await requireJob(jobId);
     const posting = job.posting_text.trim();
     if (!posting) throw new Error("This job has no posting text. Add it with update_job first.");
-    const { profile, gaps } = await getCandidateProfiles(userId);
-    const missing = [!profile && "positive profile", !gaps && "negative profile (gaps)"].filter(Boolean);
-    if (missing.length) {
-      throw new Error(
-        `The fitness check needs the candidate's ${missing.join(" and ")}. Add with update_candidate_doc, or use run_fitness_check for rule-based scoring.`,
-      );
-    }
+    const { profile, gaps } = await requireCandidateDocs(userId).catch((err) => {
+      if (err instanceof MissingCandidateDocsError) {
+        throw new Error(`${err.message} Add with update_candidate_doc, or use run_fitness_check for rule-based scoring.`);
+      }
+      throw err;
+    });
     return { job, user_message: buildFitnessUserMessage({ profile, gaps, posting }) };
   }
 
@@ -590,11 +523,7 @@ export function createJobsearchMcpServer(
       const job = await requireJob(job_id);
       const parsed = FitnessResultSchema.safeParse(report);
       if (!parsed.success) return fail(`Report doesn't match the schema: ${z.prettifyError(parsed.error)}`);
-      const result: FitnessResult = {
-        ...parsed.data,
-        company: parsed.data.company || job.company,
-        title: parsed.data.title || job.title,
-      };
+      const result = completeFitnessResult(parsed.data, job);
       await saveFitnessRun(job, result, `mcp:${model || "unknown"}`);
       return { content: [{ type: "text" as const, text: renderFitnessText(result) }] };
     }),

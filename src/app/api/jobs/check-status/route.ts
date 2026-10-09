@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { listJobs, getJob, updateJob, listRestorableJobs, restoreClosedJobs, confirmClosedJobs } from "@/lib/db/jobs";
+import { confirmClosedJobs, getJob, listRestorableJobs, restoreClosedJobs } from "@/lib/db/jobs";
 import { withUser } from "@/lib/api-auth";
-import { checkJobStatus } from "@/lib/job-status-check";
+import { checkAndCloseJob, checkActiveJobs } from "@/lib/services/jobs";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
-
-const ACTIVE_STATUSES = new Set(["saved", "applying", "applied", "interview", "onsite", "offer"]);
 
 export const GET = withUser(async (_request, userId) => {
   const jobs = await listRestorableJobs(userId);
@@ -18,7 +16,6 @@ export const GET = withUser(async (_request, userId) => {
 });
 
 export const POST = withUser(async (request, userId) => {
-
   let body: Record<string, unknown> | null = null;
   try {
     body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
@@ -39,20 +36,13 @@ export const POST = withUser(async (request, userId) => {
     return NextResponse.json({ confirmed });
   }
 
-  let singleJobId: number | null = null;
-  if (body && "job_id" in body) {
-    singleJobId = Number(body.job_id);
-  }
-
+  const singleJobId = body && "job_id" in body ? Number(body.job_id) : null;
   if (singleJobId) {
     const job = await getJob(singleJobId, userId);
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
-    const result = await checkJobStatus(job);
-    if (result.status === "closed" && ACTIVE_STATUSES.has(job.status)) {
-      await updateJob(job.id, { status: "closed", previous_status: job.status });
-    }
+    const { result } = await checkAndCloseJob(job);
     return NextResponse.json({
       checked: 1,
       closed: result.status === "closed" ? 1 : 0,
@@ -61,37 +51,11 @@ export const POST = withUser(async (request, userId) => {
     });
   }
 
-  const jobs = await listJobs(userId, { sort: "created_at", order: "desc" });
-  const toCheck = jobs.filter((j) => j.url && ACTIVE_STATUSES.has(j.status)).slice(0, 50);
-  const results: { id: number; company: string; title: string; result: string; reason: string }[] = [];
-
-  // Run in concurrent chunks of 5 to avoid connection flooding while completing quickly
-  const CHUNK_SIZE = 5;
-  for (let i = 0; i < toCheck.length; i += CHUNK_SIZE) {
-    const chunk = toCheck.slice(i, i + CHUNK_SIZE);
-    const chunkResults = await Promise.all(
-      chunk.map(async (job) => {
-        const check = await checkJobStatus(job);
-        if (check.status === "closed") {
-          await updateJob(job.id, { status: "closed", previous_status: job.status });
-        }
-        return {
-          id: job.id,
-          company: job.company,
-          title: job.title,
-          result: check.status,
-          reason: check.reason,
-        };
-      })
-    );
-    results.push(...chunkResults);
-  }
-
-  const closed = results.filter((r) => r.result === "closed");
+  const checked = await checkActiveJobs(userId);
+  const closed = checked.filter((c) => c.result.status === "closed");
   return NextResponse.json({
-    checked: results.length,
+    checked: checked.length,
     closed: closed.length,
-    closedJobs: closed.map((r) => ({ id: r.id, company: r.company, title: r.title, reason: r.reason })),
+    closedJobs: closed.map(({ job, result }) => ({ id: job.id, company: job.company, title: job.title, reason: result.reason })),
   });
 });
-
