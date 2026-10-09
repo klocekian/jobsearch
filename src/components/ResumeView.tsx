@@ -24,6 +24,7 @@ interface ResumeViewProps {
   aiDetection: AiDetection | null;
   materials: ContextMaterial[];
   onMaterialsChange: (materials: ContextMaterial[]) => void;
+  onBack?: () => void;
 }
 
 type Status = { kind: "idle" | "loading" | "error"; message?: string };
@@ -37,6 +38,7 @@ export function ResumeView({
   aiDetection,
   materials,
   onMaterialsChange,
+  onBack,
 }: ResumeViewProps) {
   const original = resumeText;
   const saved = useMemo(() => (typeof window === "undefined" ? null : loadRewriteState()), []);
@@ -161,6 +163,7 @@ export function ResumeView({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
+          {onBack && <Button label="← Back" variant="ghost" size="sm" onClick={onBack} />}
           {restored && <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Restored saved draft</span>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
