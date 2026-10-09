@@ -28,12 +28,15 @@ export function JobActivityBanner({
   submissions,
   onJobUpdated,
   defaultCollapsed = false,
+  flush = false,
 }: {
   job: JobRow;
   submissions: SubmissionRow[];
   onJobUpdated: (job: JobRow) => void;
   /** Used until the user toggles it; after that their choice sticks. */
   defaultCollapsed?: boolean;
+  /** Drawn as a card's header: edge to edge, with only a bottom rule. */
+  flush?: boolean;
 }) {
   const activity = useMemo(() => resolveJobActivity(job, submissions), [job, submissions]);
   const [collapsed, setCollapsed] = useState(() => {
@@ -69,7 +72,7 @@ export function JobActivityBanner({
   return (
     <section
       aria-label="Job activity"
-      className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-xs"
+      className={`bg-muted/50 text-xs ${flush ? "border-b border-border px-4 py-3" : "rounded-lg border border-border px-3 py-2.5"}`}
     >
       <div className="flex items-start gap-2">
         <span

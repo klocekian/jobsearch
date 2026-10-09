@@ -212,7 +212,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   );
 
   const activityBanner = (
-    <JobActivityBanner job={job} submissions={submissions} onJobUpdated={setJob} defaultCollapsed={isMobile} />
+    <JobActivityBanner job={job} submissions={submissions} onJobUpdated={setJob} defaultCollapsed={isMobile} flush={!isMobile} />
   );
 
   const rightTabBar = (
@@ -393,7 +393,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       {/* Right pane: activity banner, tabs, content */}
       <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col p-3 sm:p-4">
         <div className={rightPaneCardClass}>
-          <div className="shrink-0 px-4 pt-3">{activityBanner}</div>
+          <div className="shrink-0">{activityBanner}</div>
           <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
           <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
         </div>
