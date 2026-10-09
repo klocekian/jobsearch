@@ -87,12 +87,50 @@ const FALLBACK_MODELS = [
   "mistral-large-latest",
 ];
 
+function safeParseJSON(raw: string): unknown {
+  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    // Attempt basic repair for truncated JSON strings / objects
+    let repaired = cleaned;
+    let inQuote = false;
+    for (let i = 0; i < repaired.length; i++) {
+      if (repaired[i] === '"' && (i === 0 || repaired[i - 1] !== '\\')) {
+        inQuote = !inQuote;
+      }
+    }
+    if (inQuote) {
+      repaired += '"';
+    }
+    const stack: string[] = [];
+    for (let i = 0; i < repaired.length; i++) {
+      const c = repaired[i];
+      if (c === '{') stack.push('}');
+      else if (c === '[') stack.push(']');
+      else if (c === '}' || c === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === c) {
+          stack.pop();
+        }
+      }
+    }
+    while (stack.length > 0) {
+      repaired += stack.pop();
+    }
+    try {
+      return JSON.parse(repaired);
+    } catch {
+      throw err;
+    }
+  }
+}
+
 export async function generateMistralText(
   apiKey: string,
   options: GenerateTextOptions,
 ): Promise<{ text: string; model: string }> {
   const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
-  const maxTokens = Math.min(options.maxTokens ?? 3000, 3000);
+  const maxTokens = Math.min(options.maxTokens ?? 8192, 8192);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -142,7 +180,7 @@ export function streamMistralText(
   options: StreamTextOptions,
 ): ReadableStream<Uint8Array> {
   const model = options.model || AI_PROVIDERS.mistral.defaultModel;
-  const maxTokens = Math.min(options.maxTokens ?? 3000, 3000);
+  const maxTokens = Math.min(options.maxTokens ?? 8192, 8192);
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (options.system) {
@@ -207,10 +245,10 @@ export async function generateMistralStructured<T>(
   options: GenerateStructuredOptions<T>,
 ): Promise<{ data: T; model: string }> {
   const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
-  const maxTokens = Math.min(options.maxTokens ?? 3000, 3000);
+  const maxTokens = Math.min(options.maxTokens ?? 8192, 8192);
 
   const systemPrompt = (options.system ? options.system + "\n\n" : "") +
-    "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema.";
+    "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema. Keep descriptions and notes concise.";
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: systemPrompt },
@@ -230,10 +268,8 @@ export async function generateMistralStructured<T>(
     try {
       const res = await fetchMistralWithRetry(`${MISTRAL_BASE_URL}/chat/completions`, apiKey, { ...body, model });
       const data = await res.json();
-      let rawText = data.choices?.[0]?.message?.content ?? "{}";
-      rawText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-
-      const parsedJson = JSON.parse(rawText);
+      const rawText = data.choices?.[0]?.message?.content ?? "{}";
+      const parsedJson = safeParseJSON(rawText);
       const validated = options.schema.parse(parsedJson);
       return { data: validated, model };
     } catch (err: unknown) {
