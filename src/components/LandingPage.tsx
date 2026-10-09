@@ -19,7 +19,7 @@ function BrowserFrame({
   className?: string;
 }) {
   return (
-    <div className={`overflow-hidden rounded-xl border border-border/80 bg-zinc-950/80 shadow-2xl shadow-black/60 ring-1 ring-white/10 ${className}`}>
+    <div className={`overflow-hidden rounded-xl bg-zinc-950/80 shadow-2xl shadow-black/60 ${className}`}>
       {/* Chrome bar */}
       <div className="flex items-center gap-1.5 border-b border-border/60 bg-zinc-900/90 px-3 py-1.5">
         <span className="h-2 w-2 rounded-full bg-rose-500/80" />
@@ -129,7 +129,7 @@ const SHOTS = {
   fill: { src: "/hero/extension-fill.webp", alt: "Job Search Clipper Fill tab populating an Ashby application form", width: 2400, height: 1182 },
   providers: { src: "/hero/ai-providers.webp", alt: "AI provider settings for Anthropic Claude, Google Gemini, xAI Grok and Mistral AI", width: 1946, height: 1572 },
   connector: { src: "/hero/claude-connector.webp", alt: "Job Search connector inside claude.ai settings with its read-only and write tools", width: 1840, height: 1436 },
-  importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", width: 1025, height: 783 },
+  importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", width: 1018, height: 776 },
   resumes: { src: "/hero/resumes.webp", alt: "Multiple resumes, each tagged with the companies it was used for", width: 1714, height: 1419 },
 } satisfies Record<string, Shot>;
 
@@ -444,7 +444,7 @@ export function LandingPage() {
               </p>
             </div>
             <div className="space-y-4">
-              <div className="flex items-center justify-center rounded-xl border border-border/80 bg-muted p-6 sm:p-10 shadow-2xl shadow-black/20">
+              <div className="flex items-center justify-center rounded-xl bg-muted p-6 sm:p-10 shadow-2xl shadow-black/20">
                 <Image
                   src={SHOTS.importSheet.src}
                   alt={SHOTS.importSheet.alt}
