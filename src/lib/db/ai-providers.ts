@@ -27,22 +27,6 @@ export async function getUserAIProviders(userId: number): Promise<UserAIProvider
   return res.rows.map(rowToAIProvider);
 }
 
-export async function getActiveAIProvider(userId: number): Promise<UserAIProviderRow | null> {
-  const db = await getDb();
-  const res = await db.execute({
-    sql: "SELECT * FROM user_ai_providers WHERE user_id = ? AND is_active = 1 LIMIT 1",
-    args: [userId],
-  });
-  if (res.rows.length > 0) return rowToAIProvider(res.rows[0]);
-
-  // Fallback: return the first configured provider if none is explicitly active
-  const fallback = await db.execute({
-    sql: "SELECT * FROM user_ai_providers WHERE user_id = ? LIMIT 1",
-    args: [userId],
-  });
-  return fallback.rows[0] ? rowToAIProvider(fallback.rows[0]) : null;
-}
-
 export async function upsertUserAIProvider(data: {
   userId: number;
   provider: AIProviderId;

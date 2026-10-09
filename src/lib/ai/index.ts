@@ -1,188 +1,117 @@
-import { getSession } from "@/lib/auth";
-import { getActiveAIProvider, getUserAIProviders } from "@/lib/db/ai-providers";
+import { getUserAIProviders, type UserAIProviderRow } from "@/lib/db/ai-providers";
+import { getUserById, type UserRow } from "@/lib/db/users";
 import { freshUserToken, getGlobalToken } from "@/lib/anthropic";
 import type {
   AIProviderId,
   GenerateStructuredOptions,
   GenerateTextOptions,
+  ProviderAdapter,
   ResolvedAICredentials,
   StreamTextOptions,
 } from "./types";
 import { AI_PROVIDERS } from "./types";
-import {
-  generateClaudeStructured,
-  generateClaudeText,
-  streamClaudeText,
-  testClaudeKey,
-} from "./providers/claude";
-import {
-  generateGeminiStructured,
-  generateGeminiText,
-  streamGeminiText,
-  testGeminiKey,
-} from "./providers/gemini";
-import {
-  generateGrokStructured,
-  generateGrokText,
-  streamGrokText,
-  testGrokKey,
-} from "./providers/grok";
-import {
-  generateMistralStructured,
-  generateMistralText,
-  streamMistralText,
-  testMistralKey,
-} from "./providers/mistral";
+import { AIError } from "./errors";
+import { claudeAdapter } from "./providers/claude";
+import { geminiAdapter } from "./providers/gemini";
+import { grokAdapter, mistralAdapter } from "./providers/openai-compatible";
 
 export * from "./types";
+export { AIError, aiErrorStatus, type AIErrorKind } from "./errors";
 
-export async function testProviderKey(provider: AIProviderId, apiKey: string): Promise<boolean> {
-  switch (provider) {
-    case "claude":
-      return testClaudeKey(apiKey);
-    case "gemini":
-      return testGeminiKey(apiKey);
-    case "grok":
-      return testGrokKey(apiKey);
-    case "mistral":
-      return testMistralKey(apiKey);
-    default:
-      return false;
-  }
+const ADAPTERS: Record<AIProviderId, ProviderAdapter> = {
+  claude: claudeAdapter,
+  gemini: geminiAdapter,
+  grok: grokAdapter,
+  mistral: mistralAdapter,
+};
+
+export function testProviderKey(provider: AIProviderId, apiKey: string): Promise<boolean> {
+  return ADAPTERS[provider]?.testKey(apiKey) ?? Promise.resolve(false);
 }
 
-export async function getActiveAICredentials(): Promise<ResolvedAICredentials> {
-  const user = await getSession().catch(() => null);
-
-  if (user) {
-    // 1. Check user_ai_providers table for active provider
-    const active = await getActiveAIProvider(user.id);
-    if (active && active.api_key) {
-      return {
-        provider: active.provider,
-        apiKey: active.api_key,
-        model: active.model || AI_PROVIDERS[active.provider]?.defaultModel,
-      };
-    }
-
-    // 2. Legacy fallback to users.anthropic_token (with OAuth refresh)
-    if (user.anthropic_token) {
-      const freshToken = await freshUserToken(user).catch(() => null);
-      return {
-        provider: "claude",
-        apiKey: freshToken || user.anthropic_token,
-        model: AI_PROVIDERS.claude.defaultModel,
-      };
-    }
-  }
-
-  // 3. Fallback to server environment variables
-  const globalClaude = await getGlobalToken().catch(() => null);
-  if (globalClaude || process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) {
-    return {
+/**
+ * The user's connected providers, including a Claude token saved on the user
+ * row before the providers table existed. That legacy entry has id 0 and is
+ * active only when nothing else is configured.
+ */
+export async function listUserAIProviders(user: UserRow): Promise<UserAIProviderRow[]> {
+  const stored = await getUserAIProviders(user.id);
+  if (!user.anthropic_token || stored.some((p) => p.provider === "claude")) return stored;
+  return [
+    ...stored,
+    {
+      id: 0,
+      user_id: user.id,
       provider: "claude",
-      apiKey: (globalClaude || process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)!,
+      api_key: user.anthropic_token,
       model: AI_PROVIDERS.claude.defaultModel,
-    };
-  }
-
-  if (process.env.GEMINI_API_KEY) {
-    return {
-      provider: "gemini",
-      apiKey: process.env.GEMINI_API_KEY,
-      model: AI_PROVIDERS.gemini.defaultModel,
-    };
-  }
-
-  if (process.env.GROK_API_KEY || process.env.XAI_API_KEY) {
-    return {
-      provider: "grok",
-      apiKey: (process.env.GROK_API_KEY || process.env.XAI_API_KEY)!,
-      model: AI_PROVIDERS.grok.defaultModel,
-    };
-  }
-
-  if (process.env.MISTRAL_API_KEY) {
-    return {
-      provider: "mistral",
-      apiKey: process.env.MISTRAL_API_KEY,
-      model: AI_PROVIDERS.mistral.defaultModel,
-    };
-  }
-
-  throw new Error("No AI provider connected. Go to Profile > AI to connect Claude, Gemini, Grok, or Mistral.");
+      is_active: stored.length === 0 ? 1 : 0,
+      created_at: "",
+      updated_at: "",
+    },
+  ];
 }
 
-export async function generateText(options: GenerateTextOptions): Promise<{ text: string; model: string; provider: AIProviderId }> {
-  const creds = await getActiveAICredentials();
-  const mergedOptions = { ...options, model: options.model || creds.model || undefined };
-
-  switch (creds.provider) {
-    case "claude": {
-      const res = await generateClaudeText(creds.apiKey, mergedOptions);
-      return { ...res, provider: "claude" };
-    }
-    case "gemini": {
-      const res = await generateGeminiText(creds.apiKey, mergedOptions);
-      return { ...res, provider: "gemini" };
-    }
-    case "grok": {
-      const res = await generateGrokText(creds.apiKey, mergedOptions);
-      return { ...res, provider: "grok" };
-    }
-    case "mistral": {
-      const res = await generateMistralText(creds.apiKey, mergedOptions);
-      return { ...res, provider: "mistral" };
-    }
-  }
+function activeOf(providers: UserAIProviderRow[]): UserAIProviderRow | undefined {
+  return providers.find((p) => p.is_active === 1) ?? providers[0];
 }
 
-export async function streamText(options: StreamTextOptions): Promise<{ stream: ReadableStream<Uint8Array>; provider: AIProviderId; model: string }> {
-  const creds = await getActiveAICredentials();
-  const mergedOptions = { ...options, model: options.model || creds.model || undefined };
-  const model = mergedOptions.model || AI_PROVIDERS[creds.provider].defaultModel;
-
-  let stream: ReadableStream<Uint8Array>;
-  switch (creds.provider) {
-    case "claude":
-      stream = await streamClaudeText(creds.apiKey, mergedOptions);
-      break;
-    case "gemini":
-      stream = await streamGeminiText(creds.apiKey, mergedOptions);
-      break;
-    case "grok":
-      stream = await streamGrokText(creds.apiKey, mergedOptions);
-      break;
-    case "mistral":
-      stream = await streamMistralText(creds.apiKey, mergedOptions);
-      break;
-  }
-
-  return { stream, provider: creds.provider, model };
+/** A stored model the provider no longer offers (e.g. a retired Claude 3.x) falls back to the current default. */
+export function supportedModel(provider: AIProviderId, model: string | null | undefined): string {
+  const meta = AI_PROVIDERS[provider];
+  return model && meta.availableModels.includes(model) ? model : meta.defaultModel;
 }
 
-export async function generateStructured<T>(options: GenerateStructuredOptions<T>): Promise<{ data: T; model: string; provider: AIProviderId }> {
-  const creds = await getActiveAICredentials();
-  const mergedOptions = { ...options, model: options.model || creds.model || undefined };
+/** Server keys, in order, for a user with nothing connected. */
+async function serverCredentials(): Promise<ResolvedAICredentials | null> {
+  const claude = (await getGlobalToken().catch(() => null)) || process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
+  const keys: [AIProviderId, string | undefined][] = [
+    ["claude", claude],
+    ["gemini", process.env.GEMINI_API_KEY],
+    ["grok", process.env.GROK_API_KEY || process.env.XAI_API_KEY],
+    ["mistral", process.env.MISTRAL_API_KEY],
+  ];
+  const found = keys.find(([, key]) => key);
+  return found ? { provider: found[0], apiKey: found[1]!, model: AI_PROVIDERS[found[0]].defaultModel } : null;
+}
 
-  switch (creds.provider) {
-    case "claude": {
-      const res = await generateClaudeStructured(creds.apiKey, mergedOptions);
-      return { ...res, provider: "claude" };
-    }
-    case "gemini": {
-      const res = await generateGeminiStructured(creds.apiKey, mergedOptions);
-      return { ...res, provider: "gemini" };
-    }
-    case "grok": {
-      const res = await generateGrokStructured(creds.apiKey, mergedOptions);
-      return { ...res, provider: "grok" };
-    }
-    case "mistral": {
-      const res = await generateMistralStructured(creds.apiKey, mergedOptions);
-      return { ...res, provider: "mistral" };
-    }
+/** Which provider, key and model to use for this user: their active provider, else the server's keys. */
+export async function resolveAICredentials(userId: number | null): Promise<ResolvedAICredentials> {
+  const user = userId != null ? await getUserById(userId) : undefined;
+  const active = user ? activeOf(await listUserAIProviders(user)) : undefined;
+  if (active?.api_key) {
+    // The legacy token may be an OAuth token that needs refreshing first.
+    const apiKey = active.id === 0 ? (await freshUserToken(user!).catch(() => null)) || active.api_key : active.api_key;
+    return { provider: active.provider, apiKey, model: supportedModel(active.provider, active.model) };
   }
+  const server = await serverCredentials();
+  if (server) return server;
+  throw new AIError("no_provider", "No AI provider connected. Go to Profile > AI to connect Claude, Gemini, Grok, or Mistral.");
+}
+
+async function prepare<O extends GenerateTextOptions>(userId: number | null, options: O) {
+  const creds = await resolveAICredentials(userId);
+  return {
+    adapter: ADAPTERS[creds.provider],
+    creds,
+    options: { ...options, model: options.model ? supportedModel(creds.provider, options.model) : creds.model },
+  };
+}
+
+export async function streamText(
+  userId: number | null,
+  options: StreamTextOptions,
+): Promise<{ stream: ReadableStream<Uint8Array>; provider: AIProviderId; model: string }> {
+  const { adapter, creds, options: resolved } = await prepare(userId, options);
+  return { stream: await adapter.streamText(creds.apiKey, resolved), provider: creds.provider, model: resolved.model };
+}
+
+export async function generateStructured<T>(
+  userId: number | null,
+  options: GenerateStructuredOptions<T>,
+): Promise<{ data: T; model: string; provider: AIProviderId }> {
+  const { adapter, creds, options: resolved } = await prepare(userId, options);
+  return { ...(await adapter.generateStructured(creds.apiKey, resolved)), provider: creds.provider };
 }
 
 export interface UserAIStatus {
@@ -193,31 +122,14 @@ export interface UserAIStatus {
 }
 
 export async function getUserAIStatus(userId: number | null): Promise<UserAIStatus> {
-  if (!userId) {
-    return { connected: false, activeProvider: null, providerName: null, configuredCount: 0 };
-  }
-
-  const providers = await getUserAIProviders(userId);
-  const active = providers.find((p) => p.is_active === 1) || providers[0] || null;
-
-  if (active) {
-    return {
-      connected: true,
-      activeProvider: active.provider,
-      providerName: AI_PROVIDERS[active.provider]?.badgeName ?? active.provider,
-      configuredCount: providers.length,
-    };
-  }
-
-  const user = await getSession().catch(() => null);
-  if (user && user.id === userId && user.anthropic_token) {
-    return {
-      connected: true,
-      activeProvider: "claude",
-      providerName: AI_PROVIDERS.claude.badgeName,
-      configuredCount: 1,
-    };
-  }
-
-  return { connected: false, activeProvider: null, providerName: null, configuredCount: 0 };
+  const user = userId != null ? await getUserById(userId) : undefined;
+  const providers = user ? await listUserAIProviders(user) : [];
+  const active = activeOf(providers);
+  if (!active) return { connected: false, activeProvider: null, providerName: null, configuredCount: 0 };
+  return {
+    connected: true,
+    activeProvider: active.provider,
+    providerName: AI_PROVIDERS[active.provider]?.badgeName ?? active.provider,
+    configuredCount: providers.length,
+  };
 }

@@ -1,215 +1,59 @@
-import type { GenerateStructuredOptions, GenerateTextOptions, StreamTextOptions } from "../types";
-import { AI_PROVIDERS } from "../types";
+import { jsonInstructions, parseStructured, postJson, sseTextStream } from "../http";
+import type { GenerateTextOptions, ProviderAdapter } from "../types";
 
-export async function testGeminiKey(apiKey: string): Promise<boolean> {
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`, {
-      method: "GET",
-    });
-    return res.ok;
-  } catch {
-    return false;
+const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+
+type Content = { role: string; parts: { text: string }[] };
+
+/** Gemini's v1beta has no system role here, so instructions go in as an acknowledged first turn. */
+function conversation(system: string | undefined, prompt: string, ack: string): Content[] {
+  const contents: Content[] = [];
+  if (system) {
+    contents.push({ role: "user", parts: [{ text: system }] });
+    contents.push({ role: "model", parts: [{ text: ack }] });
   }
+  contents.push({ role: "user", parts: [{ text: prompt }] });
+  return contents;
 }
 
-function formatGeminiError(status: number, errText: string): string {
-  try {
-    const json = JSON.parse(errText);
-    const msg = json.error?.message || json.message || errText;
-    if (status === 429) {
-      return `Google Gemini rate limit exceeded. Please retry in a few seconds or check your AI Studio quota.`;
-    }
-    return `Gemini API error (${status}): ${msg}`;
-  } catch {
-    if (status === 429) {
-      return `Google Gemini rate limit exceeded. Please retry in a few seconds.`;
-    }
-    return `Gemini API error (${status}): ${errText}`;
-  }
+function textOf(event: unknown): string | undefined {
+  return (event as { candidates?: { content?: { parts?: { text?: string }[] } }[] }).candidates?.[0]?.content?.parts?.[0]?.text;
 }
 
-async function fetchGeminiWithRetry(
-  url: string,
-  body: Record<string, unknown>,
-  maxRetries = 3,
-): Promise<Response> {
-  let lastRes: Response | null = null;
-  let lastErrText = "";
+function textRequest(options: GenerateTextOptions) {
+  return {
+    contents: conversation(
+      options.system && `System Instructions:\n${options.system}`,
+      options.prompt,
+      "Understood. I will follow these instructions.",
+    ),
+    generationConfig: { maxOutputTokens: Math.min(options.maxTokens ?? 4096, 8192) },
+  };
+}
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    if (attempt > 0) {
-      const delay = 1500 * Math.pow(2, attempt - 1) + Math.random() * 300;
-      await new Promise((r) => setTimeout(r, delay));
-    }
-
+export const geminiAdapter: ProviderAdapter = {
+  async testKey(apiKey) {
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (res.ok) {
-        return res;
-      }
-
-      lastRes = res;
-      lastErrText = await res.text();
-
-      if (res.status !== 429 && res.status !== 503) {
-        throw new Error(formatGeminiError(res.status, lastErrText));
-      }
-    } catch (err: unknown) {
-      if (attempt === maxRetries - 1 || (err instanceof Error && !err.message.includes("rate limit"))) {
-        throw err;
-      }
+      return (await fetch(`${BASE_URL}/models?key=${apiKey}`)).ok;
+    } catch {
+      return false;
     }
-  }
+  },
 
-  throw new Error(formatGeminiError(lastRes?.status ?? 429, lastErrText));
-}
+  async streamText(apiKey, options) {
+    const url = `${BASE_URL}/models/${options.model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const res = await postJson("gemini", url, textRequest(options));
+    return sseTextStream(res, textOf);
+  },
 
-export async function generateGeminiText(
-  apiKey: string,
-  options: GenerateTextOptions,
-): Promise<{ text: string; model: string }> {
-  const model = options.model || AI_PROVIDERS.gemini.defaultModel;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
-  if (options.system) {
-    contents.push({ role: "user", parts: [{ text: `System Instructions:\n${options.system}` }] });
-    contents.push({ role: "model", parts: [{ text: "Understood. I will follow these instructions." }] });
-  }
-  contents.push({ role: "user", parts: [{ text: options.prompt }] });
-
-  const body = {
-    contents,
-    generationConfig: {
-      maxOutputTokens: options.maxTokens ?? 4096,
-    },
-  };
-
-  const res = await fetchGeminiWithRetry(url, body);
-
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  return { text, model };
-}
-
-export async function streamGeminiText(
-  apiKey: string,
-  options: StreamTextOptions,
-): Promise<ReadableStream<Uint8Array>> {
-  const model = options.model || AI_PROVIDERS.gemini.defaultModel;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
-  if (options.system) {
-    contents.push({ role: "user", parts: [{ text: `System Instructions:\n${options.system}` }] });
-    contents.push({ role: "model", parts: [{ text: "Understood. I will follow these instructions." }] });
-  }
-  contents.push({ role: "user", parts: [{ text: options.prompt }] });
-
-  const body = {
-    contents,
-    generationConfig: {
-      maxOutputTokens: Math.min(options.maxTokens ?? 4096, 8192),
-    },
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok || !res.body) {
-    const err = await res.text().catch(() => "");
-    throw new Error(formatGeminiError(res.status, err));
-  }
-
-  const reader = res.body.getReader();
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith("data: ")) continue;
-            const jsonStr = trimmed.slice(6);
-            if (jsonStr === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                controller.enqueue(encoder.encode(text));
-              }
-            } catch {}
-          }
-        }
-
-        controller.close();
-      } catch (err) {
-        controller.error(err);
-      }
-    },
-  });
-}
-
-import { normalizeStructuredPayload, safeParseLlmJson } from "../normalize-structured";
-
-export async function generateGeminiStructured<T>(
-  apiKey: string,
-  options: GenerateStructuredOptions<T>,
-): Promise<{ data: T; model: string }> {
-  const model = options.model || AI_PROVIDERS.gemini.defaultModel;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const jsonSchema = typeof (options.schema as { toJSONSchema?: () => unknown }).toJSONSchema === "function"
-    ? (options.schema as { toJSONSchema: () => unknown }).toJSONSchema()
-    : null;
-
-  const schemaInstruction = jsonSchema
-    ? `\n\nREQUIRED JSON SCHEMA:\nYou MUST format your response as a valid JSON object strictly matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n`
-    : "";
-
-  const systemInstructions = (options.system ? options.system + "\n\n" : "") +
-    `IMPORTANT: You MUST respond ONLY with a single raw, valid JSON object matching the required schema. Do not enclose in markdown code blocks. Do not add conversational text.${schemaInstruction}`;
-
-  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [
-    { role: "user", parts: [{ text: systemInstructions }] },
-    { role: "model", parts: [{ text: "Understood. I will respond with valid JSON matching the schema." }] },
-    { role: "user", parts: [{ text: options.prompt }] },
-  ];
-
-  const body = {
-    contents,
-    generationConfig: {
-      responseMimeType: "application/json",
-      maxOutputTokens: options.maxTokens ?? 8192,
-    },
-  };
-
-  const res = await fetchGeminiWithRetry(url, body);
-
-  const data = await res.json();
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-  const parsedJson = safeParseLlmJson(rawText);
-  const normalized = normalizeStructuredPayload(parsedJson, options.schemaName);
-  const validated = options.schema.parse(normalized);
-  return { data: validated, model };
-}
+  async generateStructured(apiKey, options) {
+    const url = `${BASE_URL}/models/${options.model}:generateContent?key=${apiKey}`;
+    const system = (options.system ? options.system + "\n\n" : "") + `IMPORTANT: ${jsonInstructions(options.schema)}`;
+    const res = await postJson("gemini", url, {
+      contents: conversation(system, options.prompt, "Understood. I will respond with valid JSON matching the schema."),
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: options.maxTokens ?? 8192 },
+    });
+    const rawText = textOf(await res.json()) ?? "{}";
+    return { data: parseStructured("gemini", rawText, options), model: options.model };
+  },
+};

@@ -4,6 +4,7 @@ import { withUser } from "@/lib/api-auth";
 import { getJob } from "@/lib/db/jobs";
 import { renderFitnessText } from "@/lib/fitness/render";
 import { MissingCandidateDocsError, runAiFitness, runRuleBasedFitness } from "@/lib/services/jobs";
+import { aiErrorResponse } from "@/lib/api-response";
 
 export const runtime = "nodejs";
 // The AI report is long and the model reasons through every requirement.
@@ -61,7 +62,6 @@ export const POST = withUser(async (request, userId) => {
         { status: 409 },
       );
     }
-    const message = err instanceof Error ? err.message : "Fitness check failed.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return aiErrorResponse(err, "Fitness check failed.");
   }
 });

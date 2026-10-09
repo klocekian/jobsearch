@@ -17,6 +17,7 @@ import { checkJobStatus, type JobCheckResult } from "@/lib/job-status-check";
 import { evaluateFitnessDeterministic } from "@/lib/fitness/deterministic";
 import { FitnessResultSchema, type FitnessResult } from "@/lib/fitness/schema";
 import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/prompt";
+import { normalizeFitnessPayload } from "@/lib/fitness/normalize";
 import { generateStructured } from "@/lib/ai";
 
 // The job rules both front doors share: the API routes (the app and the
@@ -245,11 +246,12 @@ export async function runRuleBasedFitness(userId: number | null, job: JobRow): P
 export async function runAiFitness(userId: number | null, job: JobRow): Promise<FitnessRun> {
   const posting = postingOf(job);
   const { profile, gaps } = await requireCandidateDocs(userId);
-  const { data, model, provider } = await generateStructured({
+  const { data, model, provider } = await generateStructured(userId, {
     system: FITNESS_SYSTEM_PROMPT,
     prompt: buildFitnessUserMessage({ profile, gaps, posting }),
     schema: FitnessResultSchema,
     schemaName: "FitnessResult",
+    normalize: normalizeFitnessPayload,
     // The report is long and the model reasons through every requirement.
     maxTokens: 8192,
   });
