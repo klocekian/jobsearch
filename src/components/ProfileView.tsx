@@ -13,23 +13,14 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Banner } from "@astryxdesign/core/Banner";
 import { readResumeFile } from "@/lib/extract";
+import type { ClaudeStatus } from "@/lib/anthropic";
+import type { ResumeRow } from "@/lib/db/resumes";
 import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { AIProvidersPanel } from "./AIProvidersPanel";
 import { McpConnectPanel } from "./McpConnectPanel";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
-type ClaudeStatus = "connected" | "expired" | "none";
 interface AuthUser { id: number; name: string; email: string; claudeStatus: ClaudeStatus }
-interface Resume {
-  id: number;
-  name: string;
-  content: string;
-  file_name: string;
-  is_default: number;
-  tags: string;
-  created_at: string;
-  updated_at: string;
-}
 
 interface ProfileViewProps {
   initialUser: AuthUser | null;
@@ -38,7 +29,7 @@ interface ProfileViewProps {
 
 export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewProps) {
   const [user] = useState<AuthUser | null>(initialUser);
-  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [resumes, setResumes] = useState<ResumeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -63,7 +54,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
     let ignore = false;
     fetch("/api/resumes")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { resumes?: Resume[] } | null) => {
+      .then((data: { resumes?: ResumeRow[] } | null) => {
         if (!ignore && data?.resumes) setResumes(data.resumes);
         if (!ignore) setLoading(false);
       })

@@ -9,21 +9,16 @@ import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { HStack } from "@astryxdesign/core/HStack";
 import { STATUS_OPTIONS } from "@/lib/status";
+import type { ClaudeStatus } from "@/lib/anthropic";
+import type { UserAIStatus } from "@/lib/ai";
 import { ChevronUpIcon, ChevronDownIcon, JobStatusDot } from "./icons";
-
-interface NavAIStatus {
-  connected: boolean;
-  activeProvider: string | null;
-  providerName: string | null;
-  configuredCount: number;
-}
 
 interface NavUser {
   id: number;
   name: string;
   email: string;
-  claudeStatus?: "connected" | "expired" | "none";
-  aiStatus?: NavAIStatus;
+  claudeStatus?: ClaudeStatus;
+  aiStatus?: UserAIStatus;
 }
 
 interface JobWorkspaceState {
@@ -36,14 +31,14 @@ export function Nav({ user }: { user: NavUser | null }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [aiStatus, setAiStatus] = useState<NavAIStatus | null>(user?.aiStatus ?? null);
+  const [aiStatus, setAiStatus] = useState<UserAIStatus | null>(user?.aiStatus ?? null);
 
   useEffect(() => {
     if (!user) return;
     const checkStatus = () => {
       fetch("/api/auth/me")
         .then((r) => r.json())
-        .then((d: { user?: { aiStatus?: NavAIStatus } | null }) => {
+        .then((d: { user?: { aiStatus?: UserAIStatus } | null }) => {
           if (d.user?.aiStatus) setAiStatus(d.user.aiStatus);
         })
         .catch(() => {});

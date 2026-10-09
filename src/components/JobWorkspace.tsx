@@ -32,6 +32,7 @@ import { buildPackageMarkdown } from "@/lib/package";
 import { readResumeFile } from "@/lib/extract";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
+import type { ResumeRow } from "@/lib/db/resumes";
 import { Button } from "@astryxdesign/core/Button";
 import { TabList, Tab } from "@astryxdesign/core/TabList";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
@@ -54,8 +55,6 @@ type MobilePane = "posting" | "analysis";
 type ProfileSubTab = "score" | "edit";
 type ResumeSubTab = "score" | "edit";
 type AppSubTab = "cover" | "submission" | "notes";
-
-interface SavedResume { id: number; name: string; content: string; is_default: number }
 
 export function JobWorkspace({ jobId }: { jobId: number }) {
   const router = useRouter();
@@ -82,7 +81,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [pasteText, setPasteText] = useState("");
 
   // Resume / Analysis state
-  const [savedResumes, setSavedResumes] = useState<SavedResume[]>([]);
+  const [savedResumes, setSavedResumes] = useState<ResumeRow[]>([]);
   const [resumeText, setResumeText] = useState("");
   const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
   const [userAnalysis, setUserAnalysis] = useState<{ report: MatchReport; resumeText: string; jobText: string } | null>(null);
@@ -260,7 +259,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   // Load saved resumes and auto-select default
   useEffect(() => {
-    fetch("/api/resumes").then(r => r.json()).then((d: { resumes?: SavedResume[] }) => {
+    fetch("/api/resumes").then(r => r.json()).then((d: { resumes?: ResumeRow[] }) => {
       const list = d.resumes ?? [];
       setSavedResumes(list);
       if (!resumeText && list.length > 0) {

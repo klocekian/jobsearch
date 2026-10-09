@@ -10,18 +10,12 @@ import { HStack } from "@astryxdesign/core/Stack";
 import { CodeBlock } from "@astryxdesign/core/CodeBlock";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { formatDate } from "@/lib/format";
-
-interface ApiToken {
-  id: number;
-  label: string;
-  created_at: string;
-  last_used_at: string | null;
-}
+import type { ApiTokenRow } from "@/lib/db/api-tokens";
 
 interface McpSettings {
   url: string;
   last_used_at: string | null;
-  tokens: ApiToken[];
+  tokens: ApiTokenRow[];
 }
 
 /**
