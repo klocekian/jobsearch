@@ -693,71 +693,64 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
       {rightTab === "resume" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              {resumePicker}
-              <SegmentedControl
-                value={resumeSubTab}
-                onChange={(v) => setResumeSubTab(v as ResumeSubTab)}
-                label="Resume view"
-              >
-                <SegmentedControlItem
-                  value="score"
-                  label={analyzed ? `Score (${analyzed.report.score}/100)` : "Score"}
-                />
-                <SegmentedControlItem
-                  value="edit"
-                  label="Edit"
-                />
-              </SegmentedControl>
-            </div>
+          {resumeSubTab === "score" ? (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  {resumePicker}
+                  <Button
+                    label="Edit"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setResumeSubTab("edit")}
+                    isDisabled={!analyzed}
+                  />
+                </div>
 
-            <div className="flex shrink-0 items-center gap-2">
-              <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={withAi}
-                  onChange={(e) => {
-                    setWithAi(e.target.checked);
-                    if (typeof window !== "undefined") {
-                      localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
-                    }
-                  }}
-                  className="accent-primary rounded cursor-pointer"
-                />
-                <span>with AI</span>
-              </label>
-              <Button
-                label={analyzing ? "Analyzing…" : analyzed ? "Re-run analysis" : "Analyze"}
-                variant="primary"
-                size="sm"
-                onClick={() => runAnalysis()}
-                isDisabled={analyzing || !job.posting_text.trim() || !resumeText.trim()}
-              />
-            </div>
-          </div>
-
-          {resumeSubTab === "score" && (
-            analyzed ? (
-              <MatchReportView
-                report={analyzed.report}
-                aiDetection={aiDetection}
-                analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
-                hasAnalysis={!!analyzed}
-              />
-            ) : (
-              <div className="py-8">
-                <Banner
-                  status="info"
-                  title={job.posting_text.trim()
-                    ? 'Select a resume and click "Analyze" to run the ATS pass report.'
-                    : 'Add a job posting and click "Analyze" to see the ATS pass report.'}
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={withAi}
+                      onChange={(e) => {
+                        setWithAi(e.target.checked);
+                        if (typeof window !== "undefined") {
+                          localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
+                        }
+                      }}
+                      className="accent-primary rounded cursor-pointer"
+                    />
+                    <span>with AI</span>
+                  </label>
+                  <Button
+                    label={analyzing ? "Analyzing…" : analyzed ? "Re-run analysis" : "Analyze"}
+                    variant="primary"
+                    size="sm"
+                    onClick={() => runAnalysis()}
+                    isDisabled={analyzing || !job.posting_text.trim() || !resumeText.trim()}
+                  />
+                </div>
               </div>
-            )
-          )}
 
-          {resumeSubTab === "edit" && (
+              {analyzed ? (
+                <MatchReportView
+                  report={analyzed.report}
+                  aiDetection={aiDetection}
+                  analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
+                  hasAnalysis={!!analyzed}
+                />
+              ) : (
+                <div className="py-8">
+                  <Banner
+                    status="info"
+                    title={job.posting_text.trim()
+                      ? 'Select a resume and click "Analyze" to run the ATS pass report.'
+                      : 'Add a job posting and click "Analyze" to see the ATS pass report.'}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
             analyzed ? (
               <ResumeView
                 resumeText={analyzed.resumeText}
@@ -768,6 +761,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 aiDetection={aiDetection.data}
                 materials={materials}
                 onMaterialsChange={setMaterials}
+                onBack={() => setResumeSubTab("score")}
               />
             ) : (
               <div className="py-12">
