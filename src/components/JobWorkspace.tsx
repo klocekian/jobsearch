@@ -562,7 +562,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 hideLegend
               />
             ) : (
-              <Text display="block" className="whitespace-pre-wrap leading-relaxed">{job.posting_text}</Text>
+              <Card className="p-4 sm:p-5">
+                <Text display="block" className="whitespace-pre-wrap text-xs leading-relaxed">{job.posting_text}</Text>
+              </Card>
             )
           ) : (
             <Banner status="info" title="No posting text. Paste it above or use the Chrome extension." />

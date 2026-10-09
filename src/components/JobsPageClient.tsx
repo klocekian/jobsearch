@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import type { JobRow } from "@/lib/db/jobs";
 import { JobsList } from "@/components/JobsList";
 import { JobsFunnel } from "@/components/JobsFunnel";
+import { StrategyBanner } from "@/components/StrategyBanner";
 import { AddJobForm } from "@/components/AddJobForm";
 import { Text } from "@astryxdesign/core/Text";
 import { Card } from "@astryxdesign/core/Card";
@@ -28,6 +29,7 @@ export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]>
   return (
     <main className="mx-auto w-full max-w-7xl px-5 py-5">
       <div className="space-y-4">
+        <StrategyBanner />
         <JobsFunnel />
         <JobsList jobsPromise={jobsPromise} />
       </div>
