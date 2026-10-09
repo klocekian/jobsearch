@@ -9,6 +9,7 @@ import type { MatchReport } from "@/lib/analysis/types";
 import type { ContextMaterial } from "@/lib/context";
 import { MatchReportView, type AiDetectionState } from "./MatchReportView";
 import { FitnessReportView } from "./FitnessReportView";
+import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import type { FitnessResult } from "@/lib/fitness/schema";
 import { renderFitnessText } from "@/lib/fitness/render";
 import { JobDescriptionView } from "./JobDescriptionView";
@@ -42,10 +43,12 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Stack, HStack } from "@astryxdesign/core/Stack";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 
-type LeftTab = "posting" | "apply" | "submissions" | "notes";
-type RightTab = "reports" | "resume" | "cover";
+type LeftTab = "posting" | "apply";
+type RightTab = "profile" | "resume" | "application";
 type MobilePane = "posting" | "analysis";
-type ReportSubTab = "fitness" | "ats" | "slop";
+type ProfileSubTab = "score" | "edit";
+type ResumeSubTab = "score" | "edit";
+type AppSubTab = "cover" | "submission" | "notes";
 
 interface SavedResume { id: number; name: string; content: string; is_default: number }
 
@@ -55,8 +58,10 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
-  const [rightTab, setRightTab] = useState<RightTab>("reports");
-  const [reportSubTab, setReportSubTab] = useState<ReportSubTab>("fitness");
+  const [rightTab, setRightTab] = useState<RightTab>("profile");
+  const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>("score");
+  const [resumeSubTab, setResumeSubTab] = useState<ResumeSubTab>("score");
+  const [appSubTab, setAppSubTab] = useState<AppSubTab>("cover");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
 
@@ -189,8 +194,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       company: job.company, jobTitle: job.title, jobUrl: job.url, fileName: "",
     });
     setUserAnalysis({ report, resumeText, jobText: job.posting_text });
-    setRightTab("reports");
-    setReportSubTab("ats");
+    setRightTab("resume");
+    setResumeSubTab("score");
     const selectedResume = savedResumes.find(r => r.content === resumeText);
     fetch(`/api/jobs/${jobId}`, {
       method: "PATCH",
@@ -465,156 +470,60 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     <TabList value={leftTab} onChange={(v) => setLeftTab(v as LeftTab)}>
       <Tab value="posting" label="Job Posting" />
       <Tab value="apply" label="Apply" />
-      <Tab value="submissions" label={`Submissions (${submissions.length})`} />
-      <Tab value="notes" label="Notes" />
     </TabList>
   );
 
   const leftPaneBody = (
     <>
       {leftTab === "posting" && (
-            <div className="space-y-3">
-              {!pasting && (
-                <div className="flex items-center gap-2">
-                  <Button label={job.posting_text ? "Update posting" : "Paste posting"} variant="secondary" size="sm" onClick={() => setPasting(true)} />
-                  {job.url && (
-                    <AstryxLink href={job.url} isExternalLink>Open original</AstryxLink>
-                  )}
-                </div>
-              )}
-              {pasting && (
-                <div className="rounded-lg border border-border bg-muted p-3">
-                  <TextArea label="Paste posting" isLabelHidden value={pasteText} onChange={setPasteText} placeholder="Paste job posting text…" rows={6} />
-                  <div className="mt-2 flex gap-2">
-                    <Button label="Save" variant="primary" size="sm" onClick={pasteDirect} isDisabled={!pasteText.trim()} />
-                    <Button label="Cancel" variant="secondary" size="sm" onClick={() => { setPasting(false); setPasteText(""); }} />
-                  </div>
-                </div>
-              )}
-              {job.posting_text ? (
-                analyzed ? (
-                  <JobDescriptionView
-                    jobText={job.posting_text}
-                    jobTitle={job.title}
-                    matched={analyzed.report.highlights.matched}
-                    missing={analyzed.report.highlights.missing}
-                  />
-                ) : (
-                  <Text display="block" className="whitespace-pre-wrap leading-relaxed">{job.posting_text}</Text>
-                )
-              ) : (
-                <Banner status="info" title="No posting text. Paste it above or use the Chrome extension." />
+        <div className="space-y-3">
+          {!pasting && (
+            <div className="flex items-center gap-2">
+              <Button label={job.posting_text ? "Update posting" : "Paste posting"} variant="secondary" size="sm" onClick={() => setPasting(true)} />
+              {job.url && (
+                <AstryxLink href={job.url} isExternalLink>Open original</AstryxLink>
               )}
             </div>
           )}
-
-          {leftTab === "apply" && (
-            job.url ? (
-              <div className="flex h-full flex-col">
-                <div className="mb-2 flex items-center gap-2">
-                  <AstryxLink href={job.url} isExternalLink>Open in new tab</AstryxLink>
-                  <Text type="supporting">Many sites block embedding — use the link above if the form doesn&apos;t load below.</Text>
-                </div>
-                <iframe src={job.url} className="flex-1 w-full rounded-lg border border-border" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
+          {pasting && (
+            <div className="rounded-lg border border-border bg-muted p-3">
+              <TextArea label="Paste posting" isLabelHidden value={pasteText} onChange={setPasteText} placeholder="Paste job posting text…" rows={6} />
+              <div className="mt-2 flex gap-2">
+                <Button label="Save" variant="primary" size="sm" onClick={pasteDirect} isDisabled={!pasteText.trim()} />
+                <Button label="Cancel" variant="secondary" size="sm" onClick={() => { setPasting(false); setPasteText(""); }} />
               </div>
-            ) : (
-              <Banner status="info" title="No URL saved for this job. Add one to open the application here." />
-            )
-          )}
-
-          {leftTab === "submissions" && (
-            <Stack gap={3}>
-              <HStack gap={2}>
-                <Button label="Upload file" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} />
-                <input ref={fileRef} type="file" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadFile(e.target.files[0]); e.target.value = ""; }} />
-                {analyzed && (
-                  <Button
-                    label="Save package"
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      const resume = loadSavedResume();
-                      const md = buildPackageMarkdown({
-                        company: job.company, jobTitle: job.title, jobUrl: job.url,
-                        jobText: job.posting_text, resume, resumeFallbackText: analyzed.resumeText,
-                        coverLetter: coverLetterText(),
-                        date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-                      });
-                      await fetch(`/api/jobs/${jobId}/submissions`, {
-                        method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ type: "package", label: `Application Package — ${new Date().toLocaleDateString()}`, format: "md", content: md }),
-                      });
-                      fetchJob();
-                    }}
-                  />
-                )}
-              </HStack>
-              {submissions.length === 0 ? (
-                <Banner status="info" title="No submissions yet." />
-              ) : (
-                <Stack gap={2}>
-                  {submissions.map((s) => (
-                    <Card key={s.id}>
-                      <div className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0 flex-1">
-                            <Text weight="semibold" display="block">{s.label}</Text>
-                            <Text type="supporting" display="block">{s.type} · {s.format}</Text>
-                          </div>
-                          <HStack gap={2}>
-                            {s.content && (
-                              <Button
-                                label={viewingSubmission === s.id ? "Close" : "View"}
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setViewingSubmission(viewingSubmission === s.id ? null : s.id)}
-                              />
-                            )}
-                            <Button label="Download" variant="ghost" size="sm" href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} />
-                            <Button label="Remove" variant="ghost" size="sm" onClick={() => deleteSubmission(s.id)} />
-                          </HStack>
-                        </div>
-                        {viewingSubmission === s.id && s.content && (
-                          <div className="mt-3 border-t border-border pt-3">
-                            <div className="prose prose-sm max-w-none">
-                              <Markdown>{s.content}</Markdown>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
-                </Stack>
-              )}
-            </Stack>
-          )}
-
-          {leftTab === "notes" && (
-            <div>
-              {editing ? (
-                <div>
-                  <TextArea label="Notes" isLabelHidden value={editNotes} onChange={setEditNotes} rows={10} />
-                  <div className="mt-2 flex gap-2">
-                    <Button label="Save" variant="primary" size="sm" onClick={saveNotes} />
-                    <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditing(false)} />
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <Button label={job.notes ? "Edit notes" : "Add notes"} variant="secondary" size="sm" onClick={() => { setEditNotes(job.notes); setEditing(true); }} />
-                  {job.notes ? (
-                    <div className="prose prose-sm mt-3 max-w-none">
-                      <Markdown>{job.notes}</Markdown>
-                    </div>
-                  ) : (
-                    <div className="mt-3">
-                      <Banner status="info" title="No notes yet." />
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
+          {job.posting_text ? (
+            analyzed ? (
+              <JobDescriptionView
+                jobText={job.posting_text}
+                jobTitle={job.title}
+                matched={analyzed.report.highlights.matched}
+                missing={analyzed.report.highlights.missing}
+              />
+            ) : (
+              <Text display="block" className="whitespace-pre-wrap leading-relaxed">{job.posting_text}</Text>
+            )
+          ) : (
+            <Banner status="info" title="No posting text. Paste it above or use the Chrome extension." />
+          )}
+        </div>
+      )}
+
+      {leftTab === "apply" && (
+        job.url ? (
+          <div className="flex h-full flex-col">
+            <div className="mb-2 flex items-center gap-2">
+              <AstryxLink href={job.url} isExternalLink>Open in new tab</AstryxLink>
+              <Text type="supporting">Many sites block embedding — use the link above if the form doesn&apos;t load below.</Text>
+            </div>
+            <iframe src={job.url} className="flex-1 w-full rounded-lg border border-border" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
+          </div>
+        ) : (
+          <Banner status="info" title="No URL saved for this job. Add one to open the application here." />
+        )
+      )}
     </>
   );
 
@@ -688,38 +597,34 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   const rightTabBar = (
     <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
-      <Tab value="reports" label="Reports" />
-      <Tab value="resume" label="Resume" />
-      <Tab value="cover" label="Cover letter" />
+      <Tab value="profile" label={fitnessSaved ? `Profile (${fitnessSaved.score}/10)` : "Profile"} />
+      <Tab value="resume" label={analyzed ? `Resume (${analyzed.report.score}/100)` : "Resume"} />
+      <Tab value="application" label={submissions.length > 0 ? `Application (${submissions.length})` : "Application"} />
     </TabList>
   );
 
   const rightPaneBody = (
     <>
-      {rightTab === "reports" && (
+      {rightTab === "profile" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <SegmentedControl
-              value={reportSubTab}
-              onChange={(v) => setReportSubTab(v as ReportSubTab)}
-              label="Report view"
+              value={profileSubTab}
+              onChange={(v) => setProfileSubTab(v as ProfileSubTab)}
+              label="Profile view"
             >
               <SegmentedControlItem
-                value="fitness"
-                label={fitnessSaved ? `Fitness (${fitnessSaved.score}/10)` : "Fitness"}
+                value="score"
+                label={fitnessSaved ? `Score (${fitnessSaved.score}/10)` : "Score"}
               />
               <SegmentedControlItem
-                value="ats"
-                label={analyzed ? `ATS pass (${analyzed.report.score}/100)` : "ATS pass"}
-              />
-              <SegmentedControlItem
-                value="slop"
-                label={aiDetection.data !== null && aiDetection.data !== undefined ? `AI slop (${aiDetection.data.confidence}%)` : "AI slop"}
+                value="edit"
+                label="Edit"
               />
             </SegmentedControl>
           </div>
 
-          {reportSubTab === "fitness" && (
+          {profileSubTab === "score" && (
             <div className="py-2">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Button
@@ -755,7 +660,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 <Banner
                   status="info"
                   title={job.posting_text.trim()
-                    ? 'Click "Analyze" in the top bar to run fitness and ATS match reports.'
+                    ? 'Click "Analyze" to run fitness check against your candidate profile.'
                     : "Add the posting text first — the fitness check reads the posting, not the resume."}
                 />
               )}
@@ -773,7 +678,34 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             </div>
           )}
 
-          {reportSubTab === "ats" && (
+          {profileSubTab === "edit" && (
+            <div className="py-2">
+              <CandidateProfilePanel />
+            </div>
+          )}
+        </div>
+      )}
+
+      {rightTab === "resume" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <SegmentedControl
+              value={resumeSubTab}
+              onChange={(v) => setResumeSubTab(v as ResumeSubTab)}
+              label="Resume view"
+            >
+              <SegmentedControlItem
+                value="score"
+                label={analyzed ? `Score (${analyzed.report.score}/100)` : "Score"}
+              />
+              <SegmentedControlItem
+                value="edit"
+                label="Edit"
+              />
+            </SegmentedControl>
+          </div>
+
+          {resumeSubTab === "score" && (
             analyzed ? (
               <MatchReportView
                 report={analyzed.report}
@@ -781,39 +713,38 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 onRunAnalysis={() => runUnifiedAnalysis(false)}
                 analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
                 hasAnalysis={!!analyzed}
-                hideSegmentedControl
-                subTab="match"
               />
             ) : (
               <div className="py-8">
                 <Banner
                   status="info"
                   title={job.posting_text.trim()
-                    ? 'Select a resume and click "Analyze" in the top bar to run the ATS pass report.'
+                    ? 'Select a resume and click "Analyze" to run the ATS pass report.'
                     : 'Add a job posting and click "Analyze" to see the ATS pass report.'}
                 />
               </div>
             )
           )}
 
-          {reportSubTab === "slop" && (
+          {resumeSubTab === "edit" && (
             analyzed ? (
-              <MatchReportView
-                report={analyzed.report}
-                aiDetection={aiDetection}
-                onRunAnalysis={() => runUnifiedAnalysis(false)}
-                analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
-                hasAnalysis={!!analyzed}
-                hideSegmentedControl
-                subTab="ai"
+              <ResumeView
+                resumeText={analyzed.resumeText}
+                company={job.company}
+                jobText={job.posting_text}
+                jobTitle={job.title}
+                missingSkills={analyzed.report.highlights.missing}
+                aiDetection={aiDetection.data}
+                materials={materials}
+                onMaterialsChange={setMaterials}
               />
             ) : (
-              <div className="py-8">
+              <div className="py-12">
                 <Banner
                   status="info"
                   title={job.posting_text.trim()
-                    ? 'Select a resume and click "Analyze" in the top bar to check for AI slop.'
-                    : 'Add a job posting and click "Analyze" to check for AI slop.'}
+                    ? 'Select a resume and click "Analyze" to begin tailoring.'
+                    : 'Add a job posting first to tailor your resume.'}
                 />
               </div>
             )
@@ -821,50 +752,145 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         </div>
       )}
 
-      {rightTab === "resume" && (
-        analyzed ? (
-          <ResumeView
-            resumeText={analyzed.resumeText}
-            company={job.company}
-            jobText={job.posting_text}
-            jobTitle={job.title}
-            missingSkills={analyzed.report.highlights.missing}
-            aiDetection={aiDetection.data}
-            materials={materials}
-            onMaterialsChange={setMaterials}
-          />
-        ) : (
-          <div className="py-12">
-            <Banner
-              status="info"
-              title={job.posting_text.trim()
-                ? 'Select a resume and click "Analyze" in the top bar to begin tailoring.'
-                : 'Add a job posting first to tailor your resume.'}
-            />
+      {rightTab === "application" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <SegmentedControl
+              value={appSubTab}
+              onChange={(v) => setAppSubTab(v as AppSubTab)}
+              label="Application view"
+            >
+              <SegmentedControlItem
+                value="cover"
+                label="Cover letter"
+              />
+              <SegmentedControlItem
+                value="submission"
+                label={submissions.length > 0 ? `Submission (${submissions.length})` : "Submission"}
+              />
+              <SegmentedControlItem
+                value="notes"
+                label="Notes"
+              />
+            </SegmentedControl>
           </div>
-        )
-      )}
 
-      {rightTab === "cover" && (
-        analyzed ? (
-          <CoverLetterView
-            resumeText={analyzed.resumeText}
-            jobText={job.posting_text}
-            jobTitle={job.title}
-            company={job.company}
-            materials={materials}
-            onMaterialsChange={setMaterials}
-          />
-        ) : (
-          <div className="py-12">
-            <Banner
-              status="info"
-              title={job.posting_text.trim()
-                ? 'Select a resume and click "Analyze" in the top bar to generate a cover letter.'
-                : 'Add a job posting first to generate a cover letter.'}
-            />
-          </div>
-        )
+          {appSubTab === "cover" && (
+            analyzed ? (
+              <CoverLetterView
+                resumeText={analyzed.resumeText}
+                jobText={job.posting_text}
+                jobTitle={job.title}
+                company={job.company}
+                materials={materials}
+                onMaterialsChange={setMaterials}
+              />
+            ) : (
+              <div className="py-12">
+                <Banner
+                  status="info"
+                  title={job.posting_text.trim()
+                    ? 'Select a resume and click "Analyze" to generate a cover letter.'
+                    : 'Add a job posting first to generate a cover letter.'}
+                />
+              </div>
+            )
+          )}
+
+          {appSubTab === "submission" && (
+            <Stack gap={3}>
+              <HStack gap={2}>
+                <Button label="Upload file" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} />
+                <input ref={fileRef} type="file" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadFile(e.target.files[0]); e.target.value = ""; }} />
+                {analyzed && (
+                  <Button
+                    label="Save package"
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      const resume = loadSavedResume();
+                      const md = buildPackageMarkdown({
+                        company: job.company, jobTitle: job.title, jobUrl: job.url,
+                        jobText: job.posting_text, resume, resumeFallbackText: analyzed.resumeText,
+                        coverLetter: coverLetterText(),
+                        date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+                      });
+                      await fetch(`/api/jobs/${jobId}/submissions`, {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ type: "package", label: `Application Package — ${new Date().toLocaleDateString()}`, format: "md", content: md }),
+                      });
+                      fetchJob();
+                    }}
+                  />
+                )}
+              </HStack>
+              {submissions.length === 0 ? (
+                <Banner status="info" title="No submissions yet." />
+              ) : (
+                <Stack gap={2}>
+                  {submissions.map((s) => (
+                    <Card key={s.id}>
+                      <div className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="min-w-0 flex-1">
+                            <Text weight="semibold" display="block">{s.label}</Text>
+                            <Text type="supporting" display="block">{s.type} · {s.format}</Text>
+                          </div>
+                          <HStack gap={2}>
+                            {s.content && (
+                              <Button
+                                label={viewingSubmission === s.id ? "Close" : "View"}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewingSubmission(viewingSubmission === s.id ? null : s.id)}
+                              />
+                            )}
+                            <Button label="Download" variant="ghost" size="sm" href={`/api/jobs/${jobId}/submissions/${s.id}?download=1`} />
+                            <Button label="Remove" variant="ghost" size="sm" onClick={() => deleteSubmission(s.id)} />
+                          </HStack>
+                        </div>
+                        {viewingSubmission === s.id && s.content && (
+                          <div className="mt-3 border-t border-border pt-3">
+                            <div className="prose prose-sm max-w-none">
+                              <Markdown>{s.content}</Markdown>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          )}
+
+          {appSubTab === "notes" && (
+            <div>
+              {editing ? (
+                <div>
+                  <TextArea label="Notes" isLabelHidden value={editNotes} onChange={setEditNotes} rows={10} />
+                  <div className="mt-2 flex gap-2">
+                    <Button label="Save" variant="primary" size="sm" onClick={saveNotes} />
+                    <Button label="Cancel" variant="secondary" size="sm" onClick={() => setEditing(false)} />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Button label={job.notes ? "Edit notes" : "Add notes"} variant="secondary" size="sm" onClick={() => { setEditNotes(job.notes); setEditing(true); }} />
+                  {job.notes ? (
+                    <div className="prose prose-sm mt-3 max-w-none">
+                      <Markdown>{job.notes}</Markdown>
+                    </div>
+                  ) : (
+                    <div className="mt-3">
+                      <Banner status="info" title="No notes yet." />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </>
   );
