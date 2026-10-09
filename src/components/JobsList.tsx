@@ -47,8 +47,19 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
       if (fetchedFromClient.current) return;
       setJobs(initial);
       setLoading(false);
+      try {
+        sessionStorage.setItem("jobListIds", JSON.stringify(initial.map((j) => j.id)));
+      } catch {}
     });
   }, [jobsPromise]);
+
+  useEffect(() => {
+    if (jobs.length > 0) {
+      try {
+        sessionStorage.setItem("jobListIds", JSON.stringify(jobs.map((j) => j.id)));
+      } catch {}
+    }
+  }, [jobs]);
   const [sortKey, setSortKey] = useState<SortKey>(() =>
     (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey") as SortKey) || "created_at"
   );
