@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
@@ -8,6 +8,7 @@ import { STATUS_OPTIONS } from "@/lib/status";
 import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
 import { formatDate } from "@/lib/format";
 import { JobStatusDot } from "./icons";
+import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Badge } from "@astryxdesign/core/Badge";
@@ -132,19 +133,31 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     fetchJobs();
   }, [fetchJobs, isDefaultView]);
 
-  useEffect(() => {
-    const key = "jobsLastUrlCheck";
-    const last = localStorage.getItem(key);
-    const today = new Date().toISOString().slice(0, 10);
-    if (last === today) return;
-    localStorage.setItem(key, today);
-    fetch("/api/jobs/check-status", { method: "POST" })
-      .then((r) => r.json())
-      .then((d: { closed?: number }) => {
-        if (d.closed && d.closed > 0) fetchJobs();
-      })
-      .catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [restoring, setRestoring] = useState(false);
+  const restorableJobs = useMemo(
+    () => jobs.filter((j) => j.status === "closed" && !!j.previous_status).length,
+    [jobs],
+  );
+
+  const undoAutoClosed = async () => {
+    setRestoring(true);
+    try {
+      const res = await fetch("/api/jobs/check-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "undo" }),
+      });
+      const data = await res.json();
+      if (data.restored) {
+        setImportMsg(`Successfully restored ${data.restored} job${data.restored === 1 ? "" : "s"} back to their active pipeline statuses.`);
+        fetchJobs();
+      }
+    } catch {
+      setImportMsg("Failed to restore jobs.");
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const updateStatusFilter = (value: string) => {
     setStatusFilter(value);
@@ -365,6 +378,21 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
               <span className={starredOnly ? "text-amber-500 font-medium" : "text-secondary"}>★ Starred</span>
             </label>
           </HStack>
+
+          {restorableJobs > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-200">
+              <div className="flex items-center gap-2 text-sm">
+                <span>⚠️ <strong>{restorableJobs}</strong> job{restorableJobs === 1 ? " was" : "s were"} recently marked closed by automated check.</span>
+              </div>
+              <Button
+                label={restoring ? "Restoring…" : "Restore to active pipeline"}
+                variant="secondary"
+                size="sm"
+                onClick={undoAutoClosed}
+                isDisabled={restoring}
+              />
+            </div>
+          )}
 
           {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
         </Stack>
