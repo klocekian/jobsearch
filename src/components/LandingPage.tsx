@@ -41,8 +41,11 @@ type Shot = Img & { alt: string; mobile?: Img };
 function Screenshot({ shot, priority, fill }: { shot: Shot; priority?: boolean; fill?: string }) {
   const sizes = "(min-width: 1024px) 680px, 100vw";
   const { props: { srcSet: desktopSrcSet } } = getImageProps({ src: shot.src, alt: shot.alt, width: shot.width, height: shot.height, sizes });
+  const base = fill ? shot : shot.mobile ?? shot;
   const { props: img } = getImageProps({
-    ...(fill ? shot : shot.mobile ?? shot),
+    src: base.src,
+    width: base.width,
+    height: base.height,
     alt: shot.alt,
     sizes,
     loading: priority ? "eager" : "lazy",
@@ -140,7 +143,7 @@ const SHOTS = {
   rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume with individual changes available to accept or dismiss beside the employer's application form.", width: 2400, height: 1177, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 757 } },
   coverLetter: { src: "/hero/cover-letter.webp", alt: "Editable cover letter with contact details beside an employer's application form.", width: 2400, height: 1177, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 757 } },
   fill: { src: "/hero/extension-fill.webp", alt: "Chrome extension filling saved application details into an Ashby application form.", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 729, height: 1227 } },
-  providers: { src: "/hero/ai-providers.webp", alt: "AI settings with options to connect Anthropic Claude, Google Gemini, xAI Grok, and Mistral AI.", width: 1946, height: 1572 },
+  providers: { src: "/hero/ai-providers.webp", alt: "AI settings with options to connect Anthropic Claude, Google Gemini, xAI Grok, and Mistral AI.", width: 1794, height: 1704 },
   connector: { src: "/hero/claude-connector.webp", alt: "Job Search connected to Claude, with tools for reading and updating applications, profiles, and resumes.", width: 1840, height: 1436 },
   importSheet: { src: "/hero/import-sheet.webp", alt: "Job import options for a Google Sheet link or CSV upload.", width: 1018, height: 776 },
   resumes: { src: "/hero/resumes.webp", alt: "Saved resumes with tags showing the companies each version was used for.", width: 1714, height: 1419 },
@@ -185,11 +188,6 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="mx-auto max-w-6xl px-5 pt-12 pb-16 sm:pt-20 sm:pb-24">
         <div className="text-center space-y-6 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3.5 py-1 text-xs font-medium text-sky-600 dark:text-sky-300">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
-            A little more clarity in your job search
-          </div>
-
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.1] text-balance">
             <span className="block">Find work you want.</span>
             <span className="block mt-1 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500 bg-clip-text text-transparent">
@@ -451,12 +449,6 @@ export function LandingPage() {
               <p className="text-sm text-secondary leading-relaxed">
                 The connector uses your Claude plan, with no separate API key needed.
               </p>
-              <div className="space-y-1.5">
-                <div className="text-xs font-semibold text-primary">Add the connector in Claude Code</div>
-                <code className="block overflow-x-auto rounded-md border border-border/60 bg-zinc-950/80 px-3 py-2 text-[11px] font-mono text-zinc-300">
-                  claude mcp add --transport http jobsearch https://jobs.fieldlines.org/api/mcp
-                </code>
-              </div>
             </div>
           </div>
         </div>
