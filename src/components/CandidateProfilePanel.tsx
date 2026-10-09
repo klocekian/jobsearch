@@ -106,7 +106,11 @@ function canonMayBeStale(docs: DocsResponse | null): boolean {
   return resume > canon;
 }
 
-export function CandidateProfilePanel() {
+interface CandidateProfilePanelProps {
+  onBack?: () => void;
+}
+
+export function CandidateProfilePanel({ onBack }: CandidateProfilePanelProps = {}) {
   const [docs, setDocs] = useState<DocsResponse | null>(null);
   const [profile, setProfile] = useState("");
   const [gaps, setGaps] = useState("");
@@ -169,13 +173,28 @@ export function CandidateProfilePanel() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <Heading level={2} className="tracking-tight">Candidate Profile</Heading>
-        <div className="mt-1">
-          <Text type="supporting" color="secondary">
-            Grounding for the fitness check. Both documents are required — without
-            the negative profile the check degrades into a keyword matcher.
-          </Text>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {onBack && <Button label="← Back" variant="ghost" size="sm" onClick={onBack} />}
+          <div>
+            <Heading level={2} className="tracking-tight">Candidate Profile</Heading>
+            <div className="mt-0.5">
+              <Text type="supporting" color="secondary">
+                Grounding for the fitness check. Both documents are required.
+              </Text>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {dirty && <Text type="supporting" color="secondary">Unsaved changes.</Text>}
+          <Button
+            label={saving ? "Saving…" : "Save"}
+            variant="primary"
+            size="sm"
+            onClick={save}
+            isDisabled={saving || !dirty}
+          />
         </div>
       </div>
 
@@ -248,15 +267,6 @@ export function CandidateProfilePanel() {
           className="font-mono"
           placeholder="Paste gaps.md here"
         />
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Button
-          label={saving ? "Saving…" : "Save"}
-          onClick={save}
-          isDisabled={saving || !dirty}
-        />
-        {dirty && <Text type="supporting" color="secondary">Unsaved changes.</Text>}
       </div>
     </div>
   );
