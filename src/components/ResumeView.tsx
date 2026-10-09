@@ -8,6 +8,7 @@ import { RESUME_STORAGE_KEY, isResumeData, loadRewriteState, saveRewriteState } 
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { RewriteEditor } from "./RewriteEditor";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
+import { apiFetch, apiSend, errorMessage, readTextStream } from "@/lib/api-client";
 import type { AiDetection } from "@/lib/analysis/types";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -71,7 +72,7 @@ export function ResumeView({
     setGen({ kind: "loading" });
     setRewrite("");
     try {
-      const res = await fetch("/api/rewrite-resume", {
+      const res = await apiFetch("/api/rewrite-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -86,29 +87,7 @@ export function ResumeView({
             .map((p) => ({ label: p.label, examples: p.examples.slice(0, 6) })),
         }),
       });
-      if (!res.ok) {
-        let errMsg = `Request failed (${res.status}).`;
-        try {
-          const d = await res.json();
-          if (d.error) errMsg = d.error;
-        } catch {
-          const t = await res.text().catch(() => "");
-          if (t) errMsg = t;
-        }
-        throw new Error(errMsg);
-      }
-
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("No readable stream received.");
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        setRewrite(accumulated);
-      }
+      const accumulated = await readTextStream(res, setRewrite);
 
       rewriteRef.current = accumulated;
       setDismissed([]);
@@ -116,7 +95,7 @@ export function ResumeView({
       setEditorKey((k) => k + 1);
       setGen({ kind: "idle" });
     } catch (err: unknown) {
-      setGen({ kind: "error", message: err instanceof Error ? err.message : "Something went wrong." });
+      setGen({ kind: "error", message: errorMessage(err, "Something went wrong.") });
     }
   };
 
@@ -136,13 +115,8 @@ export function ResumeView({
     const text = resultRef.current.trim() || original;
     let data: ResumeData;
     try {
-      const res = await fetch("/api/parse-resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText: text }),
-      });
-      const d: { resume?: unknown } = await res.json();
-      data = res.ok && isResumeData(d.resume) ? d.resume : parseResume(text);
+      const d = await apiSend<{ resume?: unknown }>("/api/parse-resume", "POST", { resumeText: text });
+      data = isResumeData(d.resume) ? d.resume : parseResume(text);
     } catch {
       data = parseResume(text);
     }
@@ -188,13 +162,11 @@ export function ResumeView({
             onClick={async () => {
               const text = resultRef.current.trim() || original;
               const name = `${company ? company.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, "_").toLowerCase() : "tailored"}_resume_${new Date().getFullYear()}`;
-              const res = await fetch("/api/resumes", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, content: text, tags: [company].filter(Boolean) }),
-              });
-              if (res.ok) {
+              try {
+                await apiSend("/api/resumes", "POST", { name, content: text, tags: [company].filter(Boolean) });
                 alert("Saved as new resume in your Profile.");
+              } catch (err) {
+                alert(errorMessage(err, "Could not save the resume."));
               }
             }}
           />

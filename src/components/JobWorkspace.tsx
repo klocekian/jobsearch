@@ -17,7 +17,6 @@ import { ResumeView } from "./ResumeView";
 import { CoverLetterView } from "./CoverLetterView";
 import { JobActivityBanner } from "./JobActivityBanner";
 import { RunHistory, runDate, runMethodLabel } from "./RunHistory";
-import type { AnalysisRunMeta, AnalysisRunRow } from "@/lib/db/analysis-runs";
 import {
   loadSavedResume,
   coverLetterText,
@@ -30,8 +29,11 @@ import {
 } from "@/lib/storage";
 import { buildPackageMarkdown } from "@/lib/package";
 import { readResumeFile } from "@/lib/extract";
+import { apiSend, errorMessage } from "@/lib/api-client";
+import { useJob } from "@/hooks/useJob";
+import { useResumes } from "@/hooks/useResumes";
+import { useAnalysisRuns } from "@/hooks/useAnalysisRuns";
 import type { JobRow } from "@/lib/db/jobs";
-import type { SubmissionRow } from "@/lib/db/submissions";
 import type { ResumeRow } from "@/lib/db/resumes";
 import { Button } from "@astryxdesign/core/Button";
 import { TabList, Tab } from "@astryxdesign/core/TabList";
@@ -58,9 +60,12 @@ type AppSubTab = "cover" | "submission" | "notes";
 
 export function JobWorkspace({ jobId }: { jobId: number }) {
   const router = useRouter();
-  const [job, setJob] = useState<JobRow | null>(null);
-  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { job, setJob, submissions, loading, refetch: fetchJob, updateJob } = useJob(jobId);
+  const { resumes: savedResumes, setResumes: setSavedResumes, loading: resumesLoading } = useResumes();
+  const { runs, refetch: fetchRuns, getRun, makeCurrent } = useAnalysisRuns(jobId);
+  // Writes that fail outside a tab with its own error slot (status, header,
+  // posting, notes, submissions) report here.
+  const [actionError, setActionError] = useState<string | null>(null);
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
   const [rightTab, setRightTab] = useState<RightTab>("profile");
   const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>("score");
@@ -81,7 +86,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [pasteText, setPasteText] = useState("");
 
   // Resume / Analysis state
-  const [savedResumes, setSavedResumes] = useState<ResumeRow[]>([]);
   const [resumeText, setResumeText] = useState("");
   const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
   const [userAnalysis, setUserAnalysis] = useState<{ report: MatchReport; resumeText: string; jobText: string } | null>(null);
@@ -120,13 +124,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     if (cached) return;
 
     let active = true;
-    fetch("/api/ai-detection", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resumeText: text }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { confidence?: number; band?: string; patterns?: unknown } | null) => {
+    apiSend<{ confidence?: number; band?: string; patterns?: unknown }>("/api/ai-detection", "POST", { resumeText: text })
+      .then((d) => {
         if (!active) return;
         if (d && typeof d.confidence === "number" && Array.isArray(d.patterns)) {
           const det = d as unknown as import("@/lib/analysis/types").AiDetection;
@@ -154,8 +153,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     if (!fitnessReportJson) return null;
     try { return JSON.parse(fitnessReportJson) as FitnessResult; } catch { return null; }
   }, [fitnessReportJson]);
-  // Saved run history (both analyses) and the older run being viewed, if any.
-  const [runs, setRuns] = useState<{ fitness: AnalysisRunMeta[]; match: AnalysisRunMeta[] }>({ fitness: [], match: [] });
+  // The older run being viewed, if any.
   const [viewedFitness, setViewedFitness] = useState<{ id: number; result: FitnessResult; runAt: string; method: string } | null>(null);
   const [viewedMatch, setViewedMatch] = useState<{ id: number; report: MatchReport; resumeText: string | null } | null>(null);
   const [restoringRun, setRestoringRun] = useState(false);
@@ -177,28 +175,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   useEffect(() => { saveContextMaterials(materials); }, [materials]);
 
-  const fetchRuns = useCallback(async () => {
-    const res = await fetch(`/api/jobs/${jobId}/analysis-runs`).catch(() => null);
-    if (res?.ok) setRuns(await res.json());
-  }, [jobId]);
-
-  useEffect(() => {
-    let ignore = false;
-    fetch(`/api/jobs/${jobId}/analysis-runs`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!ignore && d) setRuns(d); })
-      .catch(() => {});
-    return () => { ignore = true; };
-  }, [jobId]);
-
   const viewRun = useCallback(async (kind: "fitness" | "match", runId: number | null) => {
     if (runId == null) {
       if (kind === "fitness") setViewedFitness(null); else setViewedMatch(null);
       return;
     }
-    const res = await fetch(`/api/jobs/${jobId}/analysis-runs/${runId}`).catch(() => null);
-    if (!res?.ok) return;
-    const { run } = await res.json() as { run: AnalysisRunRow };
+    const run = await getRun(runId).catch(() => null);
+    if (!run) return;
     try {
       if (kind === "fitness") {
         setViewedFitness({ id: run.id, result: JSON.parse(run.report) as FitnessResult, runAt: run.created_at, method: run.method });
@@ -206,68 +189,36 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         setViewedMatch({ id: run.id, report: JSON.parse(run.report) as MatchReport, resumeText: run.resume_text });
       }
     } catch { /* unreadable report — stay on the current one */ }
-  }, [jobId]);
+  }, [getRun]);
 
   const makeRunCurrent = useCallback(async (kind: "fitness" | "match", runId: number) => {
     setRestoringRun(true);
     try {
-      const res = await fetch(`/api/jobs/${jobId}/analysis-runs/${runId}`, { method: "POST" });
-      if (res.ok) {
-        const d = await res.json() as { job: JobRow };
-        setJob(d.job);
-        if (kind === "fitness") setViewedFitness(null);
-        else {
-          // The restored report is about the resume it ran against — show that one.
-          if (viewedMatch?.id === runId && viewedMatch.resumeText) setResumeText(viewedMatch.resumeText);
-          setViewedMatch(null);
-          setUserAnalysis(null);
-        }
+      const updated = await makeCurrent(runId);
+      setJob(updated);
+      if (kind === "fitness") setViewedFitness(null);
+      else {
+        // The restored report is about the resume it ran against — show that one.
+        if (viewedMatch?.id === runId && viewedMatch.resumeText) setResumeText(viewedMatch.resumeText);
+        setViewedMatch(null);
+        setUserAnalysis(null);
       }
+    } catch (err) {
+      setActionError(errorMessage(err, "Could not restore that run."));
     } finally {
       setRestoringRun(false);
     }
-  }, [jobId, viewedMatch]);
+  }, [makeCurrent, setJob, viewedMatch]);
 
-  const fetchJob = useCallback(async () => {
-    const res = await fetch(`/api/jobs/${jobId}`);
-    if (!res.ok) { setLoading(false); return; }
-    const data: { job: JobRow; submissions: SubmissionRow[] } = await res.json();
-    setJob(data.job);
-    setSubmissions(data.submissions);
-    setLoading(false);
-  }, [jobId]);
-
+  // Once the resumes load, start on the default one (unless a resume is already picked).
+  const defaultPicked = useRef(false);
   useEffect(() => {
-    let ignore = false;
-    fetch(`/api/jobs/${jobId}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { job: JobRow; submissions: SubmissionRow[] } | null) => {
-        if (ignore) return;
-        if (data) {
-          setJob(data.job);
-          setSubmissions(data.submissions);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!ignore) setLoading(false);
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [jobId]);
-
-  // Load saved resumes and auto-select default
-  useEffect(() => {
-    fetch("/api/resumes").then(r => r.json()).then((d: { resumes?: ResumeRow[] }) => {
-      const list = d.resumes ?? [];
-      setSavedResumes(list);
-      if (!resumeText && list.length > 0) {
-        const def = list.find(r => r.is_default) ?? list[0];
-        setResumeText(def.content);
-      }
-    }).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (defaultPicked.current || resumesLoading) return;
+    defaultPicked.current = true;
+    if (savedResumes.length === 0) return;
+    const def = savedResumes.find(r => r.is_default) ?? savedResumes[0];
+    setResumeText((t) => t || def.content); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [resumesLoading, savedResumes]);
 
   // Open on the resume the stored match score was run against, not just the
   // default, so the saved report and the resume text shown beside it agree.
@@ -310,32 +261,23 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     setResumeSubTab("score");
     setViewedMatch(null);
     const selectedResume = savedResumes.find(r => r.content === resumeText);
-    fetch(`/api/jobs/${jobId}/analysis-runs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kind: "match",
-        report,
-        // Record which resume produced the score, so the ATS number reads as a
-        // fact about a document rather than a verdict on the job.
-        resume_name: selectedResume?.name ?? null,
-        resume_text: resumeText,
-      }),
+    apiSend<{ job?: JobRow }>(`/api/jobs/${jobId}/analysis-runs`, "POST", {
+      kind: "match",
+      report,
+      // Record which resume produced the score, so the ATS number reads as a
+      // fact about a document rather than a verdict on the job.
+      resume_name: selectedResume?.name ?? null,
+      resume_text: resumeText,
     })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { job?: JobRow } | null) => {
+      .then((d) => {
         if (d?.job) setJob(d.job);
         fetchRuns();
       })
       .catch(() => {});
     if (selectedResume && job.company) {
-      fetch(`/api/resumes/${selectedResume.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ add_tag: job.company }),
-      }).catch(() => {});
+      apiSend(`/api/resumes/${selectedResume.id}`, "PATCH", { add_tag: job.company }).catch(() => {});
     }
-  }, [job, resumeText, analyzed, savedResumes, jobId, fetchRuns]);
+  }, [job, resumeText, analyzed, savedResumes, jobId, fetchRuns, setJob]);
 
   const runFitnessCheck = useCallback(async (useAi = false) => {
     if (!job || !job.posting_text.trim()) return;
@@ -343,27 +285,24 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     setFitnessError(null);
     setNotesFlash(false);
     try {
-      const res = await fetch("/api/fitness-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_id: jobId, use_ai: useAi }),
-      });
       // The route saves the run itself and returns the updated job.
-      const data = await res.json() as { result?: FitnessResult; job?: JobRow; error?: string };
-      if (!res.ok || !data.result) {
-        setFitnessError(data.error ?? "Fitness check failed.");
+      const data = await apiSend<{ result?: FitnessResult; job?: JobRow }>(
+        "/api/fitness-check", "POST", { job_id: jobId, use_ai: useAi },
+      );
+      if (!data.result) {
+        setFitnessError("Fitness check failed.");
         return;
       }
       setViewedFitness(null);
       if (data.job) setJob(data.job);
       else await fetchJob();
       await fetchRuns();
-    } catch {
-      setFitnessError("Fitness check failed.");
+    } catch (err) {
+      setFitnessError(errorMessage(err, "Fitness check failed."));
     } finally {
       setFitnessRunning(false);
     }
-  }, [job, jobId, fetchJob, fetchRuns]);
+  }, [job, jobId, fetchJob, fetchRuns, setJob]);
 
   const runUnifiedAnalysis = useCallback(async (useAi = false) => {
     if (!job || !job.posting_text.trim()) return;
@@ -395,32 +334,24 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     const body = [header, renderFitnessText(shownFitness)].filter(Boolean).join("\n");
     const notes = job.notes?.trim() ? `${body}\n\n${job.notes}` : body;
     try {
-      const res = await fetch(`/api/jobs/${jobId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes, ...(alsoAbandon ? { status: "abandoned" } : {}) }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        setFitnessError(d.error ?? `Could not write to notes (${res.status}).`);
-        return;
-      }
+      await updateJob({ notes, ...(alsoAbandon ? { status: "abandoned" } : {}) });
       setFitnessError(null);
       setNotesFlash(true);
-      await fetchJob();
-    } catch {
-      setFitnessError("Could not write to notes — no response from the server.");
+    } catch (err) {
+      setFitnessError(errorMessage(err, "Could not write to notes — no response from the server."));
     } finally {
       setFitnessSaving(false);
     }
   };
 
   const updateStatus = useCallback(async (newStatus: string) => {
-    await fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
+    setActionError(null);
+    try {
+      await updateJob({ status: newStatus });
+    } catch (err) {
+      setActionError(errorMessage(err, "Could not change the status."));
+      return;
+    }
     if (newStatus === "applied" && analyzed && job) {
       const resume = loadSavedResume();
       const md = buildPackageMarkdown({
@@ -429,18 +360,25 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         coverLetter: coverLetterText(),
         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
       });
-      await fetch(`/api/jobs/${jobId}/submissions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "package", label: `Application Package — ${new Date().toLocaleDateString()}`, format: "md", content: md }),
-      });
+      try {
+        await apiSend(`/api/jobs/${jobId}/submissions`, "POST", {
+          type: "package", label: `Application Package — ${new Date().toLocaleDateString()}`, format: "md", content: md,
+        });
+      } catch (err) {
+        setActionError(errorMessage(err, "Status changed, but the application package could not be saved."));
+      }
     }
     fetchJob();
-  }, [jobId, analyzed, job, fetchJob]);
+  }, [jobId, analyzed, job, fetchJob, updateJob]);
 
   const deleteJob = useCallback(async () => {
     if (!confirm("Delete this job?")) return;
-    await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
+    try {
+      await apiSend(`/api/jobs/${jobId}`, "DELETE");
+    } catch (err) {
+      setActionError(errorMessage(err, "Could not delete the job."));
+      return;
+    }
     router.push("/jobs");
   }, [jobId, router]);
 
@@ -460,26 +398,29 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     return () => window.removeEventListener("job-workspace-action", handler);
   }, [runUnifiedAnalysis, updateStatus, deleteJob]);
 
+  // Runs a write, reporting failure in the workspace's error banner. Edit
+  // forms stay open on failure so nothing typed is lost.
+  const attempt = async (write: () => Promise<unknown>, fallback: string): Promise<boolean> => {
+    setActionError(null);
+    try {
+      await write();
+      return true;
+    } catch (err) {
+      setActionError(errorMessage(err, fallback));
+      return false;
+    }
+  };
+
   const saveNotes = async () => {
-    await fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: editNotes }),
-    });
+    if (!await attempt(() => updateJob({ notes: editNotes }), "Could not save notes.")) return;
     setEditing(false);
-    fetchJob();
   };
 
   const pasteDirect = async () => {
     if (!pasteText.trim()) return;
-    await fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ posting_text: pasteText.trim() }),
-    });
+    if (!await attempt(() => updateJob({ posting_text: pasteText.trim() }), "Could not save the posting.")) return;
     setPasting(false);
     setPasteText("");
-    fetchJob();
   };
 
   const uploadFile = async (file: File) => {
@@ -487,23 +428,16 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     form.append("file", file);
     form.append("type", "other");
     form.append("label", file.name);
-    await fetch(`/api/jobs/${jobId}/submissions`, { method: "POST", body: form });
-    fetchJob();
+    if (await attempt(() => apiSend(`/api/jobs/${jobId}/submissions`, "POST", form), "Could not upload the file.")) fetchJob();
   };
 
   const deleteSubmission = async (sid: number) => {
-    await fetch(`/api/jobs/${jobId}/submissions/${sid}`, { method: "DELETE" });
-    fetchJob();
+    if (await attempt(() => apiSend(`/api/jobs/${jobId}/submissions/${sid}`, "DELETE"), "Could not remove the submission.")) fetchJob();
   };
 
   const saveHeader = async () => {
-    await fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(headerFields),
-    });
+    if (!await attempt(() => updateJob(headerFields), "Could not save the job details.")) return;
     setEditingHeader(false);
-    fetchJob();
   };
 
   const onDragStart = useCallback((e: React.MouseEvent) => {
@@ -579,6 +513,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               </button>
             </div>
           )}
+        </div>
+      )}
+      {actionError && (
+        <div className="mt-2">
+          <Banner status="error" title={actionError} isDismissable onDismiss={() => setActionError(null)} />
         </div>
       )}
     </div>
@@ -694,25 +633,16 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           if (!file) return;
           e.target.value = "";
           setResumeUploadError(null);
-          let text = "";
-          let name = "";
           try {
-            const read = await readResumeFile(file);
-            text = read.text;
-            name = read.name.replace(/[^a-zA-Z0-9]/g, "_");
-          } catch (err) {
-            setResumeUploadError(err instanceof Error ? err.message : `Couldn't read ${file.name}.`);
-            return;
-          }
-          const res = await fetch("/api/resumes", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, content: text }),
-          });
-          if (res.ok) {
-            const d = await res.json();
+            const { text, name } = await readResumeFile(file);
+            const d = await apiSend<{ resume: ResumeRow }>("/api/resumes", "POST", {
+              name: name.replace(/[^a-zA-Z0-9]/g, "_"),
+              content: text,
+            });
             setSavedResumes(prev => [...prev, d.resume]);
             setResumeText(text);
+          } catch (err) {
+            setResumeUploadError(errorMessage(err, `Couldn't add ${file.name}.`));
           }
         }}
       />
@@ -1000,11 +930,10 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                         coverLetter: coverLetterText(),
                         date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
                       });
-                      await fetch(`/api/jobs/${jobId}/submissions`, {
-                        method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ type: "package", label: `Application Package — ${new Date().toLocaleDateString()}`, format: "md", content: md }),
-                      });
-                      fetchJob();
+                      const saved = await attempt(() => apiSend(`/api/jobs/${jobId}/submissions`, "POST", {
+                        type: "package", label: `Application Package — ${new Date().toLocaleDateString()}`, format: "md", content: md,
+                      }), "Could not save the package.");
+                      if (saved) fetchJob();
                     }}
                   />
                 )}

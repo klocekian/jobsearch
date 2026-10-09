@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
@@ -13,8 +13,9 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Banner } from "@astryxdesign/core/Banner";
 import { readResumeFile } from "@/lib/extract";
+import { apiSend, errorMessage } from "@/lib/api-client";
+import { useResumes } from "@/hooks/useResumes";
 import type { ClaudeStatus } from "@/lib/anthropic";
-import type { ResumeRow } from "@/lib/db/resumes";
 import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { AIProvidersPanel } from "./AIProvidersPanel";
 import { McpConnectPanel } from "./McpConnectPanel";
@@ -29,8 +30,7 @@ interface ProfileViewProps {
 
 export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewProps) {
   const [user] = useState<AuthUser | null>(initialUser);
-  const [resumes, setResumes] = useState<ResumeRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { resumes, loading, refetch: fetchResumes } = useResumes();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -38,33 +38,10 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
   const [saving, setSaving] = useState(false);
-  const [fileError, setFileError] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
   const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes" | "candidate">("account");
-
-  const fetchResumes = useCallback(async () => {
-    const res = await fetch("/api/resumes");
-    const data = await res.json();
-    setResumes(data.resumes ?? []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-    fetch("/api/resumes")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { resumes?: ResumeRow[] } | null) => {
-        if (!ignore && data?.resumes) setResumes(data.resumes);
-        if (!ignore) setLoading(false);
-      })
-      .catch(() => {
-        if (!ignore) setLoading(false);
-      });
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   const handleFile = async (
     file: File | undefined,
@@ -72,49 +49,59 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
     setName?: (s: string) => void,
   ) => {
     if (!file) return;
-    setFileError(null);
+    setResumeError(null);
     try {
       const { text, name } = await readResumeFile(file);
       setContent(text);
       if (setName && !newName) setName(name);
     } catch (err) {
-      setFileError(err instanceof Error ? err.message : `Couldn't read ${file.name}.`);
+      setResumeError(errorMessage(err, `Couldn't read ${file.name}.`));
     }
+  };
+
+  // Runs a resume write then reloads the list; on failure the error shows and
+  // any open form stays open with its contents.
+  const writeResumes = async (write: () => Promise<unknown>, fallback: string): Promise<boolean> => {
+    setResumeError(null);
+    try {
+      await write();
+    } catch (err) {
+      setResumeError(errorMessage(err, fallback));
+      return false;
+    }
+    await fetchResumes().catch(() => {});
+    return true;
   };
 
   const saveNew = async () => {
     if (!newContent.trim()) return;
     setSaving(true);
     const isFirst = resumes.length === 0;
-    await fetch("/api/resumes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName || "Untitled Resume", content: newContent, is_default: isFirst }),
-    });
-    setAdding(false); setNewName(""); setNewContent(""); setSaving(false);
-    fetchResumes();
+    const ok = await writeResumes(
+      () => apiSend("/api/resumes", "POST", { name: newName || "Untitled Resume", content: newContent, is_default: isFirst }),
+      "Could not save the resume.",
+    );
+    setSaving(false);
+    if (ok) { setAdding(false); setNewName(""); setNewContent(""); }
   };
 
   const saveEdit = async () => {
     if (!editingId) return;
     setSaving(true);
-    await fetch(`/api/resumes/${editingId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName, content: editContent }),
-    });
-    setEditingId(null); setSaving(false); fetchResumes();
+    const ok = await writeResumes(
+      () => apiSend(`/api/resumes/${editingId}`, "PATCH", { name: editName, content: editContent }),
+      "Could not save the resume.",
+    );
+    setSaving(false);
+    if (ok) setEditingId(null);
   };
 
-  const setDefault = async (id: number) => {
-    await fetch(`/api/resumes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_default: true }) });
-    fetchResumes();
-  };
+  const setDefault = (id: number) =>
+    writeResumes(() => apiSend(`/api/resumes/${id}`, "PATCH", { is_default: true }), "Could not set the default resume.");
 
   const deleteResume = async (id: number) => {
     if (!confirm("Delete this resume?")) return;
-    await fetch(`/api/resumes/${id}`, { method: "DELETE" });
-    fetchResumes();
+    await writeResumes(() => apiSend(`/api/resumes/${id}`, "DELETE"), "Could not delete the resume.");
   };
 
   return (
@@ -217,6 +204,12 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
             )}
           </div>
 
+          {resumeError && (
+            <div className="mb-4">
+              <Banner status="error" title={resumeError} isDismissable onDismiss={() => setResumeError(null)} />
+            </div>
+          )}
+
           {adding && (
             <div className="mb-4 rounded-lg border border-border bg-muted p-4">
               <div className="mb-3">
@@ -230,10 +223,9 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                 </div>
                 <TextArea label="Content" isLabelHidden value={newContent} onChange={setNewContent} placeholder="Paste your resume text, or upload a file above." rows={10} />
               </div>
-              {fileError && <div className="mb-3"><Banner status="error" title={fileError} /></div>}
               <HStack gap={2}>
                 <Button label={saving ? "Saving…" : "Save Resume"} variant="primary" onClick={saveNew} isDisabled={!newContent.trim() || saving} />
-                <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); setFileError(null); }} />
+                <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); setResumeError(null); }} />
               </HStack>
             </div>
           )}
@@ -262,10 +254,9 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                         </div>
                         <TextArea label="Content" isLabelHidden value={editContent} onChange={setEditContent} rows={10} />
                       </div>
-                      {fileError && <div className="mb-3"><Banner status="error" title={fileError} /></div>}
                       <HStack gap={2}>
                         <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={saveEdit} isDisabled={saving} />
-                        <Button label="Cancel" variant="secondary" onClick={() => { setEditingId(null); setFileError(null); }} />
+                        <Button label="Cancel" variant="secondary" onClick={() => { setEditingId(null); setResumeError(null); }} />
                       </HStack>
                     </div>
                   ) : (
@@ -350,12 +341,7 @@ function ApplicationFields({ initialFields }: { initialFields: Record<string, un
     setSaving(true);
     setMsg("");
     try {
-      const res = await fetch("/api/profile/autofill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(fields),
-      });
-      if (!res.ok) throw new Error();
+      await apiSend("/api/profile/autofill", "POST", fields);
       setMsg("Saved!");
       setTimeout(() => setMsg(""), 2000);
     } catch {

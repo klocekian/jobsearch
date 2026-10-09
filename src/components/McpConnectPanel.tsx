@@ -11,6 +11,7 @@ import { CodeBlock } from "@astryxdesign/core/CodeBlock";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { formatDate } from "@/lib/format";
 import type { ApiTokenRow } from "@/lib/db/api-tokens";
+import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 
 interface McpSettings {
   url: string;
@@ -31,15 +32,13 @@ export function McpConnectPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/mcp-settings");
-    if (res.ok) setSettings(await res.json());
+    setSettings(await apiGet<McpSettings>("/api/mcp-settings"));
   }, []);
 
   useEffect(() => {
     let ignore = false;
-    fetch("/api/mcp-settings")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((d: McpSettings | null) => { if (!ignore && d) setSettings(d); })
+    apiGet<McpSettings>("/api/mcp-settings")
+      .then((d) => { if (!ignore) setSettings(d); })
       .catch(() => {});
     return () => { ignore = true; };
   }, []);
@@ -49,17 +48,11 @@ export function McpConnectPanel() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/mcp-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Request failed");
+      const data = await apiSend<{ token?: string }>("/api/mcp-settings", "POST", body);
       await load();
       return data;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
+      setError(errorMessage(err, "Request failed"));
       return null;
     } finally {
       setBusy(false);

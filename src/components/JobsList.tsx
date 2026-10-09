@@ -7,6 +7,7 @@ import type { JobRow } from "@/lib/db/jobs";
 import { STATUS_OPTIONS } from "@/lib/status";
 import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
 import { formatDate } from "@/lib/format";
+import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 import { JobStatusDot } from "./icons";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -78,6 +79,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [starredOnly, setStarredOnly] = useState(false);
   const [importMsg, setImportMsg] = useState("");
+  const [actionError, setActionError] = useState("");
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -117,8 +119,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     if (starredOnly) params.set("starred", "1");
     // Bypass the browser cache: /api/jobs allows a short private cache, and
     // this runs right after mutations (restore, confirm, import, status checks).
-    const res = await fetch(`/api/jobs?${params}`, { cache: "no-store" });
-    const data = await res.json();
+    const data = await apiGet<{ jobs?: JobRow[] }>(`/api/jobs?${params}`, { cache: "no-store" });
     fetchedFromClient.current = true;
     setJobs(data.jobs ?? []);
     setLoading(false);
@@ -156,13 +157,10 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const confirmAutoClosed = async () => {
     setConfirming(true);
     try {
-      const res = await fetch("/api/jobs/check-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "confirm", job_ids: autoClosedJobs.map((j) => j.id) }),
+      const data = await apiSend<{ confirmed: number }>("/api/jobs/check-status", "POST", {
+        action: "confirm",
+        job_ids: autoClosedJobs.map((j) => j.id),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error();
       setImportMsg(`Saved — ${data.confirmed} job${data.confirmed === 1 ? " stays" : "s stay"} closed.`);
       fetchJobs();
     } catch {
@@ -175,12 +173,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const undoAutoClosed = async () => {
     setRestoring(true);
     try {
-      const res = await fetch("/api/jobs/check-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "undo" }),
-      });
-      const data = await res.json();
+      const data = await apiSend<{ restored?: number }>("/api/jobs/check-status", "POST", { action: "undo" });
       if (data.restored) {
         setImportMsg(`Successfully restored ${data.restored} job${data.restored === 1 ? "" : "s"} back to their active pipeline statuses.`);
         fetchJobs();
@@ -206,8 +199,9 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { checking: true } }));
     setImportMsg("");
     try {
-      const res = await fetch("/api/jobs/check-status", { method: "POST" });
-      const data: { checked?: number; closed?: number; closedJobs?: { company: string; title?: string; reason?: string }[] } = await res.json();
+      const data = await apiSend<{ checked?: number; closed?: number; closedJobs?: { company: string; title?: string; reason?: string }[] }>(
+        "/api/jobs/check-status", "POST",
+      );
       if (data.closed && data.closed > 0) {
         const names = data.closedJobs?.map((j) => `${j.company}${j.title ? ` — ${j.title}` : ""}`).join(", ") ?? "";
         setImportMsg(`Checked ${data.checked} jobs — ${data.closed} closed and marked${names ? `: ${names}` : ""}.`);
@@ -250,12 +244,25 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
 
   const toggleStar = async (job: JobRow) => {
     const newVal = job.is_starred ? 0 : 1;
-    await fetch(`/api/jobs/${job.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_starred: newVal }),
-    });
+    setActionError("");
+    try {
+      await apiSend(`/api/jobs/${job.id}`, "PATCH", { is_starred: newVal });
+    } catch (err) {
+      setActionError(errorMessage(err, "Could not update the star."));
+      return;
+    }
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, is_starred: newVal } : j));
+  };
+
+  const changeStatus = async (job: JobRow, status: string) => {
+    setActionError("");
+    try {
+      await apiSend(`/api/jobs/${job.id}`, "PATCH", { status });
+    } catch (err) {
+      setActionError(errorMessage(err, "Could not change the status."));
+      return;
+    }
+    fetchJobs();
   };
 
   const allColumns: TableColumn<JobRow & Record<string, unknown>>[] = [
@@ -307,14 +314,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           startIcon={<JobStatusDot status={job.status} />}
           options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
           value={job.status}
-          onChange={async (v) => {
-            await fetch(`/api/jobs/${job.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: v }),
-            });
-            fetchJobs();
-          }}
+          onChange={(v) => changeStatus(job, v)}
         />
       ),
     },
@@ -466,6 +466,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           )}
 
           {importMsg && <Banner status="info" title={importMsg} isDismissable onDismiss={() => setImportMsg("")} />}
+          {actionError && <Banner status="error" title={actionError} isDismissable onDismiss={() => setActionError("")} />}
         </Stack>
       </div>
 

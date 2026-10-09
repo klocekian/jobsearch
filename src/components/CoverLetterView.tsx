@@ -6,6 +6,7 @@ import { downloadCoverLetterPdf } from "@/lib/pdf/cover-letter";
 import { loadCoverLetter, saveCoverLetter } from "@/lib/storage";
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
+import { apiFetch, errorMessage, readTextStream } from "@/lib/api-client";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
@@ -62,7 +63,7 @@ export function CoverLetterView({
     setError("");
     setCopied(false);
     try {
-      const res = await fetch("/api/cover-letter", {
+      const res = await apiFetch("/api/cover-letter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -73,33 +74,11 @@ export function CoverLetterView({
           context: combinedContextText(materials),
         }),
       });
-      if (!res.ok) {
-        let errMsg = `Request failed (${res.status}).`;
-        try {
-          const d = await res.json();
-          if (d.error) errMsg = d.error;
-        } catch {
-          const t = await res.text().catch(() => "");
-          if (t) errMsg = t;
-        }
-        throw new Error(errMsg);
-      }
-
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("No readable stream received.");
-      const decoder = new TextDecoder();
-      let accumulated = "";
       setLetter("");
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        setLetter(accumulated);
-      }
+      await readTextStream(res, setLetter);
       setStatus("done");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(errorMessage(err, "Something went wrong."));
       setStatus("error");
     }
   };

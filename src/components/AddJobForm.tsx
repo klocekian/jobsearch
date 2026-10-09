@@ -7,6 +7,7 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Banner } from "@astryxdesign/core/Banner";
+import { apiSend, errorMessage } from "@/lib/api-client";
 
 const remoteOptions = [
   { value: "", label: "—" },
@@ -26,6 +27,7 @@ export function AddJobForm() {
   const [postingText, setPostingText] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [fetchStatus, setFetchStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
   const [fetchMsg, setFetchMsg] = useState("");
   const [extractStatus, setExtractStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
@@ -36,13 +38,9 @@ export function AddJobForm() {
     setFetchStatus("loading");
     setFetchMsg("");
     try {
-      const res = await fetch("/api/fetch-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
-      });
-      const data: { company?: string; jobTitle?: string; jobDescription?: string; error?: string } = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status}).`);
+      const data = await apiSend<{ company?: string; jobTitle?: string; jobDescription?: string }>(
+        "/api/fetch-job", "POST", { url: url.trim() },
+      );
       if (data.company) setCompany(data.company);
       if (data.jobTitle) setTitle(data.jobTitle);
       if (data.jobDescription) setPostingText(data.jobDescription);
@@ -50,7 +48,7 @@ export function AddJobForm() {
       setFetchMsg("Filled from posting — review and edit as needed.");
     } catch (err: unknown) {
       setFetchStatus("error");
-      setFetchMsg(err instanceof Error ? err.message : "Couldn't fetch. Paste the posting below instead.");
+      setFetchMsg(errorMessage(err, "Couldn't fetch. Paste the posting below instead."));
     }
   };
 
@@ -59,16 +57,10 @@ export function AddJobForm() {
     setExtractStatus("loading");
     setExtractMsg("");
     try {
-      const res = await fetch("/api/jobs/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: postingText.trim(), url: url.trim() || undefined }),
-      });
-      const data = await res.json() as {
+      const data = await apiSend<{
         company?: string; jobTitle?: string; location?: string;
-        remoteType?: string; salaryText?: string; jobDescription?: string; error?: string;
-      };
-      if (!res.ok) throw new Error(data.error ?? "Extraction failed.");
+        remoteType?: string; salaryText?: string; jobDescription?: string;
+      }>("/api/jobs/extract", "POST", { text: postingText.trim(), url: url.trim() || undefined });
       if (data.company && !company) setCompany(data.company);
       if (data.jobTitle && !title) setTitle(data.jobTitle);
       if (data.location && !location) setLocation(data.location);
@@ -79,32 +71,28 @@ export function AddJobForm() {
       setExtractMsg("Extracted — review the fields above.");
     } catch (err: unknown) {
       setExtractStatus("error");
-      setExtractMsg(err instanceof Error ? err.message : "Extraction failed.");
+      setExtractMsg(errorMessage(err, "Extraction failed."));
     }
   };
 
   const save = async () => {
     setSaving(true);
+    setSaveError("");
     try {
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company,
-          title,
-          url,
-          location,
-          remote_type: remoteType,
-          salary_text: salaryText,
-          posting_text: postingText,
-          notes,
-          source: url ? "url" : "manual",
-        }),
+      const data = await apiSend<{ job: { id: number }; merged?: boolean }>("/api/jobs", "POST", {
+        company,
+        title,
+        url,
+        location,
+        remote_type: remoteType,
+        salary_text: salaryText,
+        posting_text: postingText,
+        notes,
+        source: url ? "url" : "manual",
       });
-      const data: { job?: { id: number }; merged?: boolean; error?: string } = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to save.");
-      router.push(`/jobs/${data.job!.id}${data.merged ? "?merged=1" : ""}`);
-    } catch {
+      router.push(`/jobs/${data.job.id}${data.merged ? "?merged=1" : ""}`);
+    } catch (err: unknown) {
+      setSaveError(errorMessage(err, "Failed to save."));
       setSaving(false);
     }
   };
@@ -175,6 +163,8 @@ export function AddJobForm() {
         rows={3}
         placeholder="Any notes — who referred you, why you're interested, etc."
       />
+
+      {saveError && <Banner status="error" title={saveError} />}
 
       <div className="flex gap-3">
         <Button
