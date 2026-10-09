@@ -441,6 +441,7 @@ async function extractWithAI(data) {
   try {
     const res = await fetch(`${API_BASE}/api/jobs/extract`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: data.text, url: data.url }),
     });
@@ -488,6 +489,7 @@ $("form").addEventListener("submit", async (e) => {
   try {
     const res = await fetch(`${API_BASE}/api/jobs`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         company: $("company").value,

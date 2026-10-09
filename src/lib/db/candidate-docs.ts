@@ -1,4 +1,4 @@
-import { getDb } from "./index";
+import { getDb, ownedBy } from "./index";
 import type { Row } from "@libsql/client";
 
 /**
@@ -37,22 +37,20 @@ export async function getCandidateDoc(
   kind: CandidateDocKind,
 ): Promise<CandidateDocRow | undefined> {
   const db = await getDb();
-  const clause = userId != null ? "user_id = ?" : "user_id IS NULL";
-  const args = userId != null ? [userId, kind] : [kind];
+  const owner = ownedBy(userId);
   const result = await db.execute({
-    sql: `SELECT * FROM candidate_docs WHERE ${clause} AND kind = ? LIMIT 1`,
-    args,
+    sql: `SELECT * FROM candidate_docs WHERE ${owner.sql} AND kind = ? LIMIT 1`,
+    args: [...owner.args, kind],
   });
   return result.rows[0] ? rowToDoc(result.rows[0]) : undefined;
 }
 
 export async function listCandidateDocs(userId: number | null): Promise<CandidateDocRow[]> {
   const db = await getDb();
-  const clause = userId != null ? "user_id = ?" : "user_id IS NULL";
-  const args = userId != null ? [userId] : [];
+  const owner = ownedBy(userId);
   const result = await db.execute({
-    sql: `SELECT * FROM candidate_docs WHERE ${clause} ORDER BY kind`,
-    args,
+    sql: `SELECT * FROM candidate_docs WHERE ${owner.sql} ORDER BY kind`,
+    args: owner.args,
   });
   return result.rows.map(rowToDoc);
 }

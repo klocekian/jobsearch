@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { withUser } from "@/lib/api-auth";
 import {
   getCandidateProfiles,
   listCandidateDocs,
@@ -19,12 +19,11 @@ const UpdateSchema = z.object({
   gaps: z.string().max(MAX_DOC_CHARS).optional(),
 });
 
-export async function GET() {
-  const userId = await getCurrentUserId();
+export const GET = withUser(async (_request, userId) => {
   const [docs, profiles, defaultResume] = await Promise.all([
     listCandidateDocs(userId),
     getCandidateProfiles(userId),
-    getDefaultResume(),
+    getDefaultResume(userId),
   ]);
 
   const updatedAt = (kind: string) => docs.find((d) => d.kind === kind)?.updated_at ?? null;
@@ -41,10 +40,9 @@ export async function GET() {
       ? { name: defaultResume.name, updated_at: defaultResume.updated_at }
       : null,
   });
-}
+});
 
-export async function PUT(request: Request) {
-  const userId = await getCurrentUserId();
+export const PUT = withUser(async (request, userId) => {
   try {
     const body: unknown = await request.json();
     const data = UpdateSchema.parse(body);
@@ -66,4 +64,4 @@ export async function PUT(request: Request) {
     const message = err instanceof Error ? err.message : "Invalid request.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

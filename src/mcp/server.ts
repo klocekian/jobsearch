@@ -505,7 +505,7 @@ export function createJobsearchMcpServer(
       });
       if (save !== false) {
         await saveMatchRun(job, report, { name: resume.name, text: resume.content });
-        if (job.company) await addResumeTag(resume.id, job.company);
+        if (job.company) await addResumeTag(resume.id, userId, job.company);
       }
       return json({ job: `${job.company} — ${job.title}`, resume: resume.name, saved: save !== false, ...matchDigest(report) });
     }),

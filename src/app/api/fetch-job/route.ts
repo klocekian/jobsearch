@@ -3,6 +3,7 @@ import { lookup } from "node:dns/promises";
 import net from "node:net";
 import { generateStructured } from "@/lib/ai";
 import { z } from "zod";
+import { withUser } from "@/lib/api-auth";
 
 // Fetch a job posting by URL and extract company / title / description. Runs
 // server-side: the page fetch and the Anthropic key stay off the client.
@@ -164,7 +165,7 @@ const SYSTEM = [
   "Do not invent details. Only return what the page supports.",
 ].join("\n");
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request) => {
   let url: string;
   try {
     const body: unknown = await request.json();
@@ -225,4 +226,4 @@ export async function POST(request: Request) {
         : 502;
     return NextResponse.json({ error: message }, { status });
   }
-}
+});

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { streamText } from "@/lib/ai";
+import { withUser } from "@/lib/api-auth";
 
 // Cover letter generation. Runs server-side so API keys never
 // reach the browser. Grounds the letter in the resume + job posting and, when
@@ -54,7 +55,7 @@ function buildUserPrompt(input: z.infer<typeof RequestSchema>): string {
   ].join("\n");
 }
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request) => {
   let parsed: z.infer<typeof RequestSchema>;
   try {
     const body: unknown = await request.json();
@@ -87,4 +88,4 @@ export async function POST(request: Request) {
         : 502;
     return NextResponse.json({ error: message }, { status });
   }
-}
+});

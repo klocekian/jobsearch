@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { listJobs, createJob, findMatchingJob, mergeJob, type JobInsert } from "@/lib/db/jobs";
 import { normalizePostingText } from "@/lib/html-text";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -21,7 +21,7 @@ const CreateSchema = z.object({
   source: z.string().max(50).optional(),
 });
 
-export async function GET(request: Request) {
+export const GET = withUser(async (request, userId) => {
   const url = new URL(request.url);
   const sort = url.searchParams.get("sort") ?? undefined;
   const order = url.searchParams.get("order") as "asc" | "desc" | undefined;
@@ -29,14 +29,13 @@ export async function GET(request: Request) {
   const search = url.searchParams.get("search") ?? undefined;
   const starred = url.searchParams.get("starred") === "1";
 
-  const userId = await getCurrentUserId();
   const jobs = await listJobs(userId, { sort, order, status, search, starred: starred || undefined });
   return NextResponse.json({ jobs }, {
     headers: { "Cache-Control": "private, max-age=5, stale-while-revalidate=30" },
   });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request, userId) => {
   try {
     const body: unknown = await request.json();
     const data = CreateSchema.parse(body);
@@ -50,7 +49,6 @@ export async function POST(request: Request) {
       insert.posting_text = normalizePostingText(insert.posting_text);
     }
 
-    const userId = await getCurrentUserId();
     insert.user_id = userId;
     const existing = await findMatchingJob(userId, {
       company: data.company,
@@ -69,4 +67,4 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : "Invalid request.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

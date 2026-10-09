@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { getJob } from "@/lib/db/jobs";
 import { createSubmission } from "@/lib/db/submissions";
+import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function POST(request: Request, ctx: Params) {
+export const POST = withUser<Params>(async (request, userId, ctx) => {
   const { id } = await ctx.params;
-  const jobId = Number(id);
-  const job = await getJob(jobId);
+  const job = await getJob(Number(id), userId);
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   try {
@@ -20,7 +20,7 @@ export async function POST(request: Request, ctx: Params) {
       content?: string;
     };
     const submission = await createSubmission({
-      job_id: jobId,
+      job_id: job.id,
       type: body.type ?? "other",
       label: body.label ?? "Untitled",
       format: body.format ?? "txt",
@@ -31,4 +31,4 @@ export async function POST(request: Request, ctx: Params) {
     const message = err instanceof Error ? err.message : "Invalid request.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

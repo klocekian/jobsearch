@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "@/lib/auth";
-import { bumpMcpOauthEpoch } from "@/lib/db/users";
+import { withUser } from "@/lib/api-auth";
+import { bumpMcpOauthEpoch, getUserById } from "@/lib/db/users";
 import { createApiToken, listApiTokens, revokeApiToken } from "@/lib/db/api-tokens";
 import { mcpResourceUrl, publicOrigin } from "@/lib/mcp-oauth";
 
@@ -16,35 +16,31 @@ const ActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("disconnect_clients") }),
 ]);
 
-export async function GET(request: Request) {
-  const user = await getSession().catch(() => null);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const GET = withUser(async (request, userId) => {
+  const [user, tokens] = await Promise.all([getUserById(userId), listApiTokens(userId)]);
   return NextResponse.json({
     url: mcpResourceUrl(publicOrigin(request)),
-    last_used_at: user.mcp_last_used_at ?? null,
-    tokens: await listApiTokens(user.id),
+    last_used_at: user?.mcp_last_used_at ?? null,
+    tokens,
   });
-}
+});
 
-export async function POST(request: Request) {
-  const user = await getSession().catch(() => null);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+export const POST = withUser(async (request, userId) => {
   const parsed = ActionSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   const body = parsed.data;
 
   switch (body.action) {
     case "create_token": {
-      const { token, row } = await createApiToken(user.id, body.label);
+      const { token, row } = await createApiToken(userId, body.label);
       return NextResponse.json({ token, row }, { status: 201 });
     }
     case "revoke_token": {
-      const ok = await revokeApiToken(user.id, body.id);
+      const ok = await revokeApiToken(userId, body.id);
       return ok ? NextResponse.json({ ok }) : NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     case "disconnect_clients":
-      await bumpMcpOauthEpoch(user.id);
+      await bumpMcpOauthEpoch(userId);
       return NextResponse.json({ ok: true });
   }
-}
+});

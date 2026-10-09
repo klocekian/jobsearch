@@ -1,4 +1,4 @@
-import { createClient, type Client } from "@libsql/client";
+import { createClient, type Client, type InValue } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -192,4 +192,13 @@ export async function getDb(): Promise<Client> {
 
   _initialized = true;
   return client;
+}
+
+/**
+ * The ownership condition for a user's rows. `null` is the single-user local
+ * database the stdio MCP server can run against, where rows have no owner.
+ * HTTP routes always pass a real id (see withUser in lib/api-auth.ts).
+ */
+export function ownedBy(userId: number | null): { sql: string; args: InValue[] } {
+  return userId != null ? { sql: "user_id = ?", args: [userId] } : { sql: "user_id IS NULL", args: [] };
 }

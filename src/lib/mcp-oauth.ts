@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { sessionSecret } from "./secret";
 
 /**
  * OAuth 2.1 for the MCP endpoint, the shape Claude and ChatGPT connectors and
@@ -15,9 +16,12 @@ import crypto from "node:crypto";
  *    "Disconnect all apps" in settings revokes everything issued so far.
  */
 
-const SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
 // Derived, so an MCP token can never verify as a session cookie or vice versa.
-const KEY = crypto.createHmac("sha256", SECRET).update("jobsearch-mcp-oauth").digest();
+// Computed on first use so importing this module never needs the secret.
+let _key: Buffer | null = null;
+function key(): Buffer {
+  return (_key ??= crypto.createHmac("sha256", sessionSecret()).update("jobsearch-mcp-oauth").digest());
+}
 
 export const ACCESS_TOKEN_TTL = 60 * 60; // 1 hour
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30; // 30 days
@@ -31,7 +35,7 @@ function b64(data: string | Buffer): string {
 }
 
 function mac(kind: TokenKind, body: string): string {
-  return crypto.createHmac("sha256", KEY).update(`${kind}.${body}`).digest("base64url");
+  return crypto.createHmac("sha256", key()).update(`${kind}.${body}`).digest("base64url");
 }
 
 function sign(kind: TokenKind, payload: object): string {

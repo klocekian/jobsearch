@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createJob, listJobs } from "@/lib/db/jobs";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -76,7 +76,7 @@ function extractSheetExportUrl(input: string): string {
   return `https://docs.google.com/spreadsheets/d/${trimmed}/export?format=csv&gid=0`;
 }
 
-export async function POST(req: Request) {
+export const POST = withUser(async (req, userId) => {
   try {
     let bodyJson: { sheetUrl?: string; csvText?: string } = {};
     try {
@@ -121,7 +121,6 @@ export async function POST(req: Request) {
     if (urlIdx === -1) urlIdx = 7;
     if (textIdx === -1) textIdx = 8;
 
-    const userId = await getCurrentUserId();
     const existing = await listJobs(userId);
     const existingKeys = new Set(existing.map((j) => `${j.company.toLowerCase()}|${j.title.toLowerCase()}`));
 
@@ -166,4 +165,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
+});

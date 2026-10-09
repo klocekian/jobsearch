@@ -1,4 +1,4 @@
-import { getDb } from "./index";
+import { getDb, ownedBy } from "./index";
 import type { Row, InValue } from "@libsql/client";
 import { looksLikeHtml } from "../html-text";
 
@@ -72,15 +72,9 @@ export async function listJobs(userId: number | null, opts?: {
   const sortCol = allowedSorts[opts?.sort ?? ""] ?? "created_at";
   const order = opts?.order === "asc" ? "ASC" : "DESC";
 
-  const conditions: string[] = [];
-  const params: InValue[] = [];
-
-  if (userId != null) {
-    conditions.push("user_id = ?");
-    params.push(userId);
-  } else {
-    conditions.push("user_id IS NULL");
-  }
+  const owner = ownedBy(userId);
+  const conditions: string[] = [owner.sql];
+  const params: InValue[] = [...owner.args];
 
   if (opts?.status) {
     conditions.push("status = ?");
@@ -102,16 +96,14 @@ export async function listJobs(userId: number | null, opts?: {
   return result.rows.map(rowToJob);
 }
 
-export async function getJob(id: number, userId?: number | null): Promise<JobRow | undefined> {
+/**
+ * The one way to load a job by id, and so the ownership check: updateJob and
+ * deleteJob take an id, so callers load through here first and pass job.id on.
+ */
+export async function getJob(id: number, userId: number | null): Promise<JobRow | undefined> {
   const db = await getDb();
-  if (userId !== undefined) {
-    const result = await db.execute({
-      sql: userId != null ? "SELECT * FROM jobs WHERE id = ? AND user_id = ?" : "SELECT * FROM jobs WHERE id = ? AND user_id IS NULL",
-      args: userId != null ? [id, userId] : [id],
-    });
-    return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
-  }
-  const result = await db.execute({ sql: "SELECT * FROM jobs WHERE id = ?", args: [id] });
+  const owner = ownedBy(userId);
+  const result = await db.execute({ sql: `SELECT * FROM jobs WHERE id = ? AND ${owner.sql}`, args: [id, ...owner.args] });
   return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
@@ -140,7 +132,10 @@ export async function createJob(data: JobInsert): Promise<JobRow> {
 export async function updateJob(id: number, data: JobUpdate): Promise<JobRow | undefined> {
   const db = await getDb();
   const fields = Object.keys(data).filter((k) => (data as Record<string, unknown>)[k] !== undefined);
-  if (fields.length === 0) return getJob(id);
+  if (fields.length === 0) {
+    const result = await db.execute({ sql: "SELECT * FROM jobs WHERE id = ?", args: [id] });
+    return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
+  }
 
   const sets = fields.map((k) => `${k} = ?`).join(", ");
   const values = fields.map((k) => (data as Record<string, unknown>)[k] as InValue);
@@ -175,20 +170,19 @@ export function statusChangeUpdates(
 
 export async function findMatchingJob(userId: number | null, data: { company?: string; title?: string; url?: string }): Promise<JobRow | undefined> {
   const db = await getDb();
-  const userClause = userId != null ? "user_id = ?" : "user_id IS NULL";
-  const userArg = userId != null ? [userId] : [];
+  const owner = ownedBy(userId);
 
   if (data.url) {
     const result = await db.execute({
-      sql: `SELECT * FROM jobs WHERE url != '' AND url = ? AND ${userClause}`,
-      args: [data.url, ...userArg] as InValue[],
+      sql: `SELECT * FROM jobs WHERE url != '' AND url = ? AND ${owner.sql}`,
+      args: [data.url, ...owner.args],
     });
     if (result.rows[0]) return rowToJob(result.rows[0]);
   }
   if (data.company && data.title) {
     const result = await db.execute({
-      sql: `SELECT * FROM jobs WHERE LOWER(company) = LOWER(?) AND LOWER(title) = LOWER(?) AND ${userClause}`,
-      args: [data.company, data.title, ...userArg] as InValue[],
+      sql: `SELECT * FROM jobs WHERE LOWER(company) = LOWER(?) AND LOWER(title) = LOWER(?) AND ${owner.sql}`,
+      args: [data.company, data.title, ...owner.args],
     });
     if (result.rows[0]) return rowToJob(result.rows[0]);
   }
@@ -241,14 +235,23 @@ export async function claimUnownedJobs(userId: number): Promise<number> {
 export async function confirmClosedJobs(userId: number | null, ids: number[]): Promise<number> {
   if (ids.length === 0) return 0;
   const db = await getDb();
-  // Signed out means only unowned rows — never fall through to every user's jobs.
-  const userClause = userId != null ? "AND user_id = ?" : "AND user_id IS NULL";
-  const userArgs: InValue[] = userId != null ? [userId] : [];
+  const owner = ownedBy(userId);
   const result = await db.execute({
-    sql: `UPDATE jobs SET previous_status = NULL, updated_at = datetime('now') WHERE status = 'closed' AND id IN (${ids.map(() => "?").join(", ")}) ${userClause}`,
-    args: [...ids, ...userArgs],
+    sql: `UPDATE jobs SET previous_status = NULL, updated_at = datetime('now') WHERE status = 'closed' AND id IN (${ids.map(() => "?").join(", ")}) AND ${owner.sql}`,
+    args: [...ids, ...owner.args],
   });
   return result.rowsAffected;
+}
+
+/** Jobs auto-closed by the status check that still remember the status they left. */
+export async function listRestorableJobs(userId: number | null): Promise<Pick<JobRow, "id" | "company" | "title" | "previous_status">[]> {
+  const db = await getDb();
+  const owner = ownedBy(userId);
+  const result = await db.execute({
+    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' AND ${owner.sql}`,
+    args: owner.args,
+  });
+  return result.rows.map((row) => ({ ...row }) as unknown as Pick<JobRow, "id" | "company" | "title" | "previous_status">);
 }
 
 export async function restoreClosedJobs(userId: number | null): Promise<{
@@ -256,17 +259,11 @@ export async function restoreClosedJobs(userId: number | null): Promise<{
   restoredJobs: { id: number; company: string; title: string; restoredTo: string }[];
 }> {
   const db = await getDb();
-  const userClause = userId != null ? "AND user_id = ?" : "";
-  const userArgs: InValue[] = userId != null ? [userId] : [];
-
-  const candidates = await db.execute({
-    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' ${userClause}`,
-    args: userArgs,
-  });
+  const candidates = await listRestorableJobs(userId);
 
   const restoredJobs: { id: number; company: string; title: string; restoredTo: string }[] = [];
 
-  for (const row of candidates.rows) {
+  for (const row of candidates) {
     const id = Number(row.id);
     const restoredTo = String(row.previous_status);
     await db.execute({

@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withUser } from "@/lib/api-auth";
+import { getUserById } from "@/lib/db/users";
 import { getUserAIProviders, upsertUserAIProvider } from "@/lib/db/ai-providers";
 import { AI_PROVIDERS, type AIProviderId, testProviderKey } from "@/lib/ai";
 
-export async function GET() {
-  const user = await getSession().catch(() => null);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const stored = await getUserAIProviders(user.id);
+export const GET = withUser(async (_request, userId) => {
+  const [user, stored] = await Promise.all([getUserById(userId), getUserAIProviders(userId)]);
   const storedMap = new Map(stored.map((p) => [p.provider, p]));
 
   // If user has legacy anthropic_token and no claude row yet, include it
-  if (user.anthropic_token && !storedMap.has("claude")) {
+  if (user?.anthropic_token && !storedMap.has("claude")) {
     storedMap.set("claude", {
       id: 0,
-      user_id: user.id,
+      user_id: userId,
       provider: "claude",
       api_key: user.anthropic_token,
       model: AI_PROVIDERS.claude.defaultModel,
@@ -53,14 +49,9 @@ export async function GET() {
   });
 
   return NextResponse.json({ providers });
-}
+});
 
-export async function POST(request: Request) {
-  const user = await getSession().catch(() => null);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export const POST = withUser(async (request, userId) => {
   try {
     const body = await request.json();
     const { provider, apiKey, model, isActive } = body as {
@@ -90,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     await upsertUserAIProvider({
-      userId: user.id,
+      userId,
       provider,
       apiKey: trimmedKey,
       model: model || AI_PROVIDERS[provider].defaultModel,
@@ -102,4 +93,4 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : "Failed to save AI provider";
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

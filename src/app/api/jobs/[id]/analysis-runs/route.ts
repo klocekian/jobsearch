@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { withUser } from "@/lib/api-auth";
 import { getJob } from "@/lib/db/jobs";
 import { listAnalysisRuns, saveMatchRun } from "@/lib/db/analysis-runs";
 import type { MatchReport } from "@/lib/analysis/types";
@@ -10,16 +10,16 @@ export const runtime = "nodejs";
 type Params = { params: Promise<{ id: string }> };
 
 /** Run history for a job: fitness and match runs, most recent first, without the reports. */
-export async function GET(_request: Request, ctx: Params) {
+export const GET = withUser<Params>(async (_request, userId, ctx) => {
   const { id } = await ctx.params;
-  const job = await getJob(Number(id), await getCurrentUserId());
+  const job = await getJob(Number(id), userId);
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const runs = await listAnalysisRuns(job.id);
   return NextResponse.json({
     fitness: runs.filter((r) => r.kind === "fitness"),
     match: runs.filter((r) => r.kind === "match"),
   });
-}
+});
 
 // The ATS match runs in the browser; this records the result. Fitness runs are
 // recorded by /api/fitness-check itself.
@@ -30,9 +30,9 @@ const MatchRunSchema = z.object({
   resume_text: z.string(),
 });
 
-export async function POST(request: Request, ctx: Params) {
+export const POST = withUser<Params>(async (request, userId, ctx) => {
   const { id } = await ctx.params;
-  const job = await getJob(Number(id), await getCurrentUserId());
+  const job = await getJob(Number(id), userId);
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
     const body = MatchRunSchema.parse(await request.json());
@@ -45,4 +45,4 @@ export async function POST(request: Request, ctx: Params) {
     const message = err instanceof Error ? err.message : "Invalid request.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
-}
+});

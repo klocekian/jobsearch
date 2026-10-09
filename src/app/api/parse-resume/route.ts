@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateStructured } from "@/lib/ai";
+import { withUser } from "@/lib/api-auth";
 
 // Structure raw resume text into editable fields. Resume parsing by regex is
 // brittle across formats (LinkedIn's grouped companies, two-column layouts,
@@ -66,7 +67,7 @@ const SYSTEM = [
   "- Ignore page footers like 'Page 1 of 5'.",
 ].join("\n");
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request) => {
   let resumeText: string;
   try {
     const body: unknown = await request.json();
@@ -90,4 +91,4 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : "Failed to parse the resume.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
-}
+});

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateStructured } from "@/lib/ai";
 import { z } from "zod";
+import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -30,7 +31,7 @@ const SYSTEM = [
   "Do not invent details. Only return what the text supports.",
 ].join("\n");
 
-export async function POST(request: Request) {
+export const POST = withUser(async (request) => {
   let text: string;
   let url: string | undefined;
   try {
@@ -76,4 +77,4 @@ export async function POST(request: Request) {
         : 502;
     return NextResponse.json({ error: message }, { status });
   }
-}
+});

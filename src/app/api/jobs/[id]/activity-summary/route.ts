@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserId } from "@/lib/api-auth";
+import { withUser } from "@/lib/api-auth";
 import { getJob, updateJob } from "@/lib/db/jobs";
 import { listSubmissions } from "@/lib/db/submissions";
 import { generateStructured } from "@/lib/ai";
@@ -16,9 +16,8 @@ export const maxDuration = 60;
 type Params = { params: Promise<{ id: string }> };
 
 /** Write the job's activity banner from its notes and signals with the user's AI provider. */
-export async function POST(_request: Request, ctx: Params) {
+export const POST = withUser<Params>(async (_request, userId, ctx) => {
   const { id } = await ctx.params;
-  const userId = await getCurrentUserId();
   const job = await getJob(Number(id), userId);
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -37,14 +36,13 @@ export async function POST(_request: Request, ctx: Params) {
     const message = err instanceof Error ? err.message : "Could not summarize this job.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
-}
+});
 
 /** Clear the stored summary so the banner falls back to what the notes say. */
-export async function DELETE(_request: Request, ctx: Params) {
+export const DELETE = withUser<Params>(async (_request, userId, ctx) => {
   const { id } = await ctx.params;
-  const userId = await getCurrentUserId();
   const job = await getJob(Number(id), userId);
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const updated = await updateJob(job.id, { activity_summary: null });
   return NextResponse.json({ job: updated });
-}
+});
