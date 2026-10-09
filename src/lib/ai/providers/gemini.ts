@@ -177,12 +177,20 @@ export async function generateGeminiStructured<T>(
   const model = options.model || AI_PROVIDERS.gemini.defaultModel;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+  const jsonSchema = typeof (options.schema as { toJSONSchema?: () => unknown }).toJSONSchema === "function"
+    ? (options.schema as { toJSONSchema: () => unknown }).toJSONSchema()
+    : null;
+
+  const schemaInstruction = jsonSchema
+    ? `\n\nREQUIRED JSON SCHEMA:\nYou MUST format your response as a valid JSON object strictly matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n`
+    : "";
+
   const systemInstructions = (options.system ? options.system + "\n\n" : "") +
-    "IMPORTANT: You MUST respond ONLY with a single raw, valid JSON object matching the required schema. Do not enclose in markdown code blocks. Do not add conversational text.";
+    `IMPORTANT: You MUST respond ONLY with a single raw, valid JSON object matching the required schema. Do not enclose in markdown code blocks. Do not add conversational text.${schemaInstruction}`;
 
   const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [
     { role: "user", parts: [{ text: systemInstructions }] },
-    { role: "model", parts: [{ text: "Understood. I will respond with valid JSON only." }] },
+    { role: "model", parts: [{ text: "Understood. I will respond with valid JSON matching the schema." }] },
     { role: "user", parts: [{ text: options.prompt }] },
   ];
 
@@ -190,7 +198,7 @@ export async function generateGeminiStructured<T>(
     contents,
     generationConfig: {
       responseMimeType: "application/json",
-      maxOutputTokens: options.maxTokens ?? 4096,
+      maxOutputTokens: options.maxTokens ?? 8192,
     },
   };
 

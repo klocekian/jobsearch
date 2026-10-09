@@ -94,10 +94,11 @@ Rules, in priority order:
    spectrum (best case, worst case, probable middle) and tradeoffs of pursuing stated as gained and
    lost. Never label the pursuit simply good or bad.
 
-11. NEVER EVALUATE ORGANIZATIONAL OR LEGAL BOILERPLATE.
-    Do NOT score or extract Equal Opportunity Employer (EEO) statements, Pay Transparency Disclosures,
-    compensation/benefits lists, company intro/culture background, accommodation notices, background
-    check policies, or recruiter notices as requirements.
+11. NEVER EVALUATE APPLICATION FORM FIELDS, DEMOGRAPHIC SURVEYS, OR LEGAL BOILERPLATE.
+    Do NOT score or extract application inputs (e.g. 'Enter your first name', 'Accepted file types: pdf, docx',
+    'LinkedIn Profile', 'How did you hear about this job', 'Please provide the name of your current company',
+    'Voluntary Self-Identification', 'Government reporting survey', 'Completion of form is voluntary',
+    'Pay Transparency', EEO statements, benefits/compensation summaries, accommodation notices).
     Evaluate ONLY candidate-facing job requirements (skills, technical competencies, experience,
     disciplines, scope of ownership, and deliverables).`;
 

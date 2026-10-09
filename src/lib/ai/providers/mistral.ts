@@ -247,8 +247,16 @@ export async function generateMistralStructured<T>(
   const initialModel = options.model || AI_PROVIDERS.mistral.defaultModel;
   const maxTokens = Math.min(options.maxTokens ?? 8192, 8192);
 
+  const jsonSchema = typeof (options.schema as { toJSONSchema?: () => unknown }).toJSONSchema === "function"
+    ? (options.schema as { toJSONSchema: () => unknown }).toJSONSchema()
+    : null;
+
+  const schemaInstruction = jsonSchema
+    ? `\n\nREQUIRED JSON SCHEMA:\nYou MUST format your response as a valid JSON object strictly matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n`
+    : "";
+
   const systemPrompt = (options.system ? options.system + "\n\n" : "") +
-    "You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema. Keep descriptions and notes concise.";
+    `You MUST output valid JSON only. Respond exclusively with a valid JSON object matching the requested schema. Do not include markdown code blocks or preamble.${schemaInstruction}`;
 
   const messages: Array<{ role: "system" | "user"; content: string }> = [
     { role: "system", content: systemPrompt },
