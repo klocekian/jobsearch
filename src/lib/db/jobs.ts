@@ -1,6 +1,5 @@
 import { getDb, ownedBy } from "./index";
 import type { Row, InValue } from "@libsql/client";
-import { looksLikeHtml } from "../html-text";
 
 export interface JobRow {
   id: number;
@@ -144,30 +143,6 @@ export async function updateJob(id: number, data: JobUpdate): Promise<JobRow | u
   return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
-const TERMINAL_STATUSES = new Set(["rejected", "declined", "withdrawn", "abandoned", "closed"]);
-
-/**
- * Fields that ride along with a status change: moving to "applied" stamps
- * applied_at (unless the caller supplied one), and moving into a terminal
- * status remembers the live status it left so the job can be restored later.
- */
-export function statusChangeUpdates(
-  next: string,
-  currentStatus: string | undefined,
-  opts?: { appliedAtGiven?: boolean },
-): JobUpdate {
-  const updates: JobUpdate = {};
-  if (next === "applied" && !opts?.appliedAtGiven) {
-    updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-  }
-  if (TERMINAL_STATUSES.has(next)) {
-    if (currentStatus && !TERMINAL_STATUSES.has(currentStatus)) updates.previous_status = currentStatus;
-  } else {
-    updates.previous_status = null;
-  }
-  return updates;
-}
-
 export async function findMatchingJob(userId: number | null, data: { company?: string; title?: string; url?: string }): Promise<JobRow | undefined> {
   const db = await getDb();
   const owner = ownedBy(userId);
@@ -187,33 +162,6 @@ export async function findMatchingJob(userId: number | null, data: { company?: s
     if (result.rows[0]) return rowToJob(result.rows[0]);
   }
   return undefined;
-}
-
-export async function mergeJob(existing: JobRow, incoming: JobInsert): Promise<JobRow> {
-  const updates: Record<string, unknown> = {};
-  const mergeable: (keyof JobInsert)[] = [
-    "location", "remote_type", "salary_text", "salary_min", "salary_max",
-    "posting_text", "url",
-  ];
-  for (const key of mergeable) {
-    const newVal = incoming[key];
-    if (!newVal) continue;
-    const oldVal = existing[key as keyof JobRow];
-
-    // posting_text is judged on quality, not just length. Incoming text is
-    // normalized on write, so a clean capture is usually SHORTER than a stored
-    // one full of markup — under the longer-wins rule below, re-clipping could
-    // never repair a job whose text came in as HTML.
-    if (key === "posting_text" && typeof oldVal === "string" && looksLikeHtml(oldVal)) {
-      updates[key] = newVal;
-      continue;
-    }
-    if (!oldVal || (typeof oldVal === "string" && oldVal.length < (newVal as string).length)) {
-      updates[key] = newVal;
-    }
-  }
-  if (Object.keys(updates).length === 0) return existing;
-  return (await updateJob(existing.id, updates))!;
 }
 
 export async function deleteJob(id: number): Promise<boolean> {

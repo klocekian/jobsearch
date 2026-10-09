@@ -33,12 +33,30 @@ Plus two more tabs:
   support. Generation runs server-side via `POST /api/cover-letter`, so the API key never reaches
   the browser.
 
+## Tests
+
+```
+pnpm typecheck && pnpm lint
+pnpm test:unit     # AI layer against faked provider responses (no keys needed)
+pnpm build && pnpm test:http   # API + MCP against `next start` on a throwaway SQLite file
+```
+
+`tests/http` covers sign-in and per-user ownership on every route, the shared job rules through
+both the API and the MCP endpoint, and the server-AI-key allowlist. CI
+(`.github/workflows/ci.yml`) runs all of it on every pull request.
+
 ## Architecture
 
 The analysis engine is pure, deterministic TypeScript with no external API
 dependencies — it runs entirely in the browser, so analysis works out of the box.
 Only the **Cover Letter** tab calls an LLM, through a server-side route that reads
 `ANTHROPIC_API_KEY` from the environment (set it in your shell or `.env.local`).
+
+Users normally connect their own AI provider under Profile → AI. The server's own keys
+(`ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`, `GEMINI_API_KEY`, `GROK_API_KEY`,
+`MISTRAL_API_KEY`) are a fallback billed to whoever runs the server, so in production only the
+emails listed in `SERVER_AI_EMAILS` (comma-separated) may use them. Leave it unset locally and
+every signed-in user gets the fallback.
 
 ```
 src/lib/analysis/

@@ -1,27 +1,22 @@
 import { NextResponse } from "next/server";
 import { lookup } from "node:dns/promises";
 import net from "node:net";
-import { generateStructured } from "@/lib/ai";
 import { z } from "zod";
 import { withUser } from "@/lib/api-auth";
+import { aiErrorResponse, parseBody } from "@/lib/api-response";
+import { extractJobPosting } from "@/lib/job-extraction";
 
 // Fetch a job posting by URL and extract company / title / description. Runs
 // server-side: the page fetch and the Anthropic key stay off the client.
 //
 // Because the URL is user-supplied, we guard against SSRF (block private /
 // loopback / link-local targets), cap the response size and time, then hand the
-// cleaned text (plus any embedded JobPosting JSON-LD) to Claude for extraction.
+// cleaned text (plus any embedded JobPosting JSON-LD) to the AI for extraction.
 
 export const runtime = "nodejs";
 
 const RequestSchema = z.object({
   url: z.string().url().max(2000),
-});
-
-const ResultSchema = z.object({
-  company: z.string(),
-  jobTitle: z.string(),
-  jobDescription: z.string(),
 });
 
 const MAX_BYTES = 2_000_000; // ~2 MB cap on the fetched page
@@ -156,24 +151,10 @@ function htmlToText(html: string): string {
     .slice(0, MAX_TEXT);
 }
 
-const SYSTEM = [
-  "You extract structured job-posting details from a fetched web page.",
-  "Return the hiring company name, the job title, and the full job description as plain text.",
-  "jobDescription should include the substance of the posting: summary, responsibilities, requirements/qualifications, and any 'about the role' content, as readable plain text (no HTML, no markdown).",
-  "Use the JSON-LD JobPosting data when present; otherwise extract from the page text.",
-  "If the page is a login wall, a bot/captcha block, a job-search listing rather than a single posting, or otherwise not a single job posting, return empty strings for all three fields.",
-  "Do not invent details. Only return what the page supports.",
-].join("\n");
-
-export const POST = withUser(async (request) => {
-  let url: string;
-  try {
-    const body: unknown = await request.json();
-    url = RequestSchema.parse(body).url;
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Invalid request body.";
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+export const POST = withUser(async (request, userId) => {
+  const body = await parseBody(request, RequestSchema);
+  if (body.error) return body.error;
+  const { url } = body.data;
 
   let html: string;
   try {
@@ -194,22 +175,8 @@ export const POST = withUser(async (request) => {
   }
 
   try {
-    const userContent = [
-      jsonLd ? `=== JSON-LD JobPosting ===\n${jsonLd}\n` : "",
-      `=== PAGE TEXT ===\n${text}`,
-      "",
-      "Extract the company, job title, and full job description.",
-    ].join("\n");
-
-    const { data: result } = await generateStructured({
-      system: SYSTEM,
-      prompt: userContent,
-      schema: ResultSchema,
-      schemaName: "FetchJobResult",
-      maxTokens: 4096,
-    });
-
-    if (!result || (!result.jobTitle.trim() && !result.jobDescription.trim())) {
+    const result = await extractJobPosting(userId, { text, jsonLd });
+    if (!result) {
       return NextResponse.json(
         { error: "Couldn't find a job posting at that URL. Paste the description instead." },
         { status: 422 }
@@ -217,13 +184,6 @@ export const POST = withUser(async (request) => {
     }
     return NextResponse.json(result);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to extract the posting.";
-    const status =
-      message.includes("not connected") || message.includes("authentication failed") || message.includes("401")
-        ? 401
-        : message.includes("rate limit") || message.includes("429")
-        ? 429
-        : 502;
-    return NextResponse.json({ error: message }, { status });
+    return aiErrorResponse(err, "Failed to extract the posting.");
   }
 });

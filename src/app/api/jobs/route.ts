@@ -1,25 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { listJobs, createJob, findMatchingJob, mergeJob, type JobInsert } from "@/lib/db/jobs";
-import { normalizePostingText } from "@/lib/html-text";
+import { listJobs } from "@/lib/db/jobs";
+import { addJob, JobFieldsSchema } from "@/lib/services/jobs";
 import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
-const CreateSchema = z.object({
-  company: z.string().max(500).optional(),
-  title: z.string().max(500).optional(),
-  url: z.string().max(2000).optional(),
-  location: z.string().max(500).optional(),
-  remote_type: z.string().max(50).optional(),
-  salary_min: z.number().int().nullable().optional(),
-  salary_max: z.number().int().nullable().optional(),
-  salary_text: z.string().max(500).optional(),
-  status: z.string().max(50).optional(),
-  posting_text: z.string().optional(),
-  notes: z.string().optional(),
-  source: z.string().max(50).optional(),
-});
+const CreateSchema = JobFieldsSchema.extend({ source: z.string().max(50).optional() });
 
 export const GET = withUser(async (request, userId) => {
   const url = new URL(request.url);
@@ -37,32 +24,9 @@ export const GET = withUser(async (request, userId) => {
 
 export const POST = withUser(async (request, userId) => {
   try {
-    const body: unknown = await request.json();
-    const data = CreateSchema.parse(body);
-    const insert: JobInsert = {};
-    for (const [k, v] of Object.entries(data)) {
-      if (v !== undefined) (insert as Record<string, unknown>)[k] = v;
-    }
-    // Same normalization as PATCH — the extension, /api/fetch-job and
-    // /api/jobs/extract can each let rich-text markup through.
-    if (typeof insert.posting_text === "string") {
-      insert.posting_text = normalizePostingText(insert.posting_text);
-    }
-
-    insert.user_id = userId;
-    const existing = await findMatchingJob(userId, {
-      company: data.company,
-      title: data.title,
-      url: data.url,
-    });
-
-    if (existing) {
-      const job = await mergeJob(existing, insert);
-      return NextResponse.json({ job, merged: true }, { status: 200 });
-    }
-
-    const job = await createJob(insert);
-    return NextResponse.json({ job, merged: false }, { status: 201 });
+    const data = CreateSchema.parse(await request.json());
+    const { job, merged } = await addJob(userId, data);
+    return NextResponse.json({ job, merged }, { status: merged ? 200 : 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Invalid request.";
     return NextResponse.json({ error: message }, { status: 400 });
