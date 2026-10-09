@@ -29,6 +29,7 @@ import {
   saveAiDetection,
 } from "@/lib/storage";
 import { buildPackageMarkdown } from "@/lib/package";
+import { readResumeFile } from "@/lib/extract";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 import { Button } from "@astryxdesign/core/Button";
@@ -83,6 +84,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   // Resume / Analysis state
   const [savedResumes, setSavedResumes] = useState<SavedResume[]>([]);
   const [resumeText, setResumeText] = useState("");
+  const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
   const [userAnalysis, setUserAnalysis] = useState<{ report: MatchReport; resumeText: string; jobText: string } | null>(null);
 
   // Derived match report (from user trigger or stored in job row)
@@ -691,15 +693,18 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
+          e.target.value = "";
+          setResumeUploadError(null);
           let text = "";
-          if (file.type === "application/pdf") {
-            const { extractFileText } = await import("@/lib/extract");
-            const res = await extractFileText(file);
-            text = res.text;
-          } else {
-            text = await file.text();
+          let name = "";
+          try {
+            const read = await readResumeFile(file);
+            text = read.text;
+            name = read.name.replace(/[^a-zA-Z0-9]/g, "_");
+          } catch (err) {
+            setResumeUploadError(err instanceof Error ? err.message : `Couldn't read ${file.name}.`);
+            return;
           }
-          const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_");
           const res = await fetch("/api/resumes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -710,7 +715,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             setSavedResumes(prev => [...prev, d.resume]);
             setResumeText(text);
           }
-          e.target.value = "";
         }}
       />
     </div>
@@ -874,6 +878,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                   />
                 </div>
               </div>
+
+              {resumeUploadError && <Banner status="error" title={resumeUploadError} />}
 
               {runs.match.length > 0 && (
                 <RunHistory

@@ -11,6 +11,8 @@ import { Switch } from "@astryxdesign/core/Switch";
 import { Text } from "@astryxdesign/core/Text";
 import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
+import { Banner } from "@astryxdesign/core/Banner";
+import { readResumeFile } from "@/lib/extract";
 import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { AIProvidersPanel } from "./AIProvidersPanel";
 import { McpConnectPanel } from "./McpConnectPanel";
@@ -45,6 +47,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
   const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes" | "candidate">("account");
@@ -78,14 +81,14 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
     setName?: (s: string) => void,
   ) => {
     if (!file) return;
-    if (file.type === "application/pdf") {
-      const { extractFileText } = await import("@/lib/extract");
-      const { text } = await extractFileText(file);
+    setFileError(null);
+    try {
+      const { text, name } = await readResumeFile(file);
       setContent(text);
-    } else {
-      setContent(await file.text());
+      if (setName && !newName) setName(name);
+    } catch (err) {
+      setFileError(err instanceof Error ? err.message : `Couldn't read ${file.name}.`);
     }
-    if (setName && !newName) setName(file.name.replace(/\.[^.]+$/, ""));
   };
 
   const saveNew = async () => {
@@ -236,9 +239,10 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                 </div>
                 <TextArea label="Content" isLabelHidden value={newContent} onChange={setNewContent} placeholder="Paste your resume text, or upload a file above." rows={10} />
               </div>
+              {fileError && <div className="mb-3"><Banner status="error" title={fileError} /></div>}
               <HStack gap={2}>
                 <Button label={saving ? "Saving…" : "Save Resume"} variant="primary" onClick={saveNew} isDisabled={!newContent.trim() || saving} />
-                <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); }} />
+                <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); setFileError(null); }} />
               </HStack>
             </div>
           )}
@@ -267,9 +271,10 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                         </div>
                         <TextArea label="Content" isLabelHidden value={editContent} onChange={setEditContent} rows={10} />
                       </div>
+                      {fileError && <div className="mb-3"><Banner status="error" title={fileError} /></div>}
                       <HStack gap={2}>
                         <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={saveEdit} isDisabled={saving} />
-                        <Button label="Cancel" variant="secondary" onClick={() => setEditingId(null)} />
+                        <Button label="Cancel" variant="secondary" onClick={() => { setEditingId(null); setFileError(null); }} />
                       </HStack>
                     </div>
                   ) : (
