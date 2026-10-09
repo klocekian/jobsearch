@@ -54,7 +54,7 @@ const STEPS: OnboardingStep[] = [
       <div className="space-y-3">
         <div className="space-y-2.5">
           <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-subtle">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 font-bold text-xs">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
               ⚡
             </div>
             <div>
@@ -66,7 +66,7 @@ const STEPS: OnboardingStep[] = [
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-subtle">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-600 font-bold text-xs">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-800 dark:text-blue-300 font-bold text-xs">
               📊
             </div>
             <div>
@@ -78,7 +78,7 @@ const STEPS: OnboardingStep[] = [
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-subtle">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-purple-600 font-bold text-xs">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-purple-800 dark:text-purple-300 font-bold text-xs">
               ✍️
             </div>
             <div>
@@ -204,23 +204,23 @@ const STEPS: OnboardingStep[] = [
             <span className="text-[11px] text-secondary">Queued to review</span>
           </div>
           <div className="p-2 rounded border border-blue-500/20 bg-blue-500/5 text-center">
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 block">Applied</span>
+            <span className="text-xs font-bold text-blue-800 dark:text-blue-300 block">Applied</span>
             <span className="text-[11px] text-secondary">Submitted application</span>
           </div>
           <div className="p-2 rounded border border-purple-500/20 bg-purple-500/5 text-center">
-            <span className="text-xs font-bold text-purple-600 dark:text-purple-400 block">Screen</span>
+            <span className="text-xs font-bold text-purple-800 dark:text-purple-300 block">Screen</span>
             <span className="text-[11px] text-secondary">Recruiter chat</span>
           </div>
           <div className="p-2 rounded border border-amber-500/20 bg-amber-500/5 text-center">
-            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 block">Interview</span>
+            <span className="text-xs font-bold text-amber-800 dark:text-amber-300 block">Interview</span>
             <span className="text-[11px] text-secondary">Technical / Panel</span>
           </div>
           <div className="p-2 rounded border border-emerald-500/20 bg-emerald-500/5 text-center">
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">Offer</span>
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 block">Offer</span>
             <span className="text-[11px] text-secondary">Offer extended</span>
           </div>
           <div className="p-2 rounded border border-rose-500/20 bg-rose-500/5 text-center">
-            <span className="text-xs font-bold text-rose-600 dark:text-rose-400 block">Closed</span>
+            <span className="text-xs font-bold text-rose-800 dark:text-rose-300 block">Closed</span>
             <span className="text-[11px] text-secondary">Declined or filled</span>
           </div>
         </div>

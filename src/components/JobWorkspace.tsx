@@ -567,7 +567,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             {job.salary_text && <> · {job.salary_text}</>}
           </Text>
           {job.status === "closed" && job.previous_status && (
-            <div className="mt-2 flex items-center justify-between p-2 px-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
+            <div className="mt-2 flex items-center justify-between p-2 px-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100 text-xs">
               <span>This job was auto-marked closed (previously <strong>{job.previous_status}</strong>).</span>
               <button
                 type="button"
@@ -599,11 +599,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               {analyzed && (
                 <>
                   <div className="flex items-center gap-1.5">
-                    <span className="inline-block h-1 w-4 rounded bg-rose-400" />
+                    <span className="inline-block h-1 w-4 rounded bg-rose-600 dark:bg-rose-400" />
                     <Text type="supporting">Missing Skills</Text>
                   </div>
                   <div className="flex items-center gap-1.5 mr-1">
-                    <span className="inline-block h-1 w-4 rounded bg-emerald-400" />
+                    <span className="inline-block h-1 w-4 rounded bg-emerald-600 dark:bg-emerald-400" />
                     <Text type="supporting">Matched Skills</Text>
                   </div>
                 </>

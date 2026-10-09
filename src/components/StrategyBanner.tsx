@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import type { JobRow } from "@/lib/db/jobs";
+import { TipIcon, type TipIconName } from "@/components/icons";
 
 export interface StrategyBannerItem {
   id: "A" | "B" | "C" | "D";
+  icon: TipIconName;
   headline: string;
   body: string;
   full: string;
@@ -13,24 +15,28 @@ export interface StrategyBannerItem {
 export const STRATEGY_ITEMS: Record<"A" | "B" | "C" | "D", StrategyBannerItem> = {
   A: {
     id: "A",
+    icon: "calendar",
     headline: "This is a numbers game.",
     body: "Apply to at least 5 jobs a day. No more. No less. 25 a week.",
     full: "This is a numbers game. Apply to at least 5 jobs a day. No more. No less. 25 a week.",
   },
   B: {
     id: "B",
+    icon: "target",
     headline: "Tune your resume till it gets a >90% for a match.",
     body: "Don't submit low score resumes. No one will ever see them.",
     full: "Tune your resume till it gets a >90% for a match. Don't submit low score resumes. No one will ever see them.",
   },
   C: {
     id: "C",
+    icon: "dumbbell",
     headline: "Practice first.",
     body: "Apply to jobs you don't love early on. Figure out your resume, your interview approach on them. Then apply to the ones that make you excited.",
     full: "Practice first. Apply to jobs you don't love early on. Figure out your resume, your interview approach on them. Then apply to the ones that make you excited.",
   },
   D: {
     id: "D",
+    icon: "filter",
     headline: "Get picky over time.",
     body: "Say yes to any interview or recruiter screen up front. Later, when you are well practiced and have a lay of the land you can be selective.",
     full: "Get picky over time. Say yes to any interview or recruiter screen up front. Later, when you are well practiced and have a lay of the land you can be selective.",
@@ -133,8 +139,8 @@ export function StrategyBanner({ jobs: initialJobs }: StrategyBannerProps) {
       className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-lg border border-sky-500/25 bg-sky-500/10 text-sky-950 dark:text-sky-100 transition-all duration-200"
     >
       <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-700 dark:text-sky-300 text-xs font-semibold select-none">
-          {currentItem.id}
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-800 dark:text-sky-300 select-none">
+          <TipIcon name={currentItem.icon} />
         </span>
         <div className="min-w-0 flex-1 text-sm leading-snug">
           <span className="font-semibold text-primary">{currentItem.headline}</span>{" "}
@@ -152,8 +158,8 @@ export function StrategyBanner({ jobs: initialJobs }: StrategyBannerProps) {
               aria-label={`Go to strategy ${item.id}`}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 idx === currentIndex % activeItems.length
-                  ? "w-4 bg-sky-600 dark:bg-sky-400"
-                  : "w-1.5 bg-sky-400/40 hover:bg-sky-400/70 dark:bg-sky-600/40 dark:hover:bg-sky-600/70"
+                  ? "w-4 bg-sky-800 dark:bg-sky-200"
+                  : "w-1.5 bg-sky-600 hover:bg-sky-700 dark:bg-sky-400 dark:hover:bg-sky-300"
               }`}
             />
           ))}

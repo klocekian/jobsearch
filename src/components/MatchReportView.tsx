@@ -54,7 +54,7 @@ function SummaryCards({ report }: { report: MatchReport }) {
           <Card key={c.label} className="px-3 py-2">
             <Text type="supporting" color="secondary" display="block" className="text-xs">{c.label}</Text>
             <div className="mt-0.5">
-              <span className={`text-base font-semibold ${c.n === 0 ? "text-emerald-600 dark:text-emerald-400" : "text-primary"}`}>
+              <span className={`text-base font-semibold ${c.n === 0 ? "text-emerald-700 dark:text-emerald-400" : "text-primary"}`}>
                 {c.n}
               </span>{" "}
               <span className="text-xs text-muted-foreground">{c.n === 1 ? "issue" : "issues"}</span>
@@ -101,10 +101,10 @@ function SkillsTable({ section, title }: { section: SkillSection; title: string 
       <div className="flex items-center gap-3 border-b border-border px-3.5 py-1.5 bg-muted/30">
         <Text weight="semibold" className="text-xs">{title}</Text>
         <Text color="secondary" className="text-xs">
-          Matched <Text weight="semibold" className="text-emerald-600 dark:text-emerald-400 text-xs">{section.matched}</Text>
+          Matched <Text weight="semibold" className="text-emerald-700 dark:text-emerald-400 text-xs">{section.matched}</Text>
         </Text>
         <Text color="secondary" className="text-xs">
-          Missing <Text weight="semibold" className="text-rose-500 dark:text-rose-400 text-xs">{section.missing}</Text>
+          Missing <Text weight="semibold" className="text-rose-700 dark:text-rose-400 text-xs">{section.missing}</Text>
         </Text>
       </div>
       {section.rows.length === 0 ? (
@@ -131,7 +131,7 @@ function SkillsTable({ section, title }: { section: SkillSection; title: string 
                   </span>
                 </td>
                 <td className="px-3.5 py-1.5 text-right tabular-nums text-xs">
-                  {row.state === "missing" ? <Text className="text-rose-400 text-xs">✕</Text> : <Text className="text-xs">{row.resumeCount}</Text>}
+                  {row.state === "missing" ? <Text className="text-rose-700 dark:text-rose-400 text-xs">✕</Text> : <Text className="text-xs">{row.resumeCount}</Text>}
                 </td>
                 <td className="px-3.5 py-1.5 text-right tabular-nums text-xs"><Text className="text-xs">{row.jobCount}</Text></td>
               </tr>
@@ -197,7 +197,7 @@ function AiDetectionSection({ state }: { state: AiDetectionState }) {
 
 function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
   const bandColor =
-    ai.band === "high" ? "text-rose-500" : ai.band === "moderate" ? "text-amber-500" : "text-emerald-600";
+    ai.band === "high" ? "text-rose-700 dark:text-rose-400" : ai.band === "moderate" ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400";
   return (
     <div className="py-2 text-xs">
       <div className="flex items-center gap-3">
@@ -209,7 +209,7 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
           </Text>
         </div>
       </div>
-      {note && <Text type="supporting" display="block" className="mt-1 text-amber-600 text-xs">{note}</Text>}
+      {note && <Text type="supporting" display="block" className="mt-1 text-amber-700 dark:text-amber-400 text-xs">{note}</Text>}
       <div className="mt-4 space-y-3">
         {ai.patterns.map((p) => (
           <div key={p.label}>

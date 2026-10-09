@@ -174,7 +174,7 @@ async function loadRecentJobs() {
       });
       if (match) {
         matchHtml = `<div style="margin-bottom:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:12px">` +
-          `<div style="font-size:10px;font-weight:600;color:#dc2626;margin-bottom:3px">Already saved</div>` +
+          `<div style="font-size:10px;font-weight:600;color:#b91c1c;margin-bottom:3px">Already saved</div>` +
           `<a href="${API_BASE}/jobs/${match.id}" target="_blank" style="color:#1e293b;text-decoration:none;font-weight:600">${match.company || "—"}</a> · ${match.title || "—"}` +
           `<div style="margin-top:4px;font-size:10px;color:#64748b">Status: <strong>${match.status}</strong></div>` +
           `</div>`;
@@ -188,9 +188,9 @@ async function loadRecentJobs() {
     list.innerHTML = matchHtml +
       `<button type="button" id="recentToggle" aria-expanded="${!recentCollapsed}"` +
       ` style="display:flex;align-items:center;gap:4px;width:100%;background:none;border:none;padding:0;` +
-      `font:inherit;font-size:11px;font-weight:600;color:#94a3b8;cursor:pointer;margin-bottom:6px;text-align:left">` +
+      `font:inherit;font-size:11px;font-weight:600;color:#64748b;cursor:pointer;margin-bottom:6px;text-align:left">` +
       `<span id="recentCaret">${caret}</span> Recent clips` +
-      `<span style="font-weight:400;color:#cbd5e1">(${recent.length})</span></button>` +
+      `<span style="font-weight:400;color:#64748b">(${recent.length})</span></button>` +
       `<div id="recentList" style="display:${recentCollapsed ? "none" : "block"}">` +
       recent.map((j) => `<a href="${API_BASE}/jobs/${j.id}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${j.company || "—"}</strong> · ${j.title || "—"}</a>`).join("") +
       `</div>`;
@@ -226,7 +226,7 @@ async function loadFillFields() {
   if (!container) return;
   try {
     const res = await fetch(`${API_BASE}/api/profile/autofill`, { credentials: "include" });
-    if (!res.ok) { container.innerHTML = `<p style="font-size:12px;color:#dc2626">Add a resume or fill in Application Fields on your Profile page.</p>`; return; }
+    if (!res.ok) { container.innerHTML = `<p style="font-size:12px;color:#b91c1c">Add a resume or fill in Application Fields on your Profile page.</p>`; return; }
     const data = await res.json();
     const keys = Object.keys(FILL_FIELD_LABELS);
     container.innerHTML = keys.map((key) => {
@@ -252,7 +252,7 @@ async function loadFillFields() {
         setTimeout(() => { valEl.textContent = orig; valEl.classList.remove("copied-flash"); }, 1000);
       });
     });
-  } catch { container.innerHTML = `<p style="font-size:12px;color:#94a3b8">Could not load profile.</p>`; }
+  } catch { container.innerHTML = `<p style="font-size:12px;color:#64748b">Could not load profile.</p>`; }
 }
 
 async function init() {

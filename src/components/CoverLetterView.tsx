@@ -117,7 +117,7 @@ export function CoverLetterView({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {restored && <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Restored saved draft</span>}
+          {restored && <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">Restored saved draft</span>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button

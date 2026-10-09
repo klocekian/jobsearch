@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listJobs, getJob, updateJob, restoreClosedJobs } from "@/lib/db/jobs";
+import { listJobs, getJob, updateJob, restoreClosedJobs, confirmClosedJobs } from "@/lib/db/jobs";
 import { getCurrentUserId } from "@/lib/api-auth";
 import { checkJobStatus } from "@/lib/job-status-check";
 import { getDb } from "@/lib/db";
@@ -41,6 +41,12 @@ export async function POST(request: Request) {
       restoredJobs: res.restoredJobs,
       message: `Restored ${res.restoredCount} job${res.restoredCount === 1 ? "" : "s"} to their previous status.`,
     });
+  }
+
+  if (body && body.action === "confirm") {
+    const ids = Array.isArray(body.job_ids) ? body.job_ids.map(Number).filter(Number.isInteger) : [];
+    const confirmed = await confirmClosedJobs(userId, ids);
+    return NextResponse.json({ confirmed });
   }
 
   let singleJobId: number | null = null;
