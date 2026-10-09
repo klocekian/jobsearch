@@ -170,9 +170,9 @@ export function LandingPage() {
             Executive Career Command Center
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.1]">
-            Stop applying blindly into the void.{" "}
-            <span className="bg-gradient-to-r from-sky-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.1] text-balance">
+            <span className="block">Stop applying blindly into the void.</span>
+            <span className="block mt-1 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500 bg-clip-text text-transparent">
               Take command of your search.
             </span>
           </h1>
