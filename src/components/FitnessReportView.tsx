@@ -1,7 +1,6 @@
 "use client";
 
 import type { FitnessResult, FitnessRequirement } from "@/lib/fitness/schema";
-import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Text } from "@astryxdesign/core/Text";
@@ -23,17 +22,31 @@ const EMPLOYER_TYPE_LABELS: Record<string, string> = {
   unknown: "Employer type not stated",
 };
 
-const VERDICT_VARIANTS: Record<string, "success" | "warning" | "error" | "neutral"> = {
-  MEET: "success",
-  ADJACENT: "warning",
-  MISS: "error",
+// Same pill as the job status in the activity banner (lib/status.ts).
+const PILL_TONES = {
+  good: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+  partial: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  bad: "bg-rose-500/15 text-rose-800 dark:text-rose-300",
+  neutral: "bg-muted text-secondary",
+} as const;
+
+const VERDICT_TONES: Record<string, keyof typeof PILL_TONES> = {
+  MEET: "good",
+  ADJACENT: "partial",
+  MISS: "bad",
 };
+
+function Pill({ tone, label }: { tone: keyof typeof PILL_TONES; label: string }) {
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${PILL_TONES[tone]}`}>{label}</span>
+  );
+}
 
 function VerdictRow({ item }: { item: FitnessRequirement }) {
   return (
     <div className="grid grid-cols-[80px_1fr] gap-2 py-2.5 text-xs">
       <div>
-        <Badge variant={VERDICT_VARIANTS[item.verdict] ?? "neutral"} label={item.verdict} />
+        <Pill tone={VERDICT_TONES[item.verdict] ?? "neutral"} label={item.verdict} />
       </div>
       <div className="min-w-0">
         <blockquote className="border-l-2 border-border pl-2.5">
@@ -116,8 +129,8 @@ export function FitnessReportView({
           <span className="text-2xl font-bold text-primary">{result.score}</span>
           <span className="text-xs text-muted-foreground">/ 10</span>
           <div className="ml-auto">
-            <Badge
-              variant={result.verdict === "APPLY" ? "success" : "error"}
+            <Pill
+              tone={result.verdict === "APPLY" ? "good" : "bad"}
               label={result.verdict === "APPLY" ? "Apply" : "Do not pursue"}
             />
           </div>
@@ -214,7 +227,7 @@ export function FitnessReportView({
             {result.preferred.map((p, i) => (
               <div key={`${i}-${p.verbatim.slice(0, 24)}`} className="grid grid-cols-[80px_1fr] gap-2 py-2.5 text-xs">
                 <div>
-                  <Badge variant={VERDICT_VARIANTS[p.verdict] ?? "neutral"} label={p.verdict} />
+                  <Pill tone={VERDICT_TONES[p.verdict] ?? "neutral"} label={p.verdict} />
                 </div>
                 <blockquote className="border-l-2 border-border pl-2.5">
                   <Text className="italic text-xs leading-snug">{p.verbatim}</Text>
