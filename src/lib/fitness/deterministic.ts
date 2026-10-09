@@ -53,6 +53,52 @@ function detectEmployerType(company: string, posting: string): { type: FitnessRe
   };
 }
 
+function isBoilerplateOrOrganizational(line: string): boolean {
+  const lower = line.toLowerCase();
+  return (
+    lower.includes("equal opportunity") ||
+    lower.includes("equal employment") ||
+    lower.includes("affirmative action") ||
+    lower.includes("pay transparency") ||
+    lower.includes("transparency disclosure") ||
+    lower.includes("salary disclosure") ||
+    lower.includes("compensation range") ||
+    lower.includes("salary range") ||
+    lower.includes("benefits include") ||
+    lower.includes("401(k)") ||
+    lower.includes("health insurance") ||
+    lower.includes("medical, dental") ||
+    lower.includes("reasonable accommodation") ||
+    lower.includes("accommodations for disabilities") ||
+    lower.includes("disability accommodation") ||
+    lower.includes("background check") ||
+    lower.includes("drug test") ||
+    lower.includes("work authorization") ||
+    lower.includes("visa sponsorship") ||
+    lower.includes("notice to recruiters") ||
+    lower.includes("agency submissions") ||
+    lower.includes("third party agencies") ||
+    lower.includes("all qualified applicants") ||
+    lower.includes("without regard to race") ||
+    lower.includes("regardless of race") ||
+    lower.includes("sexual orientation") ||
+    lower.includes("gender identity") ||
+    lower.includes("veteran status") ||
+    lower.includes("protected status") ||
+    lower.includes("atlassians can choose") ||
+    lower.includes("we believe that") ||
+    lower.includes("our mission") ||
+    lower.includes("who we are") ||
+    lower.includes("about us") ||
+    lower.includes("about the company") ||
+    lower.includes("why join us") ||
+    lower.includes("working at ") ||
+    lower.includes("privacy policy") ||
+    lower.includes("privacy notice") ||
+    lower.includes("terms of service")
+  );
+}
+
 function extractRequirementLines(posting: string): { minimums: string[]; preferred: string[] } {
   const lines = posting.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const minimums: string[] = [];
@@ -64,7 +110,15 @@ function extractRequirementLines(posting: string): { minimums: string[]; preferr
     const lower = line.toLowerCase();
 
     // Detect section headers
-    if (/(minimum|basic|required|must have|what you need|qualifications|requirements|who you are)/i.test(lower) && !lower.includes("preferred")) {
+    if (
+      /(benefits|about us|perks|compensation|pay transparency|about the company|who we are|what we offer|our values|diversity|equal opportunity|eeo|legal|notice|privacy|working at)/i.test(
+        lower
+      )
+    ) {
+      currentSection = "unknown";
+      continue;
+    }
+    if (/(minimum|basic|required|must have|what you need|qualifications|requirements|who you are|in this role|what you'll do|responsibilities)/i.test(lower) && !lower.includes("preferred")) {
       currentSection = "min";
       continue;
     }
@@ -72,14 +126,14 @@ function extractRequirementLines(posting: string): { minimums: string[]; preferr
       currentSection = "pref";
       continue;
     }
-    if (/(benefits|about us|perks|compensation|about the company|what we offer)/i.test(lower)) {
-      currentSection = "unknown";
-      continue;
-    }
 
     // Capture bullet points or numbered items
     const bulletMatch = line.match(/^[-*•–—\d.)\]]\s*(.+)$/);
     const content = (bulletMatch ? bulletMatch[1] : line).trim();
+
+    if (isBoilerplateOrOrganizational(content)) {
+      continue;
+    }
 
     if (content.length > 15 && content.length < 300) {
       if (currentSection === "min") {
@@ -92,11 +146,11 @@ function extractRequirementLines(posting: string): { minimums: string[]; preferr
     }
   }
 
-  // Fallback: If no structured sections detected, grab meaningful bullet lines
+  // Fallback: If no structured sections detected, grab meaningful bullet lines that aren't boilerplate
   if (minimums.length === 0) {
     for (const line of lines) {
       const bulletMatch = line.match(/^[-*•–—]\s*(.+)$/);
-      if (bulletMatch && bulletMatch[1].length > 20) {
+      if (bulletMatch && bulletMatch[1].length > 20 && !isBoilerplateOrOrganizational(bulletMatch[1])) {
         minimums.push(bulletMatch[1]);
         if (minimums.length >= 6) break;
       }

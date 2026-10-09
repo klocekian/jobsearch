@@ -92,7 +92,14 @@ Rules, in priority order:
 10. ALWAYS PRODUCE PREPARATION MATERIAL. For every ADJACENT or notable MISS: the gap stated plainly as
    its own line, paired with a mindful framing (the prepared response, not a defense). Then an outcome
    spectrum (best case, worst case, probable middle) and tradeoffs of pursuing stated as gained and
-   lost. Never label the pursuit simply good or bad.`;
+   lost. Never label the pursuit simply good or bad.
+
+11. NEVER EVALUATE ORGANIZATIONAL OR LEGAL BOILERPLATE.
+    Do NOT score or extract Equal Opportunity Employer (EEO) statements, Pay Transparency Disclosures,
+    compensation/benefits lists, company intro/culture background, accommodation notices, background
+    check policies, or recruiter notices as requirements.
+    Evaluate ONLY candidate-facing job requirements (skills, technical competencies, experience,
+    disciplines, scope of ownership, and deliverables).`;
 
 /** Postings longer than this are truncated before the model sees them. */
 export const MAX_POSTING_CHARS = 40_000;
