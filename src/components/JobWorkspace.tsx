@@ -976,14 +976,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       {/* Left content */}
       <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border p-4">{leftPaneBody}</div>
 
-      {/* Top right header */}
-      <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-2 min-h-[57px]" />
-
-      {/* Right tabs */}
-      <div className="col-start-2 row-start-2 border-b border-border bg-surface px-4">{rightTabBar}</div>
+      {/* Right tabs in header */}
+      <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
 
       {/* Right content */}
-      <div className="col-start-2 row-start-3 min-h-0 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+      <div className="col-start-2 row-start-2 row-span-2 min-h-0 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
     </div>
   );
 }
