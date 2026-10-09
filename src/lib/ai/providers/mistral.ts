@@ -80,9 +80,10 @@ async function fetchMistralWithRetry(
 }
 
 const FALLBACK_MODELS = [
-  "mistral-small-latest",
   "open-mistral-nemo",
   "open-mistral-7b",
+  "open-mixtral-8x7b",
+  "mistral-small-latest",
   "mistral-large-latest",
 ];
 
@@ -116,8 +117,17 @@ export async function generateMistralText(
       return { text, model };
     } catch (err: unknown) {
       lastError = err;
-      // If error was rate limit or unsupported model on user's tier, try next candidate
-      if (err instanceof Error && (err.message.includes("429") || err.message.includes("rate limit") || err.message.includes("404") || err.message.includes("400"))) {
+      // If error was rate limit, forbidden tier, or unsupported model, try next candidate
+      if (
+        err instanceof Error &&
+        (err.message.includes("429") ||
+          err.message.includes("403") ||
+          err.message.includes("404") ||
+          err.message.includes("400") ||
+          err.message.includes("rate limit") ||
+          err.message.includes("subscription tier") ||
+          err.message.includes("not available"))
+      ) {
         continue;
       }
       throw err;
@@ -228,8 +238,17 @@ export async function generateMistralStructured<T>(
       return { data: validated, model };
     } catch (err: unknown) {
       lastError = err;
-      // If error was rate limit or unsupported model on user's tier, try next candidate
-      if (err instanceof Error && (err.message.includes("429") || err.message.includes("rate limit") || err.message.includes("404") || err.message.includes("400"))) {
+      // If error was rate limit, forbidden tier, or unsupported model, try next candidate
+      if (
+        err instanceof Error &&
+        (err.message.includes("429") ||
+          err.message.includes("403") ||
+          err.message.includes("404") ||
+          err.message.includes("400") ||
+          err.message.includes("rate limit") ||
+          err.message.includes("subscription tier") ||
+          err.message.includes("not available"))
+      ) {
         continue;
       }
       throw err;
