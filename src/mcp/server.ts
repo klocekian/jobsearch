@@ -27,6 +27,7 @@ import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/pr
 import { renderFitnessText } from "@/lib/fitness/render";
 import { checkJobStatus } from "@/lib/job-status-check";
 import { STATUS_OPTIONS } from "@/lib/status";
+import { saveFitnessRun, saveMatchRun } from "@/lib/db/analysis-runs";
 import { JobActivitySchema, resolveJobActivity, serializeActivity } from "@/lib/job-activity";
 
 // MCP surface over the job tracker. Every tool is scoped to one user, resolved
@@ -503,11 +504,7 @@ export function createJobsearchMcpServer(
         fileName: "",
       });
       if (save !== false) {
-        await updateJob(job.id, {
-          match_score: report.score,
-          match_report: JSON.stringify(report),
-          match_resume_name: resume.name,
-        });
+        await saveMatchRun(job, report, { name: resume.name, text: resume.content });
         if (job.company) await addResumeTag(resume.id, job.company);
       }
       return json({ job: `${job.company} — ${job.title}`, resume: resume.name, saved: save !== false, ...matchDigest(report) });
@@ -538,11 +535,7 @@ export function createJobsearchMcpServer(
         gaps,
         resumeText: resume?.content,
       });
-      await updateJob(job.id, {
-        fitness_score: result.score,
-        fitness_report: JSON.stringify(result),
-        fitness_run_at: new Date().toISOString(),
-      });
+      await saveFitnessRun(job, result, "deterministic:rule-based");
       return { content: [{ type: "text" as const, text: renderFitnessText(result) }] };
     }),
   );
@@ -593,7 +586,7 @@ export function createJobsearchMcpServer(
         model: z.string().optional().describe("Which model produced the report, for the record."),
       },
     },
-    safe(async ({ job_id, report }) => {
+    safe(async ({ job_id, report, model }) => {
       const job = await requireJob(job_id);
       const parsed = FitnessResultSchema.safeParse(report);
       if (!parsed.success) return fail(`Report doesn't match the schema: ${z.prettifyError(parsed.error)}`);
@@ -602,11 +595,7 @@ export function createJobsearchMcpServer(
         company: parsed.data.company || job.company,
         title: parsed.data.title || job.title,
       };
-      await updateJob(job.id, {
-        fitness_score: Math.round(result.score),
-        fitness_report: JSON.stringify(result),
-        fitness_run_at: new Date().toISOString(),
-      });
+      await saveFitnessRun(job, result, `mcp:${model || "unknown"}`);
       return { content: [{ type: "text" as const, text: renderFitnessText(result) }] };
     }),
   );

@@ -16,6 +16,8 @@ import { JobDescriptionView } from "./JobDescriptionView";
 import { ResumeView } from "./ResumeView";
 import { CoverLetterView } from "./CoverLetterView";
 import { JobActivityBanner } from "./JobActivityBanner";
+import { RunHistory, runDate, runMethodLabel } from "./RunHistory";
+import type { AnalysisRunMeta, AnalysisRunRow } from "@/lib/db/analysis-runs";
 import {
   loadSavedResume,
   coverLetterText,
@@ -140,7 +142,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   // Fitness check. `saved` is the report already written to the job; `pending`
   // is a fresh run that has NOT been written yet — the panel renders and waits
   // for an explicit Save, so a run never mutates the job on its own.
-  const [fitnessRunModel, setFitnessRunModel] = useState<string | null>(null);
   const [fitnessRunning, setFitnessRunning] = useState(false);
   const [fitnessSaving, setFitnessSaving] = useState(false);
   const [fitnessError, setFitnessError] = useState<string | null>(null);
@@ -152,6 +153,20 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     if (!fitnessReportJson) return null;
     try { return JSON.parse(fitnessReportJson) as FitnessResult; } catch { return null; }
   }, [fitnessReportJson]);
+  // Saved run history (both analyses) and the older run being viewed, if any.
+  const [runs, setRuns] = useState<{ fitness: AnalysisRunMeta[]; match: AnalysisRunMeta[] }>({ fitness: [], match: [] });
+  const [viewedFitness, setViewedFitness] = useState<{ id: number; result: FitnessResult; runAt: string; method: string } | null>(null);
+  const [viewedMatch, setViewedMatch] = useState<{ id: number; report: MatchReport; resumeText: string | null } | null>(null);
+  const [restoringRun, setRestoringRun] = useState(false);
+  // What each tab shows: the viewed older run if one is picked, else the current one.
+  const shownFitness = viewedFitness?.result ?? fitnessSaved;
+  const shownFitnessRunAt = viewedFitness?.runAt ?? job?.fitness_run_at ?? null;
+  const shownFitnessMethod = viewedFitness
+    ? viewedFitness.method
+    : runs.fitness.find((r) => r.id === job?.fitness_run_id)?.method ?? "";
+  const shownMatch = viewedMatch && job
+    ? { report: viewedMatch.report, resumeText: viewedMatch.resumeText ?? resumeText, jobText: job.posting_text }
+    : analyzed;
   const [materials, setMaterials] = useState<ContextMaterial[]>(() => loadContextMaterials());
   const fileRef = useRef<HTMLInputElement>(null);
   const resumeFileRef = useRef<HTMLInputElement>(null);
@@ -160,6 +175,57 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { saveContextMaterials(materials); }, [materials]);
+
+  const fetchRuns = useCallback(async () => {
+    const res = await fetch(`/api/jobs/${jobId}/analysis-runs`).catch(() => null);
+    if (res?.ok) setRuns(await res.json());
+  }, [jobId]);
+
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/jobs/${jobId}/analysis-runs`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!ignore && d) setRuns(d); })
+      .catch(() => {});
+    return () => { ignore = true; };
+  }, [jobId]);
+
+  const viewRun = useCallback(async (kind: "fitness" | "match", runId: number | null) => {
+    if (runId == null) {
+      if (kind === "fitness") setViewedFitness(null); else setViewedMatch(null);
+      return;
+    }
+    const res = await fetch(`/api/jobs/${jobId}/analysis-runs/${runId}`).catch(() => null);
+    if (!res?.ok) return;
+    const { run } = await res.json() as { run: AnalysisRunRow };
+    try {
+      if (kind === "fitness") {
+        setViewedFitness({ id: run.id, result: JSON.parse(run.report) as FitnessResult, runAt: run.created_at, method: run.method });
+      } else {
+        setViewedMatch({ id: run.id, report: JSON.parse(run.report) as MatchReport, resumeText: run.resume_text });
+      }
+    } catch { /* unreadable report — stay on the current one */ }
+  }, [jobId]);
+
+  const makeRunCurrent = useCallback(async (kind: "fitness" | "match", runId: number) => {
+    setRestoringRun(true);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/analysis-runs/${runId}`, { method: "POST" });
+      if (res.ok) {
+        const d = await res.json() as { job: JobRow };
+        setJob(d.job);
+        if (kind === "fitness") setViewedFitness(null);
+        else {
+          // The restored report is about the resume it ran against — show that one.
+          if (viewedMatch?.id === runId && viewedMatch.resumeText) setResumeText(viewedMatch.resumeText);
+          setViewedMatch(null);
+          setUserAnalysis(null);
+        }
+      }
+    } finally {
+      setRestoringRun(false);
+    }
+  }, [jobId, viewedMatch]);
 
   const fetchJob = useCallback(async () => {
     const res = await fetch(`/api/jobs/${jobId}`);
@@ -202,7 +268,17 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [analyzing, setAnalyzing] = useState(false);
+  // Open on the resume the stored match score was run against, not just the
+  // default, so the saved report and the resume text shown beside it agree.
+  const resumePicked = useRef(false);
+  useEffect(() => {
+    if (resumePicked.current || !job || savedResumes.length === 0) return;
+    resumePicked.current = true;
+    const match = job.match_resume_name ? savedResumes.find((r) => r.name === job.match_resume_name) : undefined;
+    if (match) setResumeText(match.content); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [job, savedResumes]);
+
+    const [analyzing, setAnalyzing] = useState(false);
   const [withAi, setWithAi] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("jobWorkspaceWithAi") === "1";
@@ -231,18 +307,26 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     setUserAnalysis({ report, resumeText, jobText: job.posting_text });
     setRightTab("resume");
     setResumeSubTab("score");
+    setViewedMatch(null);
     const selectedResume = savedResumes.find(r => r.content === resumeText);
-    fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
+    fetch(`/api/jobs/${jobId}/analysis-runs`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        match_score: report.score,
-        match_report: JSON.stringify(report),
+        kind: "match",
+        report,
         // Record which resume produced the score, so the ATS number reads as a
         // fact about a document rather than a verdict on the job.
-        match_resume_name: selectedResume?.name ?? null,
+        resume_name: selectedResume?.name ?? null,
+        resume_text: resumeText,
       }),
-    }).catch(() => {});
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { job?: JobRow } | null) => {
+        if (d?.job) setJob(d.job);
+        fetchRuns();
+      })
+      .catch(() => {});
     if (selectedResume && job.company) {
       fetch(`/api/resumes/${selectedResume.id}`, {
         method: "PATCH",
@@ -250,7 +334,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         body: JSON.stringify({ add_tag: job.company }),
       }).catch(() => {});
     }
-  }, [job, resumeText, analyzed, savedResumes, jobId]);
+  }, [job, resumeText, analyzed, savedResumes, jobId, fetchRuns]);
 
   const runFitnessCheck = useCallback(async (useAi = false) => {
     if (!job || !job.posting_text.trim()) return;
@@ -263,36 +347,22 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job_id: jobId, use_ai: useAi }),
       });
-      const data = await res.json() as {
-        result?: FitnessResult; text?: string; model?: string; run_at?: string; error?: string;
-      };
+      // The route saves the run itself and returns the updated job.
+      const data = await res.json() as { result?: FitnessResult; job?: JobRow; error?: string };
       if (!res.ok || !data.result) {
         setFitnessError(data.error ?? "Fitness check failed.");
         return;
       }
-      setFitnessRunModel(data.model ?? null);
-
-      const runAt = data.run_at ?? new Date().toISOString();
-      const saveRes = await fetch(`/api/jobs/${jobId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fitness_score: data.result.score,
-          fitness_report: JSON.stringify(data.result),
-          fitness_run_at: runAt,
-        }),
-      });
-      if (!saveRes.ok) {
-        const d = await saveRes.json().catch(() => ({})) as { error?: string };
-        setFitnessError(d.error ?? `Report ran but could not be saved (${saveRes.status}).`);
-      }
-      await fetchJob();
+      setViewedFitness(null);
+      if (data.job) setJob(data.job);
+      else await fetchJob();
+      await fetchRuns();
     } catch {
       setFitnessError("Fitness check failed.");
     } finally {
       setFitnessRunning(false);
     }
-  }, [job, jobId, fetchJob]);
+  }, [job, jobId, fetchJob, fetchRuns]);
 
   const runUnifiedAnalysis = useCallback(async (useAi = false) => {
     if (!job || !job.posting_text.trim()) return;
@@ -316,12 +386,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
    * report that informs it.
    */
   const addFitnessToNotes = async (alsoAbandon: boolean) => {
-    if (!job || !fitnessSaved) return;
+    if (!job || !shownFitness) return;
     setFitnessSaving(true);
-    const stamp = job.fitness_run_at ? new Date(job.fitness_run_at).toLocaleString() : new Date().toLocaleString();
+    const stamp = shownFitnessRunAt ? runDate(shownFitnessRunAt).toLocaleString() : new Date().toLocaleString();
     const header = `--- Fitness check · ${stamp}` +
-      `${fitnessRunModel ? ` · ${fitnessRunModel}` : ""} ---`;
-    const body = [header, renderFitnessText(fitnessSaved)].filter(Boolean).join("\n");
+      `${shownFitnessMethod ? ` · ${shownFitnessMethod}` : ""} ---`;
+    const body = [header, renderFitnessText(shownFitness)].filter(Boolean).join("\n");
     const notes = job.notes?.trim() ? `${body}\n\n${job.notes}` : body;
     try {
       const res = await fetch(`/api/jobs/${jobId}`, {
@@ -699,11 +769,21 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
               <div className="py-2">
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  {job.fitness_run_at && !fitnessRunning && (
+                  {!fitnessRunning && (runs.fitness.length > 0 ? (
+                    <RunHistory
+                      runs={runs.fitness}
+                      currentRunId={job.fitness_run_id}
+                      viewingRunId={viewedFitness?.id ?? null}
+                      outOf={10}
+                      onView={(id) => viewRun("fitness", id)}
+                      onMakeCurrent={(id) => makeRunCurrent("fitness", id)}
+                      busy={restoringRun}
+                    />
+                  ) : job.fitness_run_at && (
                     <Text type="supporting" color="secondary">
                       Last run {new Date(job.fitness_run_at).toLocaleString()}
                     </Text>
-                  )}
+                  ))}
                   {notesFlash && <Badge variant="success" label="Added to notes" />}
                 </div>
 
@@ -721,7 +801,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                   </div>
                 )}
 
-                {!fitnessRunning && !fitnessSaved && !fitnessError && (
+                {!fitnessRunning && !shownFitness && !fitnessError && (
                   <Banner
                     status="info"
                     title={job.posting_text.trim()
@@ -730,11 +810,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                   />
                 )}
 
-                {!fitnessRunning && fitnessSaved && (
+                {!fitnessRunning && shownFitness && (
                   <FitnessReportView
-                    result={fitnessSaved}
-                    runAt={job.fitness_run_at}
-                    model={fitnessRunModel}
+                    result={shownFitness}
+                    runAt={shownFitnessRunAt ? runDate(shownFitnessRunAt).toISOString() : null}
+                    model={shownFitnessMethod ? runMethodLabel({ kind: "fitness", method: shownFitnessMethod, resume_name: null }) : null}
                     busy={fitnessSaving}
                     onAddToNotes={() => addFitnessToNotes(false)}
                     onAbandon={() => addFitnessToNotes(true)}
@@ -760,7 +840,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                     variant="secondary"
                     size="sm"
                     onClick={() => setResumeSubTab("edit")}
-                    isDisabled={!analyzed}
+                    isDisabled={!shownMatch}
                   />
                 </div>
 
@@ -795,12 +875,24 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 </div>
               </div>
 
-              {analyzed ? (
+              {runs.match.length > 0 && (
+                <RunHistory
+                  runs={runs.match}
+                  currentRunId={job.match_run_id}
+                  viewingRunId={viewedMatch?.id ?? null}
+                  outOf={100}
+                  onView={(id) => viewRun("match", id)}
+                  onMakeCurrent={(id) => makeRunCurrent("match", id)}
+                  busy={restoringRun}
+                />
+              )}
+
+              {shownMatch ? (
                 <MatchReportView
-                  report={analyzed.report}
-                  aiDetection={aiDetection}
+                  report={shownMatch.report}
+                  aiDetection={viewedMatch ? { status: "done", data: viewedMatch.report.aiDetection } : aiDetection}
                   analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
-                  hasAnalysis={!!analyzed}
+                  hasAnalysis={!!shownMatch}
                 />
               ) : (
                 <div className="py-8">
@@ -814,14 +906,14 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               )}
             </>
           ) : (
-            analyzed ? (
+            shownMatch ? (
               <ResumeView
-                resumeText={analyzed.resumeText}
+                resumeText={shownMatch.resumeText}
                 company={job.company}
                 jobText={job.posting_text}
                 jobTitle={job.title}
-                missingSkills={analyzed.report.highlights.missing}
-                aiDetection={aiDetection.data}
+                missingSkills={shownMatch.report.highlights.missing}
+                aiDetection={viewedMatch ? viewedMatch.report.aiDetection : aiDetection.data}
                 materials={materials}
                 onMaterialsChange={setMaterials}
                 onBack={() => setResumeSubTab("score")}
