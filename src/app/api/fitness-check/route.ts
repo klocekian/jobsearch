@@ -9,6 +9,7 @@ import { renderFitnessText } from "@/lib/fitness/render";
 import { generateStructured } from "@/lib/ai";
 
 import { evaluateFitnessDeterministic } from "@/lib/fitness/deterministic";
+import { saveFitnessRun } from "@/lib/db/analysis-runs";
 
 export const runtime = "nodejs";
 // The report is long and the model reasons through every requirement.
@@ -62,11 +63,17 @@ export async function POST(request: Request) {
       gaps: negativeGaps,
     });
 
+    // Saved here rather than by the caller, so a run is never lost to a
+    // closed tab — the AI run below can take minutes.
+    const model = "deterministic:rule-based";
+    const saved = await saveFitnessRun(job, result, model);
     return NextResponse.json({
       result,
       text: renderFitnessText(result),
-      model: "deterministic:rule-based",
-      run_at: new Date().toISOString(),
+      model,
+      run_at: saved.run.created_at,
+      run_id: saved.run.id,
+      job: saved.job,
     });
   }
 
@@ -104,11 +111,14 @@ export async function POST(request: Request) {
       salary: rawResult.salary || job.salary_text || "Not stated",
     };
 
+    const saved = await saveFitnessRun(job, result, `${provider}:${model}`);
     return NextResponse.json({
       result,
       text: renderFitnessText(result),
       model: `${provider}:${model}`,
-      run_at: new Date().toISOString(),
+      run_at: saved.run.created_at,
+      run_id: saved.run.id,
+      job: saved.job,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Fitness check failed.";

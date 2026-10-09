@@ -139,7 +139,7 @@ const SHOTS = {
   fill: { src: "/hero/extension-fill.webp", alt: "Job Search Clipper Fill tab populating an Ashby application form", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 729, height: 1227 } },
   providers: { src: "/hero/ai-providers.webp", alt: "AI provider settings for Anthropic Claude, Google Gemini, xAI Grok and Mistral AI", width: 1946, height: 1572 },
   connector: { src: "/hero/claude-connector.webp", alt: "Job Search connector inside claude.ai settings with its read-only and write tools", width: 1840, height: 1436 },
-  importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", width: 1021, height: 779 },
+  importSheet: { src: "/hero/import-sheet.webp", alt: "Import jobs from a Google Sheet URL or CSV upload", width: 1018, height: 776 },
   resumes: { src: "/hero/resumes.webp", alt: "Multiple resumes, each tagged with the companies it was used for", width: 1714, height: 1419 },
 } satisfies Record<string, Shot>;
 
