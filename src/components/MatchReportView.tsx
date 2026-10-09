@@ -199,7 +199,7 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
   const bandColor =
     ai.band === "high" ? "text-rose-500" : ai.band === "moderate" ? "text-amber-500" : "text-emerald-600";
   return (
-    <div className="px-4 py-3 text-xs">
+    <div className="py-2 text-xs">
       <div className="flex items-center gap-3">
         <span className={`text-2xl font-bold ${bandColor}`}>{ai.confidence}%</span>
         <div>
@@ -210,15 +210,15 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
         </div>
       </div>
       {note && <Text type="supporting" display="block" className="mt-1 text-amber-600 text-xs">{note}</Text>}
-      <div className="mt-3 space-y-2">
+      <div className="mt-4 space-y-3">
         {ai.patterns.map((p) => (
           <div key={p.label}>
             <div className="flex items-center justify-between">
               <Text weight="semibold" className="text-xs">{p.label}</Text>
               <Text type="supporting" color="secondary" className="tabular-nums text-xs">{p.signal}</Text>
             </div>
-            <ProgressBar value={p.signal} max={100} label={p.label} className="mt-0.5 h-1.5" />
-            <Text type="supporting" color="secondary" display="block" className="mt-0.5 text-xs leading-snug">{p.message}</Text>
+            <ProgressBar value={p.signal} max={100} label={p.label} isLabelHidden className="mt-1 h-1.5" />
+            <Text type="supporting" color="secondary" display="block" className="mt-1 text-xs leading-snug">{p.message}</Text>
             {p.examples.length > 0 && (
               <Text type="supporting" color="secondary" display="block" className="mt-0.5 text-xs">e.g. {p.examples.join(", ")}</Text>
             )}
@@ -286,9 +286,7 @@ export function MatchReportView({
       )}
 
       {subTab === "ai" && (
-        <Card className="overflow-hidden">
-          <AiDetectionSection state={aiDetection} />
-        </Card>
+        <AiDetectionSection state={aiDetection} />
       )}
     </div>
   );
