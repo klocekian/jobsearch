@@ -540,71 +540,46 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     </>
   );
 
-  const resumeControls = (
-    <div className="flex w-full items-center justify-between gap-3 text-xs">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="text-muted-foreground font-medium shrink-0">Resume:</span>
-        {savedResumes.length > 0 && (
-          <Selector
-            label="Resume"
-            isLabelHidden
-            className="max-w-[200px]"
-            options={savedResumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` }))}
-            value={String(savedResumes.find(r => r.content === resumeText)?.id ?? "")}
-            onChange={(v) => {
-              const r = savedResumes.find(r => r.id === Number(v));
-              if (r) setResumeText(r.content);
-            }}
-          />
-        )}
-        <input
-          ref={resumeFileRef}
-          type="file"
-          className="hidden"
-          accept=".txt,.md,.pdf,.docx"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const text = await file.text();
-            const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_");
-            const res = await fetch("/api/resumes", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name, content: text }),
-            });
-            if (res.ok) {
-              const d = await res.json();
-              setSavedResumes(prev => [...prev, d.resume]);
-              setResumeText(text);
-            }
-            e.target.value = "";
+  const resumePicker = (
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="text-muted-foreground font-medium shrink-0">Resume:</span>
+      {savedResumes.length > 0 && (
+        <Selector
+          label="Resume"
+          isLabelHidden
+          className="max-w-[200px]"
+          options={savedResumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` }))}
+          value={String(savedResumes.find(r => r.content === resumeText)?.id ?? "")}
+          onChange={(v) => {
+            const r = savedResumes.find(r => r.id === Number(v));
+            if (r) setResumeText(r.content);
           }}
         />
-        <Button label="+ Add" variant="ghost" size="sm" onClick={() => resumeFileRef.current?.click()} />
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={withAi}
-            onChange={(e) => {
-              setWithAi(e.target.checked);
-              if (typeof window !== "undefined") {
-                localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
-              }
-            }}
-            className="accent-primary rounded cursor-pointer"
-          />
-          <span>with AI</span>
-        </label>
-        <Button
-          label={analyzing || fitnessRunning ? "Analyzing…" : "Analyze"}
-          variant="primary"
-          size="sm"
-          onClick={() => runUnifiedAnalysis(withAi)}
-          isDisabled={analyzing || fitnessRunning || !job.posting_text.trim()}
-        />
-      </div>
+      )}
+      <input
+        ref={resumeFileRef}
+        type="file"
+        className="hidden"
+        accept=".txt,.md,.pdf,.docx"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const text = await file.text();
+          const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_");
+          const res = await fetch("/api/resumes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, content: text }),
+          });
+          if (res.ok) {
+            const d = await res.json();
+            setSavedResumes(prev => [...prev, d.resume]);
+            setResumeText(text);
+          }
+          e.target.value = "";
+        }}
+      />
+      <Button label="+ Add" variant="ghost" size="sm" onClick={() => resumeFileRef.current?.click()} />
     </div>
   );
 
@@ -620,7 +595,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     <>
       {rightTab === "profile" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <SegmentedControl
               value={profileSubTab}
               onChange={(v) => setProfileSubTab(v as ProfileSubTab)}
@@ -635,18 +610,35 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                 label="Edit"
               />
             </SegmentedControl>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={withAi}
+                  onChange={(e) => {
+                    setWithAi(e.target.checked);
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
+                    }
+                  }}
+                  className="accent-primary rounded cursor-pointer"
+                />
+                <span>with AI</span>
+              </label>
+              <Button
+                label={fitnessRunning ? "Analyzing…" : fitnessSaved ? "Re-run analysis" : "Analyze"}
+                variant="primary"
+                size="sm"
+                onClick={() => runFitnessCheck(withAi)}
+                isDisabled={fitnessRunning || !job.posting_text.trim()}
+              />
+            </div>
           </div>
 
           {profileSubTab === "score" && (
             <div className="py-2">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <Button
-                  label={analyzing || fitnessRunning ? "Analyzing…" : fitnessSaved ? "Re-run analysis" : "Analyze"}
-                  variant="primary"
-                  size="sm"
-                  onClick={() => runUnifiedAnalysis(false)}
-                  isDisabled={analyzing || fitnessRunning || !job.posting_text.trim()}
-                />
                 {job.fitness_run_at && !fitnessRunning && (
                   <Text type="supporting" color="secondary">
                     Last run {new Date(job.fitness_run_at).toLocaleString()}
@@ -701,21 +693,48 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
       {rightTab === "resume" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <SegmentedControl
-              value={resumeSubTab}
-              onChange={(v) => setResumeSubTab(v as ResumeSubTab)}
-              label="Resume view"
-            >
-              <SegmentedControlItem
-                value="score"
-                label={analyzed ? `Score (${analyzed.report.score}/100)` : "Score"}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {resumePicker}
+              <SegmentedControl
+                value={resumeSubTab}
+                onChange={(v) => setResumeSubTab(v as ResumeSubTab)}
+                label="Resume view"
+              >
+                <SegmentedControlItem
+                  value="score"
+                  label={analyzed ? `Score (${analyzed.report.score}/100)` : "Score"}
+                />
+                <SegmentedControlItem
+                  value="edit"
+                  label="Edit"
+                />
+              </SegmentedControl>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={withAi}
+                  onChange={(e) => {
+                    setWithAi(e.target.checked);
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("jobWorkspaceWithAi", e.target.checked ? "1" : "0");
+                    }
+                  }}
+                  className="accent-primary rounded cursor-pointer"
+                />
+                <span>with AI</span>
+              </label>
+              <Button
+                label={analyzing ? "Analyzing…" : analyzed ? "Re-run analysis" : "Analyze"}
+                variant="primary"
+                size="sm"
+                onClick={() => runAnalysis()}
+                isDisabled={analyzing || !job.posting_text.trim() || !resumeText.trim()}
               />
-              <SegmentedControlItem
-                value="edit"
-                label="Edit"
-              />
-            </SegmentedControl>
+            </div>
           </div>
 
           {resumeSubTab === "score" && (
@@ -723,7 +742,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               <MatchReportView
                 report={analyzed.report}
                 aiDetection={aiDetection}
-                onRunAnalysis={() => runUnifiedAnalysis(false)}
                 analysisDisabled={!resumeText.trim() || !job.posting_text.trim()}
                 hasAnalysis={!!analyzed}
               />
@@ -927,9 +945,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           </>
         ) : (
           <>
-            <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
-              <div className="flex items-start justify-between gap-3">{resumeControls}</div>
-            </div>
             <div className="shrink-0 border-b border-border bg-surface px-4">{rightTabBar}</div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
           </>
@@ -961,10 +976,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       {/* Left content */}
       <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border p-4">{leftPaneBody}</div>
 
-      {/* Analysis controls */}
-      <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-2 flex items-center min-h-[57px]">
-        <div className="flex items-center justify-between w-full">{resumeControls}</div>
-      </div>
+      {/* Top right header */}
+      <div className="col-start-2 row-start-1 border-b border-border bg-surface px-4 py-2 min-h-[57px]" />
 
       {/* Right tabs */}
       <div className="col-start-2 row-start-2 border-b border-border bg-surface px-4">{rightTabBar}</div>
