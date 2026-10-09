@@ -262,10 +262,21 @@ export function Nav({ user }: { user: NavUser | null }) {
               />
             </HStack>
           ) : (
-            <HStack gap={2} className="items-center">
-              <TopNavItem label="Profile" href="/profile" isSelected={pathname.startsWith("/profile")} />
+            <HStack gap={3} className="items-center">
+              <a href="#pipeline" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
+                Pipeline
+              </a>
+              <a href="#ats-engine" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
+                ATS Match
+              </a>
+              <a href="#authenticity" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
+                Authenticity
+              </a>
+              <a href="#rewriter" className="text-xs text-secondary hover:text-primary hidden sm:inline-block transition-colors">
+                Rewriter
+              </a>
               <a href="/api/auth/login">
-                <Button label="Sign in with Google" variant="ghost" size="sm" />
+                <Button label="Sign in with Google" variant="primary" size="sm" />
               </a>
             </HStack>
           )
