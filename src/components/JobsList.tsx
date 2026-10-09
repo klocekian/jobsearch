@@ -19,6 +19,7 @@ import { Table, useTableSortable, proportional, pixel } from "@astryxdesign/core
 import type { TableColumn, TableSortState } from "@astryxdesign/core/Table";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 import { ImportSheetModal } from "./ImportSheetModal";
+import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
 
@@ -298,20 +299,16 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           : <Text>—</Text>,
     },
     {
-      // Keyword similarity against one resume — a fact about a document, not a
-      // verdict on the job. Rendered plain on purpose: a green badge here reads
-      // as "good, apply", which is exactly the misread this column invites.
       key: "match_score",
       header: "ATS Match",
-      width: pixel(110),
+      width: pixel(90),
       sortable: true,
       renderCell: (job) =>
         job.match_score != null
           ? (
-            <Text>
-              {job.match_score}%
-              {job.match_resume_name ? ` · ${job.match_resume_name}` : ""}
-            </Text>
+            <span title={job.match_resume_name ? `Scored with: ${job.match_resume_name}` : undefined}>
+              <Badge variant="neutral" label={`${job.match_score}%`} />
+            </span>
           )
           : <Text>—</Text>,
     },
@@ -406,6 +403,8 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
           fetchJobs();
         }}
       />
+
+      <OnboardingWizardModal />
     </div>
   );
 }
