@@ -185,11 +185,6 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="mx-auto max-w-6xl px-5 pt-12 pb-16 sm:pt-20 sm:pb-24">
         <div className="text-center space-y-6 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3.5 py-1 text-xs font-medium text-sky-600 dark:text-sky-300">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
-            A little more clarity in your job search
-          </div>
-
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.1] text-balance">
             <span className="block">Find work you want.</span>
             <span className="block mt-1 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500 bg-clip-text text-transparent">
