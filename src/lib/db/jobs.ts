@@ -205,3 +205,39 @@ export async function claimUnownedJobs(userId: number): Promise<number> {
   await db.execute({ sql: "UPDATE resumes SET user_id = ? WHERE user_id IS NULL", args: [userId] });
   return jobs.rowsAffected;
 }
+
+export async function restoreClosedJobs(userId: number | null): Promise<{
+  restoredCount: number;
+  restoredJobs: { id: number; company: string; title: string; restoredTo: string }[];
+}> {
+  const db = await getDb();
+  const userClause = userId != null ? "AND user_id = ?" : "";
+  const userArgs: InValue[] = userId != null ? [userId] : [];
+
+  const candidates = await db.execute({
+    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' ${userClause}`,
+    args: userArgs,
+  });
+
+  const restoredJobs: { id: number; company: string; title: string; restoredTo: string }[] = [];
+
+  for (const row of candidates.rows) {
+    const id = Number(row.id);
+    const restoredTo = String(row.previous_status);
+    await db.execute({
+      sql: "UPDATE jobs SET status = previous_status, previous_status = NULL, updated_at = datetime('now') WHERE id = ?",
+      args: [id],
+    });
+    restoredJobs.push({
+      id,
+      company: String(row.company ?? ""),
+      title: String(row.title ?? ""),
+      restoredTo,
+    });
+  }
+
+  return {
+    restoredCount: restoredJobs.length,
+    restoredJobs,
+  };
+}

@@ -495,6 +495,18 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             {job.location && <> · {job.location}</>}
             {job.salary_text && <> · {job.salary_text}</>}
           </Text>
+          {job.status === "closed" && job.previous_status && (
+            <div className="mt-2 flex items-center justify-between p-2 px-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
+              <span>This job was auto-marked closed (previously <strong>{job.previous_status}</strong>).</span>
+              <button
+                type="button"
+                onClick={() => updateStatus(job.previous_status!)}
+                className="font-medium underline hover:no-underline ml-2 cursor-pointer"
+              >
+                Restore to {job.previous_status}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,23 +1,52 @@
 import { NextResponse } from "next/server";
-import { listJobs, getJob, updateJob } from "@/lib/db/jobs";
+import { listJobs, getJob, updateJob, restoreClosedJobs } from "@/lib/db/jobs";
 import { getCurrentUserId } from "@/lib/api-auth";
 import { checkJobStatus } from "@/lib/job-status-check";
+import { getDb } from "@/lib/db";
+import type { InValue } from "@libsql/client";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const ACTIVE_STATUSES = new Set(["saved", "applying", "applied", "interview", "onsite", "offer"]);
 
+export async function GET() {
+  const userId = await getCurrentUserId();
+  const db = await getDb();
+  const userClause = userId != null ? "AND user_id = ?" : "";
+  const userArgs: InValue[] = userId != null ? [userId] : [];
+  const res = await db.execute({
+    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' ${userClause}`,
+    args: userArgs,
+  });
+  return NextResponse.json({
+    canRestore: res.rows.length > 0,
+    restorableCount: res.rows.length,
+    jobs: res.rows,
+  });
+}
+
 export async function POST(request: Request) {
   const userId = await getCurrentUserId();
 
-  let singleJobId: number | null = null;
+  let body: Record<string, unknown> | null = null;
   try {
-    const body = await request.json().catch(() => null);
-    if (body && typeof body === "object" && "job_id" in body) {
-      singleJobId = Number(body.job_id);
-    }
+    body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   } catch {}
+
+  if (body && (body.action === "undo" || body.action === "restore")) {
+    const res = await restoreClosedJobs(userId);
+    return NextResponse.json({
+      restored: res.restoredCount,
+      restoredJobs: res.restoredJobs,
+      message: `Restored ${res.restoredCount} job${res.restoredCount === 1 ? "" : "s"} to their previous status.`,
+    });
+  }
+
+  let singleJobId: number | null = null;
+  if (body && "job_id" in body) {
+    singleJobId = Number(body.job_id);
+  }
 
   if (singleJobId) {
     const job = await getJob(singleJobId, userId);

@@ -1,7 +1,5 @@
 import { lookup } from "node:dns/promises";
 import net from "node:net";
-import { generateStructured } from "@/lib/ai";
-import { z } from "zod";
 
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -279,27 +277,6 @@ function checkJsonLdJobPosting(html: string): { found: boolean; isExpired: boole
   return { found: false, isExpired: false };
 }
 
-/** Extract title tokens for fuzzy role match */
-function titleMatchesPage(title: string, pageTextLower: string): boolean {
-  if (!title || !title.trim()) return true;
-  const cleanTitle = title.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
-  if (pageTextLower.includes(cleanTitle.trim())) return true;
-
-  // Filter out generic modifiers
-  const stopWords = new Set(["senior", "sr", "junior", "jr", "lead", "staff", "principal", "director", "head", "manager", "of", "and", "the", "a", "an", "at", "in", "for", "remote", "hybrid", "full", "time"]);
-  const tokens = cleanTitle.split(/\s+/).filter((t) => t.length > 2 && !stopWords.has(t));
-  if (tokens.length === 0) return true;
-
-  // If at least 70% of distinctive job title words are in the page, consider it matched
-  const matchedTokens = tokens.filter((t) => pageTextLower.includes(t));
-  return matchedTokens.length / tokens.length >= 0.7;
-}
-
-const AIClassificationSchema = z.object({
-  isClosed: z.boolean().describe("True if the job posting is closed, removed, filled, expired, or replaced by a generic search/careers page. False if it is still actively open and accepting applications."),
-  reason: z.string().describe("Brief 1-sentence reason for the verdict."),
-});
-
 export interface JobCheckResult {
   id: number;
   company: string;
@@ -363,25 +340,15 @@ export async function checkJobStatus(job: {
       return result;
     }
 
-    // Common ATS domains (greenhouse, lever, ashby, workday, smartrecruiters, etc.)
-    const isAtsDomain =
-      safeUrl.hostname.includes("greenhouse.io") ||
-      safeUrl.hostname.includes("lever.co") ||
-      safeUrl.hostname.includes("ashbyhq.com") ||
-      safeUrl.hostname.includes("workdayjobs.com") ||
-      safeUrl.hostname.includes("smartrecruiters.com") ||
-      safeUrl.hostname.includes("bamboohr.com") ||
-      safeUrl.hostname.includes("myworkdayjobs.com");
-
-    if (isAtsDomain && (res.status === 400 || res.status === 403 || res.status >= 500)) {
-      result.status = "closed";
-      result.reason = `ATS endpoint returned HTTP ${res.status}`;
+    if (res.status === 401 || res.status === 403 || res.status === 429) {
+      result.status = "unknown";
+      result.reason = `Site blocked automated check (HTTP ${res.status} - requires browser)`;
       return result;
     }
 
     if (!res.ok) {
       result.status = "unknown";
-      result.reason = `HTTP ${res.status}`;
+      result.reason = `Server returned HTTP ${res.status}`;
       return result;
     }
 
@@ -434,41 +401,22 @@ export async function checkJobStatus(job: {
     }
   }
 
-  // 6. Check if page is a generic jobs catalog and the title is absent
-  const hasCatalogPhrases =
-    textLower.includes("explore open positions") ||
-    textLower.includes("search open roles") ||
-    textLower.includes("browse open positions") ||
-    textLower.includes("view all open positions") ||
-    textLower.includes("all open positions") ||
-    textLower.includes("no positions found") ||
-    textLower.includes("search jobs") ||
-    textLower.includes("current openings");
+  // 6. Check if page is an empty client-rendered SPA shell (Ashby, Workday, etc.)
+  // Client-rendered apps load the job details via JavaScript in the browser.
+  // Without browser JS, cleanText is very short. Never guess "closed" on an SPA shell.
+  const isSpaShell =
+    cleanText.length < 500 &&
+    (html.includes("id=\"root\"") ||
+      html.includes("id=\"__next\"") ||
+      html.includes("ashby") ||
+      html.includes("greenhouse") ||
+      html.includes("lever") ||
+      html.includes("workday"));
 
-  if (job.title && hasCatalogPhrases && !titleMatchesPage(job.title, textLower)) {
-    result.status = "closed";
-    result.reason = "Job title not found on career board (posting removed)";
+  if (isSpaShell) {
+    result.status = "open";
+    result.reason = "Client-rendered posting (active)";
     return result;
-  }
-
-  // 7. If text is very short or suspicious on 200 OK, optional AI verification
-  if (cleanText.length < 400 || (cleanText.length < 2000 && hasCatalogPhrases)) {
-    try {
-      const promptText = cleanText.slice(0, 4000);
-      const aiRes = await generateStructured({
-        system: "You are a job posting verification system. Determine whether the provided web page text shows an ACTIVE open job posting that can be applied to, or if the job has been REMOVED, CLOSED, FILLED, EXPIRED, or replaced with a general search/error catalog.",
-        prompt: `Company: ${job.company || "Unknown"}\nJob Title: ${job.title || "Unknown"}\nPage URL: ${finalUrl}\n\n=== PAGE TEXT ===\n${promptText}`,
-        schema: AIClassificationSchema,
-      });
-
-      if (aiRes.data.isClosed) {
-        result.status = "closed";
-        result.reason = aiRes.data.reason || "AI detected job is closed or removed";
-        return result;
-      }
-    } catch {
-      // If AI fails or is not connected, proceed with heuristic verdict
-    }
   }
 
   result.status = "open";
