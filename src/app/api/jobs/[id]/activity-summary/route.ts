@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api-auth";
+import { aiErrorResponse } from "@/lib/api-response";
 import { getJob, updateJob } from "@/lib/db/jobs";
 import { listSubmissions } from "@/lib/db/submissions";
 import { generateStructured } from "@/lib/ai";
@@ -23,7 +24,7 @@ export const POST = withUser<Params>(async (_request, userId, ctx) => {
 
   try {
     const submissions = await listSubmissions(job.id);
-    const { data } = await generateStructured({
+    const { data } = await generateStructured(userId, {
       system: ACTIVITY_SYSTEM_PROMPT,
       prompt: buildActivityPrompt(job, submissions),
       schema: JobActivitySchema,
@@ -33,8 +34,7 @@ export const POST = withUser<Params>(async (_request, userId, ctx) => {
     const updated = await updateJob(job.id, { activity_summary: serializeActivity(data, job, "ai") });
     return NextResponse.json({ job: updated });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Could not summarize this job.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return aiErrorResponse(err, "Could not summarize this job.");
   }
 });
 

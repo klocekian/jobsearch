@@ -1,26 +1,13 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api-auth";
 import { getUserById } from "@/lib/db/users";
-import { getUserAIProviders, upsertUserAIProvider } from "@/lib/db/ai-providers";
-import { AI_PROVIDERS, type AIProviderId, testProviderKey } from "@/lib/ai";
+import { upsertUserAIProvider } from "@/lib/db/ai-providers";
+import { AI_PROVIDERS, type AIProviderId, listUserAIProviders, supportedModel, testProviderKey } from "@/lib/ai";
 
 export const GET = withUser(async (_request, userId) => {
-  const [user, stored] = await Promise.all([getUserById(userId), getUserAIProviders(userId)]);
+  const user = await getUserById(userId);
+  const stored = user ? await listUserAIProviders(user) : [];
   const storedMap = new Map(stored.map((p) => [p.provider, p]));
-
-  // If user has legacy anthropic_token and no claude row yet, include it
-  if (user?.anthropic_token && !storedMap.has("claude")) {
-    storedMap.set("claude", {
-      id: 0,
-      user_id: userId,
-      provider: "claude",
-      api_key: user.anthropic_token,
-      model: AI_PROVIDERS.claude.defaultModel,
-      is_active: stored.length === 0 ? 1 : 0,
-      created_at: "",
-      updated_at: "",
-    });
-  }
 
   const providers = (Object.keys(AI_PROVIDERS) as AIProviderId[]).map((id) => {
     const meta = AI_PROVIDERS[id];
@@ -43,7 +30,7 @@ export const GET = withUser(async (_request, userId) => {
       placeholder: meta.placeholder,
       isConfigured: !!key,
       isActive: item?.is_active === 1,
-      model: item?.model || meta.defaultModel,
+      model: supportedModel(id, item?.model),
       maskedKey,
     };
   });

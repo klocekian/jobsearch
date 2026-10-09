@@ -1,8 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { getSession } from "./auth";
 import { updateUserTokens } from "./db/users";
 import type { UserRow } from "./db/users";
-import { getDb } from "./db/index";
+import { getSetting, setSetting } from "./db/settings";
+import { testClaudeKey } from "./ai/providers/claude";
 
 const CLIENT_ID = "41077d10-94b8-4194-be48-d251e9eb21b4";
 const TOKEN_URL = "https://api.anthropic.com/v1/oauth/token";
@@ -23,20 +22,6 @@ async function refreshOAuthToken(refreshToken: string): Promise<{ access_token: 
   } catch {
     return null;
   }
-}
-
-async function getSetting(key: string): Promise<string | null> {
-  const db = await getDb();
-  const result = await db.execute({ sql: "SELECT value FROM settings WHERE key = ?", args: [key] });
-  return (result.rows[0]?.value as string) ?? null;
-}
-
-async function setSetting(key: string, value: string): Promise<void> {
-  const db = await getDb();
-  await db.execute({
-    sql: "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = datetime('now')",
-    args: [key, value, value],
-  });
 }
 
 export async function getGlobalToken(): Promise<string | null> {
@@ -105,16 +90,7 @@ const LIVE_CHECK_TTL_MS = 5 * 60 * 1000;
 async function isTokenLive(token: string): Promise<boolean> {
   const cached = liveTokenCache.get(token);
   if (cached && Date.now() - cached.checkedAt < LIVE_CHECK_TTL_MS) return cached.valid;
-  let valid: boolean;
-  try {
-    const client = token.startsWith("sk-ant-oat")
-      ? new Anthropic({ authToken: token, apiKey: undefined, timeout: 3000 })
-      : new Anthropic({ apiKey: token, timeout: 3000 });
-    await client.models.list({ limit: 1 });
-    valid = true;
-  } catch {
-    valid = false;
-  }
+  const valid = await testClaudeKey(token, 3000);
   liveTokenCache.set(token, { valid, checkedAt: Date.now() });
   return valid;
 }
@@ -134,29 +110,4 @@ export async function getUserClaudeStatus(user: UserRow | null): Promise<ClaudeS
   }
   const live = await isTokenLive(user.anthropic_token);
   return live ? "connected" : "expired";
-}
-
-export async function getAnthropicClient(): Promise<Anthropic> {
-  // Per-user token takes priority
-  const user = await getSession().catch(() => null);
-  if (user?.anthropic_token) {
-    const token = await freshUserToken(user);
-    if (token) {
-      if (token.startsWith("sk-ant-oat")) {
-        return new Anthropic({ authToken: token, apiKey: undefined });
-      }
-      return new Anthropic({ apiKey: token });
-    }
-  }
-
-  // Global token (auto-refreshed)
-  const globalToken = await getGlobalToken();
-  if (globalToken) {
-    if (globalToken.startsWith("sk-ant-oat")) {
-      return new Anthropic({ authToken: globalToken, apiKey: undefined });
-    }
-    return new Anthropic({ apiKey: globalToken });
-  }
-
-  return new Anthropic();
 }

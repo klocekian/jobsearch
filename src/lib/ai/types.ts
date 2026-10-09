@@ -18,8 +18,9 @@ export const AI_PROVIDERS: Record<AIProviderId, AIProviderMetadata> = {
     id: "claude",
     name: "Anthropic Claude",
     badgeName: "Claude",
-    defaultModel: "claude-3-7-sonnet-20250219",
-    availableModels: ["claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
+    // The 3.x models listed here before were retired by Feb 2026 and now fail.
+    defaultModel: "claude-opus-5",
+    availableModels: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
     placeholder: "sk-ant-api03-...",
     helpUrl: "https://console.anthropic.com/settings/keys",
     description: "Industry-leading reasoning, tailored cover letters, and deep resume match analysis.",
@@ -63,24 +64,28 @@ export interface GenerateTextOptions {
   model?: string;
 }
 
-export interface StreamTextOptions {
-  system?: string;
-  prompt: string;
-  maxTokens?: number;
-  model?: string;
-}
+export type StreamTextOptions = GenerateTextOptions;
 
-export interface GenerateStructuredOptions<T> {
-  system?: string;
-  prompt: string;
+export interface GenerateStructuredOptions<T> extends GenerateTextOptions {
   schema: z.ZodType<T>;
   schemaName?: string;
-  maxTokens?: number;
-  model?: string;
+  /**
+   * Repair a raw JSON answer before validation — field aliases a model tends
+   * to invent for this schema. Only runs for providers without native
+   * structured output (Claude's answers already match the schema).
+   */
+  normalize?: (raw: unknown) => unknown;
 }
 
 export interface ResolvedAICredentials {
   provider: AIProviderId;
   apiKey: string;
-  model?: string | null;
+  model: string;
+}
+
+/** What each provider implements. `options.model` is already resolved when these are called. */
+export interface ProviderAdapter {
+  testKey(apiKey: string): Promise<boolean>;
+  streamText(apiKey: string, options: StreamTextOptions & { model: string }): Promise<ReadableStream<Uint8Array>>;
+  generateStructured<T>(apiKey: string, options: GenerateStructuredOptions<T> & { model: string }): Promise<{ data: T; model: string }>;
 }
