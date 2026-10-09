@@ -270,6 +270,11 @@ export function Nav({ user }: { user: NavUser | null }) {
               <a href="#ai" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
                 Use with Claude
               </a>
+              {process.env.NODE_ENV === "development" && (
+                <a href="/api/auth/dev-login">
+                  <Button label="Sign in as demo user" variant="secondary" size="sm" />
+                </a>
+              )}
               <a href="/api/auth/login">
                 <Button label="Sign in with Google" variant="primary" size="sm" />
               </a>
