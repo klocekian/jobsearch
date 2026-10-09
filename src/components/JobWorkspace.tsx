@@ -542,19 +542,27 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   const resumePicker = (
     <div className="flex items-center gap-2 min-w-0">
-      <span className="text-muted-foreground font-medium shrink-0">Resume:</span>
-      {savedResumes.length > 0 && (
+      {savedResumes.length > 0 ? (
         <Selector
           label="Resume"
           isLabelHidden
-          className="max-w-[200px]"
-          options={savedResumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` }))}
+          className="max-w-[220px]"
+          options={[
+            ...savedResumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` })),
+            { value: "__add_new__", label: "+ Add resume…" },
+          ]}
           value={String(savedResumes.find(r => r.content === resumeText)?.id ?? "")}
           onChange={(v) => {
+            if (v === "__add_new__") {
+              resumeFileRef.current?.click();
+              return;
+            }
             const r = savedResumes.find(r => r.id === Number(v));
             if (r) setResumeText(r.content);
           }}
         />
+      ) : (
+        <Button label="+ Add resume" variant="secondary" size="sm" onClick={() => resumeFileRef.current?.click()} />
       )}
       <input
         ref={resumeFileRef}
@@ -564,7 +572,14 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
-          const text = await file.text();
+          let text = "";
+          if (file.type === "application/pdf") {
+            const { extractFileText } = await import("@/lib/extract");
+            const res = await extractFileText(file);
+            text = res.text;
+          } else {
+            text = await file.text();
+          }
           const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9]/g, "_");
           const res = await fetch("/api/resumes", {
             method: "POST",
@@ -579,7 +594,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           e.target.value = "";
         }}
       />
-      <Button label="+ Add" variant="ghost" size="sm" onClick={() => resumeFileRef.current?.click()} />
     </div>
   );
 
