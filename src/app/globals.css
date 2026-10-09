@@ -15,15 +15,12 @@
   --font-mono: var(--font-geist-mono);
   --color-brand: #e9090a;
   --color-brand-dark: #c20808;
-}
-
-:root {
-  --color-background-body: #ffffff;
-  --color-background-surface: #ffffff;
+  --color-muted-foreground: var(--color-text-secondary);
 }
 
 body {
-  background-color: #ffffff;
+  background-color: var(--color-background-body);
+  color: var(--color-text-primary);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
@@ -45,7 +42,7 @@ body {
     position: sticky;
     top: var(--table-header-top, 110px);
     z-index: 10;
-    background: #ffffff !important;
+    background: var(--color-background-surface) !important;
     box-shadow: 0 1px 0 var(--color-border);
   }
 
