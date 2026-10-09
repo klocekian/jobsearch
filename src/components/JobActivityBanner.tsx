@@ -106,7 +106,7 @@ export function JobActivityBanner({
                   <li key={i}>
                     <span className="font-medium text-primary">{e.what}</span>
                     <span className="text-secondary"> — {formatEventWhen(e)}</span>
-                    <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-px text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                    <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-px text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
                       {relativeDay(e.when)}
                     </span>
                     {e.details && e.details !== e.what && activity.source !== "derived" && (
@@ -139,7 +139,7 @@ export function JobActivityBanner({
               {activity.stale && <> · notes changed since the last summary</>}
             </span>
             <div className="flex items-center gap-2">
-              {error && <span className="text-rose-600 dark:text-rose-400">{error}</span>}
+              {error && <span className="text-rose-700 dark:text-rose-400">{error}</span>}
               {job.notes?.trim() && (
                 <button
                   type="button"

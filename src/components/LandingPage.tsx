@@ -1,6 +1,7 @@
 import Image, { getImageProps } from "next/image";
 import { Button } from "@astryxdesign/core/Button";
 import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
+import { TipIcon } from "@/components/icons";
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" className="shrink-0">
@@ -65,14 +66,14 @@ function Screenshot({ shot, priority, fill }: { shot: Shot; priority?: boolean; 
 }
 
 const CHECK_COLORS = {
-  emerald: "text-emerald-400",
-  amber: "text-amber-400",
-  purple: "text-purple-400",
-  sky: "text-sky-400",
-  teal: "text-teal-400",
-  orange: "text-orange-400",
-  pink: "text-pink-400",
-  cyan: "text-cyan-400",
+  emerald: "text-emerald-600 dark:text-emerald-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  purple: "text-purple-600 dark:text-purple-400",
+  sky: "text-sky-600 dark:text-sky-400",
+  teal: "text-teal-600 dark:text-teal-400",
+  orange: "text-orange-600 dark:text-orange-400",
+  pink: "text-pink-600 dark:text-pink-400",
+  cyan: "text-cyan-600 dark:text-cyan-400",
 } as const;
 
 type Bullet = { title: string; body: React.ReactNode };
@@ -157,10 +158,10 @@ const HIGHLIGHTS = [
 ];
 
 const STEPS = [
-  { n: "1", title: "Save the role", body: "Clip a posting with the Chrome extension, paste a link, or bring in the jobs you've already collected in a spreadsheet.", color: "bg-sky-500/20 text-sky-400" },
-  { n: "2", title: "Understand your fit", body: "Compare the requirements with your experience. See your strengths, the connections you may need to explain, and the gaps to consider before applying.", color: "bg-teal-500/20 text-teal-400" },
-  { n: "3", title: "Make your case", body: "Tailor your resume and draft a cover letter around the role. Review the changes and decide what sounds right to you.", color: "bg-purple-500/20 text-purple-400" },
-  { n: "4", title: "Keep track", body: "Save what you sent, record conversations, and follow each application through to its outcome.", color: "bg-emerald-500/20 text-emerald-400" },
+  { n: "1", title: "Save the role", body: "Clip a posting with the Chrome extension, paste a link, or bring in the jobs you've already collected in a spreadsheet.", color: "bg-sky-500/20 text-sky-800 dark:text-sky-300" },
+  { n: "2", title: "Understand your fit", body: "Compare the requirements with your experience. See your strengths, the connections you may need to explain, and the gaps to consider before applying.", color: "bg-teal-500/20 text-teal-800 dark:text-teal-300" },
+  { n: "3", title: "Make your case", body: "Tailor your resume and draft a cover letter around the role. Review the changes and decide what sounds right to you.", color: "bg-purple-500/20 text-purple-800 dark:text-purple-300" },
+  { n: "4", title: "Keep track", body: "Save what you sent, record conversations, and follow each application through to its outcome.", color: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300" },
 ];
 
 const MORE_FEATURES = [
@@ -171,15 +172,15 @@ const MORE_FEATURES = [
 ];
 
 const PRINCIPLES = [
-  { letter: "A", title: "Find a pace you can keep", body: "Set a realistic rhythm for finding roles, applying, and following up. Leave room for research and interview preparation, and adjust as your circumstances change.", color: "bg-sky-500/20 text-sky-400" },
-  { letter: "B", title: "Make the connection clear", body: "Help the reader see why your experience matters for this role. Use relevant language from the posting where it accurately describes your work, and support it with specific examples.", color: "bg-emerald-500/20 text-emerald-400" },
-  { letter: "C", title: "Learn as you go", body: "Notice which applications lead to conversations and which questions come up in interviews. Use those experiences to refine your materials and get more comfortable explaining your work.", color: "bg-amber-500/20 text-amber-400" },
-  { letter: "D", title: "Let your priorities become clearer", body: "Talking with teams can change what you're looking for. Revisit your priorities as you learn, and put more of your attention toward work and working conditions that fit you.", color: "bg-purple-500/20 text-purple-400" },
+  { icon: "clock" as const, title: "Find a pace you can keep", body: "Set a realistic rhythm for finding roles, applying, and following up. Leave room for research and interview preparation, and adjust as your circumstances change.", color: "bg-sky-500/20 text-sky-800 dark:text-sky-300" },
+  { icon: "link" as const, title: "Make the connection clear", body: "Help the reader see why your experience matters for this role. Use relevant language from the posting where it accurately describes your work, and support it with specific examples.", color: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300" },
+  { icon: "lightbulb" as const, title: "Learn as you go", body: "Notice which applications lead to conversations and which questions come up in interviews. Use those experiences to refine your materials and get more comfortable explaining your work.", color: "bg-amber-500/20 text-amber-800 dark:text-amber-300" },
+  { icon: "compass" as const, title: "Let your priorities become clearer", body: "Talking with teams can change what you're looking for. Revisit your priorities as you learn, and put more of your attention toward work and working conditions that fit you.", color: "bg-purple-500/20 text-purple-800 dark:text-purple-300" },
 ];
 
 export function LandingPage() {
   return (
-    <div className="relative min-h-screen bg-surface text-primary selection:bg-sky-500/30 selection:text-sky-200">
+    <div className="relative min-h-screen bg-surface text-primary selection:bg-sky-500/30 selection:text-sky-950 dark:selection:text-sky-100">
       {/* Background radial gradient glow */}
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[600px] overflow-hidden">
         <div className="absolute left-1/2 -top-24 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-b from-sky-500/15 via-emerald-500/10 to-transparent blur-3xl" />
@@ -190,7 +191,7 @@ export function LandingPage() {
         <div className="text-center space-y-6 max-w-3xl mx-auto">
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.1] text-balance">
             <span className="block">Find work you want.</span>
-            <span className="block mt-1 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500 bg-clip-text text-transparent">
+            <span className="block mt-1 bg-gradient-to-r from-sky-600 via-teal-600 to-emerald-600 dark:from-sky-400 dark:via-teal-300 dark:to-emerald-400 bg-clip-text text-transparent">
               Make a clearer case for yourself.
             </span>
           </h1>
@@ -280,7 +281,7 @@ export function LandingPage() {
         footer={
           <>
             <p className="pt-2 text-xs text-secondary sm:hidden">Works in desktop Chrome. Open this page on your computer to install it.</p>
-            <a href="/chrome-extension.zip" download className="hidden sm:inline-block pt-2 text-xs font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-300 dark:hover:text-cyan-200 transition-colors">
+            <a href="/chrome-extension.zip" download className="hidden sm:inline-block pt-2 text-xs font-semibold text-cyan-700 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200 transition-colors">
               Download the Chrome extension →
             </a>
           </>
@@ -513,9 +514,9 @@ export function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
             {PRINCIPLES.map((pr) => (
-              <div key={pr.letter} className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
+              <div key={pr.title} className="p-5 rounded-2xl border border-border bg-surface/80 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${pr.color}`}>{pr.letter}</span>
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full ${pr.color}`}><TipIcon name={pr.icon} /></span>
                   <span className="font-semibold text-primary text-sm">{pr.title}</span>
                 </div>
                 <p className="text-xs text-secondary leading-relaxed">{pr.body}</p>

@@ -197,7 +197,7 @@ export function McpConnectPanel() {
           </div>
         </div>
 
-        {error && <Text type="supporting" display="block" className="mt-3 text-rose-600">{error}</Text>}
+        {error && <Text type="supporting" display="block" className="mt-3 text-rose-700 dark:text-rose-400">{error}</Text>}
       </div>
     </Card>
   );

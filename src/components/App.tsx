@@ -343,7 +343,7 @@ export function App() {
               {trackerStatus === "loading" ? "Loading…" : "Load from saved jobs"}
             </button>
             {trackerStatus === "error" && (
-              <span className="text-xs text-rose-500">Failed to load jobs.</span>
+              <span className="text-xs text-rose-700 dark:text-rose-400">Failed to load jobs.</span>
             )}
             {trackerOpen && trackerJobs.length > 0 && (
               <div className="absolute left-0 top-full z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
@@ -360,7 +360,7 @@ export function App() {
                     <span className="text-secondary">{job.title}</span>
                     {job.status && (
                       <span className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-                        job.status === "interview" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-muted text-secondary"
+                        job.status === "interview" ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300" : "bg-muted text-secondary"
                       }`}>
                         {job.status}
                       </span>
@@ -417,10 +417,10 @@ export function App() {
               </a>
             </div>
             {fetchStatus.kind === "done" && (
-              <span className="mt-1 block text-xs text-emerald-600 dark:text-emerald-400">{fetchStatus.message}</span>
+              <span className="mt-1 block text-xs text-emerald-700 dark:text-emerald-400">{fetchStatus.message}</span>
             )}
             {fetchStatus.kind === "error" && (
-              <span className="mt-1 block text-xs text-rose-500 dark:text-rose-400">{fetchStatus.message}</span>
+              <span className="mt-1 block text-xs text-rose-700 dark:text-rose-400">{fetchStatus.message}</span>
             )}
           </Field>
         </div>
@@ -468,10 +468,10 @@ export function App() {
                 <span className="text-xs text-secondary">Extracting…</span>
               )}
               {pdfStatus.kind === "done" && (
-                <span className="text-xs text-emerald-600 dark:text-emerald-400">{pdfStatus.message}</span>
+                <span className="text-xs text-emerald-700 dark:text-emerald-400">{pdfStatus.message}</span>
               )}
               {pdfStatus.kind === "error" && (
-                <span className="text-xs text-rose-500 dark:text-rose-400">{pdfStatus.message}</span>
+                <span className="text-xs text-rose-700 dark:text-rose-400">{pdfStatus.message}</span>
               )}
               <input
                 ref={fileInputRef}
@@ -552,7 +552,7 @@ export function App() {
                     });
                     alert("Saved to job submissions.");
                   }}
-                  className="mb-1.5 rounded-md border border-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 transition hover:bg-emerald-500 hover:text-white"
+                  className="mb-1.5 rounded-md border border-emerald-600 dark:border-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 transition hover:bg-emerald-700 hover:text-white dark:hover:bg-emerald-700 dark:hover:text-white"
                 >
                   Save to job
                 </button>

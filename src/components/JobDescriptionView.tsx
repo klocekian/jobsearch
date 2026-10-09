@@ -50,11 +50,11 @@ export function JobDescriptionView({ jobText, matched, missing, hideLegend = fal
       {!hideLegend && (
         <HStack gap={4} className="mb-4">
           <HStack gap={2} className="items-center">
-            <span className="inline-block h-1 w-5 rounded bg-rose-400" />
+            <span className="inline-block h-1 w-5 rounded bg-rose-600 dark:bg-rose-400" />
             <Text type="supporting">Missing Skills</Text>
           </HStack>
           <HStack gap={2} className="items-center">
-            <span className="inline-block h-1 w-5 rounded bg-emerald-400" />
+            <span className="inline-block h-1 w-5 rounded bg-emerald-600 dark:bg-emerald-400" />
             <Text type="supporting">Matched Skills</Text>
           </HStack>
         </HStack>
@@ -67,8 +67,8 @@ export function JobDescriptionView({ jobText, matched, missing, hideLegend = fal
                 key={i}
                 className={
                   t.state === "matched"
-                    ? "underline decoration-emerald-400 decoration-2 underline-offset-2"
-                    : "underline decoration-rose-400 decoration-2 underline-offset-2"
+                    ? "underline decoration-emerald-600 dark:decoration-emerald-400 decoration-2 underline-offset-2"
+                    : "underline decoration-rose-600 dark:decoration-rose-400 decoration-2 underline-offset-2"
                 }
               >
                 {t.text}

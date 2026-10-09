@@ -397,7 +397,7 @@ function ApplicationFields({ initialFields }: { initialFields: Record<string, un
         </div>
         <HStack gap={3} className="mt-4 items-center">
           <Button label={saving ? "Saving…" : "Save"} variant="primary" size="sm" onClick={save} isDisabled={saving} />
-          {msg && <Text type="supporting" className="text-emerald-600">{msg}</Text>}
+          {msg && <Text type="supporting" className="text-emerald-700 dark:text-emerald-400">{msg}</Text>}
         </HStack>
       </div>
     </Card>

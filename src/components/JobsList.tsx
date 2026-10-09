@@ -115,7 +115,9 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     if (statusFilter && !starredOnly) params.set("status", statusFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (starredOnly) params.set("starred", "1");
-    const res = await fetch(`/api/jobs?${params}`);
+    // Bypass the browser cache: /api/jobs allows a short private cache, and
+    // this runs right after mutations (restore, confirm, import, status checks).
+    const res = await fetch(`/api/jobs?${params}`, { cache: "no-store" });
     const data = await res.json();
     fetchedFromClient.current = true;
     setJobs(data.jobs ?? []);
@@ -148,6 +150,26 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
     const ids = new Set(autoClosedJobs.map((j) => j.id));
     localStorage.setItem("dismissedAutoClosed", JSON.stringify([...ids]));
     setDismissedAutoClosed(ids);
+  };
+
+  const [confirming, setConfirming] = useState(false);
+  const confirmAutoClosed = async () => {
+    setConfirming(true);
+    try {
+      const res = await fetch("/api/jobs/check-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "confirm", job_ids: autoClosedJobs.map((j) => j.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      setImportMsg(`Saved — ${data.confirmed} job${data.confirmed === 1 ? " stays" : "s stay"} closed.`);
+      fetchJobs();
+    } catch {
+      setImportMsg("Failed to save closed jobs.");
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const undoAutoClosed = async () => {
@@ -244,7 +266,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
       renderCell: (job) => (
         <button
           onClick={(e) => { e.preventDefault(); toggleStar(job); }}
-          className={`text-lg leading-none transition ${job.is_starred ? "text-amber-400" : "text-disabled hover:text-amber-300"}`}
+          className={`text-lg leading-none transition ${job.is_starred ? "text-amber-600 dark:text-amber-400" : "text-disabled hover:text-amber-600 dark:hover:text-amber-400"}`}
         >
           {job.is_starred ? "★" : "☆"}
         </button>
@@ -386,7 +408,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
             />
             <label className="flex cursor-pointer items-center gap-1.5 text-sm select-none">
               <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
-              <span className={starredOnly ? "text-amber-500 font-medium" : "text-secondary"}>★ Starred</span>
+              <span className={starredOnly ? "text-amber-700 dark:text-amber-400 font-medium" : "text-secondary"}>★ Starred</span>
             </label>
           </HStack>
 
@@ -398,18 +420,25 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
                 </span>
                 <HStack gap={2} className="items-center">
                   <Button
+                    label={confirming ? "Saving…" : "This looks correct. Save."}
+                    variant="primary"
+                    size="sm"
+                    onClick={confirmAutoClosed}
+                    isDisabled={confirming || restoring}
+                  />
+                  <Button
                     label={restoring ? "Restoring…" : "Restore to active pipeline"}
                     variant="secondary"
                     size="sm"
                     onClick={undoAutoClosed}
-                    isDisabled={restoring}
+                    isDisabled={restoring || confirming}
                   />
                   <button
                     type="button"
                     onClick={dismissAutoClosed}
                     aria-label="Dismiss"
                     title="Dismiss"
-                    className="rounded p-1 text-amber-900/70 hover:bg-amber-500/15 hover:text-amber-900 dark:text-amber-100/70 dark:hover:text-amber-100 cursor-pointer"
+                    className="rounded p-1 text-amber-900/80 hover:bg-amber-500/15 hover:text-amber-900 dark:text-amber-100/80 dark:hover:text-amber-100 cursor-pointer"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -424,7 +453,7 @@ export function JobsList({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
                     <Link href={`/jobs/${j.id}`} className="font-medium hover:underline">
                       {j.company || "Unknown company"} — {j.title || "Untitled"}
                     </Link>
-                    <span className="text-xs text-amber-900/70 dark:text-amber-100/70">was {STATUS_OPTIONS.find((s) => s.value === j.previous_status)?.label ?? j.previous_status}</span>
+                    <span className="text-xs text-amber-900/80 dark:text-amber-100/80">was {STATUS_OPTIONS.find((s) => s.value === j.previous_status)?.label ?? j.previous_status}</span>
                     {j.url && (
                       <a href={j.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline hover:no-underline">
                         View posting ↗

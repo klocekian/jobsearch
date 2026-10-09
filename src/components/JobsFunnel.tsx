@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { STATUS_OPTIONS, STATUS_DOT_COLORS } from "@/lib/status";
+import { STATUS_OPTIONS, STATUS_DOT_COLORS, STATUS_TEXT_COLORS } from "@/lib/status";
 import { formatDate } from "@/lib/format";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
@@ -14,9 +14,9 @@ import { HStack } from "@astryxdesign/core/Stack";
 
 const PIPELINE = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
 const TERMINAL_LINES = [
-  { status: "rejected", label: "Rejected", color: STATUS_DOT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
-  { status: "abandoned", label: "Abandoned", color: STATUS_DOT_COLORS.abandoned, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
-  { status: "closed", label: "Closed", color: STATUS_DOT_COLORS.closed, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
+  { status: "rejected", label: "Rejected", color: STATUS_TEXT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
+  { status: "abandoned", label: "Abandoned", color: STATUS_TEXT_COLORS.abandoned, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
+  { status: "closed", label: "Closed", color: STATUS_TEXT_COLORS.closed, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
 ];
 
 const DOT_COLORS: Record<string, string> = { total: "var(--color-text-primary)", ...STATUS_DOT_COLORS };
@@ -60,7 +60,7 @@ function GateStepper({ job }: { job: JobRow }) {
           <Text
             type="supporting"
             className="mr-2 ml-1 whitespace-nowrap"
-            style={{ color: i < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-text-disabled, #94a3b8)" }}
+            style={{ color: i < reached ? STATUS_TEXT_COLORS[g.key] : "var(--color-text-secondary)" }}
           >
             {g.label}
           </Text>

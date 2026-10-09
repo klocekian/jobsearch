@@ -237,6 +237,19 @@ export async function claimUnownedJobs(userId: number): Promise<number> {
   return jobs.rowsAffected;
 }
 
+/** Accept auto-closures as final: the jobs forget their prior status, so they're no longer offered for restore. */
+export async function confirmClosedJobs(userId: number | null, ids: number[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const db = await getDb();
+  const userClause = userId != null ? "AND user_id = ?" : "";
+  const userArgs: InValue[] = userId != null ? [userId] : [];
+  const result = await db.execute({
+    sql: `UPDATE jobs SET previous_status = NULL, updated_at = datetime('now') WHERE status = 'closed' AND id IN (${ids.map(() => "?").join(", ")}) ${userClause}`,
+    args: [...ids, ...userArgs],
+  });
+  return result.rowsAffected;
+}
+
 export async function restoreClosedJobs(userId: number | null): Promise<{
   restoredCount: number;
   restoredJobs: { id: number; company: string; title: string; restoredTo: string }[];

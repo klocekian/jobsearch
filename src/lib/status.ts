@@ -35,6 +35,27 @@ export const STATUS_DOT_COLORS: Record<string, string> = {
   closed: "#94a3b8",
 };
 
+/**
+ * Text-safe counterpart to STATUS_DOT_COLORS: the same hue per status, darkened
+ * for light mode and lightened for dark mode so labels clear WCAG AA (4.5:1).
+ * Use this whenever a status color is applied to text rather than a dot or line.
+ */
+export const STATUS_TEXT_COLORS: Record<string, string> = {
+  saved: "light-dark(#475569, #94a3b8)",
+  applying: "light-dark(#b45309, #fbbf24)",
+  applied: "light-dark(#1d4ed8, #60a5fa)",
+  interview: "light-dark(#047857, #34d399)",
+  interview2: "light-dark(#0e7490, #22d3ee)",
+  onsite: "light-dark(#0f766e, #2dd4bf)",
+  offer: "light-dark(#6d28d9, #a78bfa)",
+  accepted: "light-dark(#15803d, #4ade80)",
+  rejected: "light-dark(#be123c, #fb7185)",
+  declined: "light-dark(#9f1239, #fda4af)",
+  withdrawn: "light-dark(#57534e, #a8a29e)",
+  abandoned: "light-dark(#57534e, #a8a29e)",
+  closed: "light-dark(#475569, #94a3b8)",
+};
+
 export const STATUS_BADGE_VARIANTS: Record<string, "success" | "error" | "warning" | "blue" | "purple" | "teal" | "neutral"> = {
   saved: "neutral",
   applying: "warning",
@@ -52,15 +73,15 @@ export const STATUS_BADGE_VARIANTS: Record<string, "success" | "error" | "warnin
 
 export const STATUS_COLORS: Record<string, string> = {
   saved: "bg-muted text-secondary",
-  applying: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  applied: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  interview: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  interview2: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
-  onsite: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
-  offer: "bg-purple-500/15 text-purple-700 dark:text-purple-300",
+  applying: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  applied: "bg-blue-500/15 text-blue-800 dark:text-blue-300",
+  interview: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+  interview2: "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300",
+  onsite: "bg-teal-500/15 text-teal-800 dark:text-teal-300",
+  offer: "bg-purple-500/15 text-purple-800 dark:text-purple-300",
   accepted: "bg-green-500/20 text-green-800 dark:text-green-300",
-  rejected: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
-  declined: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+  rejected: "bg-rose-500/15 text-rose-800 dark:text-rose-300",
+  declined: "bg-orange-500/15 text-orange-800 dark:text-orange-300",
   withdrawn: "bg-muted text-secondary",
   abandoned: "bg-muted text-secondary",
   closed: "bg-muted text-disabled",

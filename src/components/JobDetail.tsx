@@ -293,7 +293,7 @@ export function JobDetail({ jobId }: { jobId: number }) {
                 size="sm"
                 onClick={() => setPasting(true)}
               />
-              {extractMsg && <span className="text-xs text-emerald-600">{extractMsg}</span>}
+              {extractMsg && <span className="text-xs text-emerald-700 dark:text-emerald-400">{extractMsg}</span>}
             </div>
           )}
 
@@ -329,7 +329,7 @@ export function JobDetail({ jobId }: { jobId: number }) {
                   onClick={() => { setPasting(false); setPasteText(""); }}
                 />
               </div>
-              {extractMsg && <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">{extractMsg}</p>}
+              {extractMsg && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">{extractMsg}</p>}
             </Card>
           )}
 
