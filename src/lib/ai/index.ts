@@ -62,7 +62,31 @@ export function supportedModel(provider: AIProviderId, model: string | null | un
   return model && meta.availableModels.includes(model) ? model : meta.defaultModel;
 }
 
-/** Server keys, in order, for a user with nothing connected. */
+/**
+ * Whether this user may fall back to the server's own AI keys. Those are billed
+ * to whoever runs the server and anyone with a Google account can sign in, so
+ * in production only the emails in SERVER_AI_EMAILS (comma-separated) get them;
+ * everyone else connects their own provider. Unset outside production means
+ * everyone, so local development keeps working with keys from .env.local.
+ */
+export function mayUseServerAI(email: string | null | undefined): boolean {
+  const allowed = process.env.SERVER_AI_EMAILS;
+  if (!allowed) return process.env.NODE_ENV !== "production";
+  if (!email) return false;
+  return allowed.split(/[\s,]+/).some((e) => e && e.toLowerCase() === email.toLowerCase());
+}
+
+/** The first provider the server has a key for, without resolving the key (no token refresh). */
+function serverProvider(): AIProviderId | null {
+  const env = process.env;
+  if (env.ANTHROPIC_AUTH_TOKEN || env.ANTHROPIC_API_KEY || env.ANTHROPIC_REFRESH_TOKEN) return "claude";
+  if (env.GEMINI_API_KEY) return "gemini";
+  if (env.GROK_API_KEY || env.XAI_API_KEY) return "grok";
+  if (env.MISTRAL_API_KEY) return "mistral";
+  return null;
+}
+
+/** Server keys, in order, for an allowlisted user with nothing connected. */
 async function serverCredentials(): Promise<ResolvedAICredentials | null> {
   const claude = (await getGlobalToken().catch(() => null)) || process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
   const keys: [AIProviderId, string | undefined][] = [
@@ -75,7 +99,7 @@ async function serverCredentials(): Promise<ResolvedAICredentials | null> {
   return found ? { provider: found[0], apiKey: found[1]!, model: AI_PROVIDERS[found[0]].defaultModel } : null;
 }
 
-/** Which provider, key and model to use for this user: their active provider, else the server's keys. */
+/** Which provider, key and model to use: the user's active provider, else the server's keys if they're allowed them. */
 export async function resolveAICredentials(userId: number | null): Promise<ResolvedAICredentials> {
   const user = userId != null ? await getUserById(userId) : undefined;
   const active = user ? activeOf(await listUserAIProviders(user)) : undefined;
@@ -84,7 +108,7 @@ export async function resolveAICredentials(userId: number | null): Promise<Resol
     const apiKey = active.id === 0 ? (await freshUserToken(user!).catch(() => null)) || active.api_key : active.api_key;
     return { provider: active.provider, apiKey, model: supportedModel(active.provider, active.model) };
   }
-  const server = await serverCredentials();
+  const server = mayUseServerAI(user?.email) ? await serverCredentials() : null;
   if (server) return server;
   throw new AIError("no_provider", "No AI provider connected. Go to Profile > AI to connect Claude, Gemini, Grok, or Mistral.");
 }
@@ -119,17 +143,26 @@ export interface UserAIStatus {
   activeProvider: AIProviderId | null;
   providerName: string | null;
   configuredCount: number;
+  /** "server" when AI works only through the server's keys (an allowlisted user with nothing connected). */
+  source?: "own" | "server";
 }
 
 export async function getUserAIStatus(userId: number | null): Promise<UserAIStatus> {
   const user = userId != null ? await getUserById(userId) : undefined;
   const providers = user ? await listUserAIProviders(user) : [];
   const active = activeOf(providers);
-  if (!active) return { connected: false, activeProvider: null, providerName: null, configuredCount: 0 };
-  return {
-    connected: true,
-    activeProvider: active.provider,
-    providerName: AI_PROVIDERS[active.provider]?.badgeName ?? active.provider,
-    configuredCount: providers.length,
-  };
+  if (active) {
+    return {
+      connected: true,
+      activeProvider: active.provider,
+      providerName: AI_PROVIDERS[active.provider]?.badgeName ?? active.provider,
+      configuredCount: providers.length,
+      source: "own",
+    };
+  }
+  const server = user && mayUseServerAI(user.email) ? serverProvider() : null;
+  if (server) {
+    return { connected: true, activeProvider: server, providerName: AI_PROVIDERS[server].badgeName, configuredCount: 0, source: "server" };
+  }
+  return { connected: false, activeProvider: null, providerName: null, configuredCount: 0 };
 }
