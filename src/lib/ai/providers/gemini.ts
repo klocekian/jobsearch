@@ -170,6 +170,8 @@ export function streamGeminiText(
   });
 }
 
+import { normalizeStructuredPayload, safeParseLlmJson } from "../normalize-structured";
+
 export async function generateGeminiStructured<T>(
   apiKey: string,
   options: GenerateStructuredOptions<T>,
@@ -205,10 +207,9 @@ export async function generateGeminiStructured<T>(
   const res = await fetchGeminiWithRetry(url, body);
 
   const data = await res.json();
-  let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-  rawText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-
-  const parsedJson = JSON.parse(rawText);
-  const validated = options.schema.parse(parsedJson);
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+  const parsedJson = safeParseLlmJson(rawText);
+  const normalized = normalizeStructuredPayload(parsedJson, options.schemaName);
+  const validated = options.schema.parse(normalized);
   return { data: validated, model };
 }

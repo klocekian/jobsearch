@@ -164,6 +164,8 @@ export function streamGrokText(
   });
 }
 
+import { normalizeStructuredPayload, safeParseLlmJson } from "../normalize-structured";
+
 export async function generateGrokStructured<T>(
   apiKey: string,
   options: GenerateStructuredOptions<T>,
@@ -194,10 +196,9 @@ export async function generateGrokStructured<T>(
   });
 
   const data = await res.json();
-  let rawText = data.choices?.[0]?.message?.content ?? "{}";
-  rawText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-
-  const parsedJson = JSON.parse(rawText);
-  const validated = options.schema.parse(parsedJson);
+  const rawText = data.choices?.[0]?.message?.content ?? "{}";
+  const parsedJson = safeParseLlmJson(rawText);
+  const normalized = normalizeStructuredPayload(parsedJson, options.schemaName);
+  const validated = options.schema.parse(normalized);
   return { data: validated, model };
 }
