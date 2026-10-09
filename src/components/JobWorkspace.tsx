@@ -676,9 +676,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               </div>
             </>
           ) : (
-            <div className="py-2">
-              <CandidateProfilePanel onBack={() => setProfileSubTab("score")} />
-            </div>
+            <CandidateProfilePanel onBack={() => setProfileSubTab("score")} />
           )}
         </div>
       )}
