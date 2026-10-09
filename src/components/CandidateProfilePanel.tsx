@@ -175,15 +175,18 @@ export function CandidateProfilePanel({ onBack }: CandidateProfilePanelProps = {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          {onBack && <Button label="← Back" variant="ghost" size="sm" onClick={onBack} />}
-          <div>
-            <Heading level={2} className="tracking-tight">Candidate Profile</Heading>
-            <div className="mt-0.5">
-              <Text type="supporting" color="secondary">
-                Grounding for the fitness check. Both documents are required.
-              </Text>
+          {onBack ? (
+            <Button label="← Back" variant="ghost" size="sm" onClick={onBack} />
+          ) : (
+            <div>
+              <Heading level={2} className="tracking-tight">Candidate Profile</Heading>
+              <div className="mt-0.5">
+                <Text type="supporting" color="secondary">
+                  Grounding for the fitness check. Both documents are required.
+                </Text>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
