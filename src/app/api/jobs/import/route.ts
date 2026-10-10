@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { fetchPublicPage } from "@/lib/page-fetch";
 import { createJob, listJobs } from "@/lib/db/jobs";
 import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
-const SHEET_ID = "1iToTfa9tSrLq70vJ4_za_hRF7qsQKivD5d5akvSr5ds";
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
+const MAX_CSV_BYTES = 5_000_000;
+
+const RequestSchema = z.union([
+  z.object({ csvText: z.string().min(1).max(MAX_CSV_BYTES) }),
+  z.object({ sheetUrl: z.string().trim().min(1).max(2000) }),
+]);
 
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
@@ -61,42 +67,54 @@ function parseDate(raw: string): string | null {
   return null;
 }
 
-function extractSheetExportUrl(input: string): string {
+/**
+ * The CSV export URL for a Google Sheet, from its share URL or bare ID. Only
+ * Google Sheets: this route used to fetch whatever URL it was given.
+ */
+function sheetExportUrl(input: string): string | null {
   const trimmed = input.trim();
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    const idMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    const gidMatch = trimmed.match(/[?&#]gid=([0-9]+)/);
-    if (idMatch) {
-      const sheetId = idMatch[1];
-      const gid = gidMatch ? gidMatch[1] : "0";
-      return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+  let id: string | undefined;
+  let gid = "0";
+  if (/^https?:\/\//.test(trimmed)) {
+    let url: URL;
+    try {
+      url = new URL(trimmed);
+    } catch {
+      return null;
     }
-    return trimmed;
+    if (url.hostname !== "docs.google.com") return null;
+    id = url.pathname.match(/^\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+    gid = trimmed.match(/[?&#]gid=([0-9]+)/)?.[1] ?? "0";
+  } else if (/^[a-zA-Z0-9-_]{20,}$/.test(trimmed)) {
+    id = trimmed;
   }
-  return `https://docs.google.com/spreadsheets/d/${trimmed}/export?format=csv&gid=0`;
+  return id ? `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}` : null;
 }
 
 export const POST = withUser(async (req, userId) => {
   try {
-    let bodyJson: { sheetUrl?: string; csvText?: string } = {};
-    try {
-      bodyJson = await req.json();
-    } catch {
-      // Body may be empty if called without payload
+    const parsed = RequestSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Send a Google Sheet URL or ID, or a CSV file." }, { status: 400 });
     }
 
-    let csvContent = bodyJson.csvText;
-
-    if (!csvContent) {
-      const targetUrl = bodyJson.sheetUrl ? extractSheetExportUrl(bodyJson.sheetUrl) : CSV_URL;
-      const res = await fetch(targetUrl);
-      if (!res.ok) {
+    let csvContent: string;
+    if ("csvText" in parsed.data) {
+      csvContent = parsed.data.csvText;
+    } else {
+      const exportUrl = sheetExportUrl(parsed.data.sheetUrl);
+      if (!exportUrl) {
+        return NextResponse.json({ error: "That isn't a Google Sheets URL or ID." }, { status: 400 });
+      }
+      // Google answers the export URL with a redirect to googleusercontent.com.
+      const page = await fetchPublicPage(exportUrl, { timeoutMs: 15_000, maxBytes: MAX_CSV_BYTES, accept: "text/csv" });
+      if (!page.ok) {
         return NextResponse.json(
-          { error: `Could not fetch spreadsheet (${res.status}). Ensure sharing is set to 'Anyone with the link can view'.` },
+          { error: `Could not fetch spreadsheet (${page.status}). Ensure sharing is set to 'Anyone with the link can view'.` },
           { status: 502 },
         );
       }
-      csvContent = await res.text();
+      csvContent = page.body;
     }
 
     const rows = parseCSV(csvContent);

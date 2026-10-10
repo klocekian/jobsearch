@@ -167,8 +167,16 @@ export async function deleteJob(id: number): Promise<boolean> {
   return result.rowsAffected > 0;
 }
 
+/**
+ * Hand rows created before anyone signed in — the stdio MCP server against a
+ * fresh local database — to that database's only user. Does nothing once a
+ * second user exists: on a shared install, unowned rows belong to no one who
+ * happens to sign in next.
+ */
 export async function claimUnownedJobs(userId: number): Promise<number> {
   const db = await getDb();
+  const users = await db.execute("SELECT COUNT(*) AS n FROM users");
+  if (Number(users.rows[0].n) !== 1) return 0;
   const jobs = await db.execute({ sql: "UPDATE jobs SET user_id = ? WHERE user_id IS NULL", args: [userId] });
   await db.execute({ sql: "UPDATE resumes SET user_id = ? WHERE user_id IS NULL", args: [userId] });
   return jobs.rowsAffected;

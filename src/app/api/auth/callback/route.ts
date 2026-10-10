@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 
     await setSession(user.id);
 
-    // First user claims all existing unowned data
+    // A single-user install's first sign-in adopts rows written before it (see claimUnownedJobs).
     const claimed = await claimUnownedJobs(user.id);
     if (claimed > 0) {
       console.log(`User ${user.email} claimed ${claimed} unowned jobs`);
