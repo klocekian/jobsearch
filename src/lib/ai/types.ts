@@ -29,8 +29,9 @@ export const AI_PROVIDERS: Record<AIProviderId, AIProviderMetadata> = {
     id: "gemini",
     name: "Google Gemini",
     badgeName: "Gemini",
-    defaultModel: "gemini-2.0-flash",
-    availableModels: ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-1.5-pro", "gemini-1.5-flash"],
+    // 2.0 and 1.5 are shut down (checked against Google's model list, Oct 2026).
+    defaultModel: "gemini-3.8-flash",
+    availableModels: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-2.5-pro"],
     placeholder: "AIzaSy...",
     helpUrl: "https://aistudio.google.com/app/apikey",
     description: "Fast, generous free tier, powerful multi-turn reasoning and parsing.",
@@ -39,8 +40,9 @@ export const AI_PROVIDERS: Record<AIProviderId, AIProviderMetadata> = {
     id: "grok",
     name: "xAI Grok",
     badgeName: "Grok",
-    defaultModel: "grok-2-latest",
-    availableModels: ["grok-2-latest", "grok-beta"],
+    // grok-2 and grok-beta are no longer in xAI's model list (Oct 2026).
+    defaultModel: "grok-4.7",
+    availableModels: ["grok-4.7", "grok-4.6", "grok-4.3"],
     placeholder: "xai-...",
     helpUrl: "https://console.x.ai/",
     description: "Direct, concise writing and high-speed extraction.",
@@ -49,8 +51,10 @@ export const AI_PROVIDERS: Record<AIProviderId, AIProviderMetadata> = {
     id: "mistral",
     name: "Mistral AI",
     badgeName: "Mistral",
-    defaultModel: "open-mistral-nemo",
-    availableModels: ["open-mistral-nemo", "open-mistral-7b", "open-mixtral-8x7b", "mistral-small-latest", "mistral-large-latest", "codestral-latest"],
+    // The open-* models are retired. The -latest aliases follow each tier's
+    // current release, so this list doesn't go stale the same way.
+    defaultModel: "mistral-medium-latest",
+    availableModels: ["mistral-medium-latest", "mistral-small-latest", "mistral-large-latest"],
     placeholder: "...",
     helpUrl: "https://console.mistral.ai/api-keys/",
     description: "Efficient European open-weights intelligence and strong structured outputs.",

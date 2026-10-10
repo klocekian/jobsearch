@@ -24,6 +24,40 @@ export function getClient(): Client {
   return _client;
 }
 
+/** Columns added after their table first shipped; databases created before then lack them. */
+const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
+  ["jobs", "is_starred", "INTEGER NOT NULL DEFAULT 0"],
+  ["jobs", "fitness_score", "INTEGER"],
+  ["jobs", "fitness_report", "TEXT"],
+  ["jobs", "fitness_run_at", "TEXT"],
+  ["jobs", "match_resume_name", "TEXT"],
+  ["jobs", "activity_summary", "TEXT"],
+  ["users", "mcp_oauth_epoch", "INTEGER NOT NULL DEFAULT 0"],
+  ["users", "mcp_last_used_at", "TEXT"],
+];
+
+/**
+ * Add whichever of ADDED_COLUMNS a database is missing. Checking first means a
+ * failure here is real and propagates, rather than hiding among the expected
+ * "duplicate column" errors from blindly re-running every ALTER.
+ */
+async function addMissingColumns(client: Client): Promise<void> {
+  const tables = [...new Set(ADDED_COLUMNS.map(([table]) => table))];
+  const existing = new Map(
+    await Promise.all(
+      tables.map(async (table) => {
+        const info = await client.execute(`PRAGMA table_info(${table})`);
+        return [table, new Set(info.rows.map((r) => String(r.name)))] as const;
+      }),
+    ),
+  );
+  for (const [table, column, definition] of ADDED_COLUMNS) {
+    if (!existing.get(table)?.has(column)) {
+      await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  }
+}
+
 export async function getDb(): Promise<Client> {
   const client = getClient();
   if (_initialized) return client;
@@ -133,7 +167,6 @@ export async function getDb(): Promise<Client> {
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
-    CREATE INDEX IF NOT EXISTS idx_jobs_starred ON jobs(is_starred);
     CREATE INDEX IF NOT EXISTS idx_submissions_job ON submissions(job_id);
     CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -142,17 +175,9 @@ export async function getDb(): Promise<Client> {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_user_ai_providers_user_provider ON user_ai_providers(user_id, provider);
   `);
 
-  // Parallelize backward-compatibility migrations for existing DBs
-  await Promise.allSettled([
-    client.execute("ALTER TABLE jobs ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0"),
-    client.execute("ALTER TABLE jobs ADD COLUMN fitness_score INTEGER"),
-    client.execute("ALTER TABLE jobs ADD COLUMN fitness_report TEXT"),
-    client.execute("ALTER TABLE jobs ADD COLUMN fitness_run_at TEXT"),
-    client.execute("ALTER TABLE jobs ADD COLUMN match_resume_name TEXT"),
-    client.execute("ALTER TABLE jobs ADD COLUMN activity_summary TEXT"),
-    client.execute("ALTER TABLE users ADD COLUMN mcp_oauth_epoch INTEGER NOT NULL DEFAULT 0"),
-    client.execute("ALTER TABLE users ADD COLUMN mcp_last_used_at TEXT"),
-  ]);
+  await addMissingColumns(client);
+  // Indexes on added columns can only be created once the column exists.
+  await client.execute("CREATE INDEX IF NOT EXISTS idx_jobs_starred ON jobs(is_starred)");
 
   _initialized = true;
   return client;
