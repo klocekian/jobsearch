@@ -134,20 +134,20 @@ function FeatureSection({
 }
 
 const SHOTS = {
-  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Job search dashboard showing saved roles, application stages, and fit and resume-match scores.", width: 2400, height: 1177, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 344 } },
-  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Applications at the recruiter stage, with each role's progress through earlier stages.", width: 2400, height: 1382, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 1061 } },
-  clip: { src: "/hero/extension-clip.webp", alt: "Chrome side panel capturing a job's company, title, salary, and description from a careers page.", width: 2400, height: 1182, mobile: { src: "/hero/extension-clip-mobile.webp", width: 729, height: 1174 } },
-  fitness: { src: "/hero/fitness-check.webp", alt: "Role-fit review with a 1–10 score and an explanation of how the candidate's experience relates to each requirement.", width: 2400, height: 1177, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 630 } },
-  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile containing experience and accomplishments, alongside gaps and context for future applications.", width: 1788, height: 1715, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
-  ats: { src: "/hero/ats-qualification.webp", alt: "Resume-match review showing a score, highlighted skills, and checks for clear structure and searchable information.", width: 2400, height: 1177, mobile: { src: "/hero/ats-qualification-mobile.webp", width: 1200, height: 757 } },
-  slop: { src: "/hero/ai-authenticity.webp", alt: "Writing review highlighting formulaic phrases, elaborate openings, and repeated sentence patterns in a resume.", width: 1851, height: 1010 },
-  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume with individual changes available to accept or dismiss beside the employer's application form.", width: 2400, height: 1177, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 757 } },
-  coverLetter: { src: "/hero/cover-letter.webp", alt: "Editable cover letter with contact details beside an employer's application form.", width: 2400, height: 1177, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 757 } },
-  fill: { src: "/hero/extension-fill.webp", alt: "Chrome extension filling saved application details into an Ashby application form.", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 729, height: 1227 } },
-  providers: { src: "/hero/ai-providers.webp", alt: "AI settings with options to connect Anthropic Claude, Google Gemini, xAI Grok, and Mistral AI.", width: 1794, height: 1704 },
+  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Job search dashboard showing saved roles, application stages, and fit and resume-match scores.", width: 2400, height: 1178, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 360 } },
+  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Applications at the recruiter stage, with each role's progress through earlier stages.", width: 1896, height: 981, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 934 } },
+  clip: { src: "/hero/extension-clip.webp", alt: "Chrome side panel capturing a job's company, title, salary, and description from a careers page.", width: 2400, height: 1182, mobile: { src: "/hero/extension-clip-mobile.webp", width: 656, height: 1170 } },
+  fitness: { src: "/hero/fitness-check.webp", alt: "Role-fit review with a 1–10 score and an explanation of how the candidate's experience relates to each requirement.", width: 2400, height: 1178, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 630 } },
+  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile containing experience and accomplishments, alongside gaps and context for future applications.", width: 1772, height: 1844, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
+  ats: { src: "/hero/ats-qualification.webp", alt: "Resume-match review showing a score, highlighted skills, and checks for clear structure and searchable information.", width: 2400, height: 1178, mobile: { src: "/hero/ats-qualification-mobile.webp", width: 1200, height: 758 } },
+  slop: { src: "/hero/ai-authenticity.webp", alt: "Writing review highlighting formulaic phrases, elaborate openings, and repeated sentence patterns in a resume.", width: 1685, height: 1034 },
+  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume with individual changes available to accept or dismiss beside the employer's application form.", width: 2400, height: 1178, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 758 } },
+  coverLetter: { src: "/hero/cover-letter.webp", alt: "Editable cover letter with contact details beside an employer's application form.", width: 2400, height: 1178, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 758 } },
+  fill: { src: "/hero/extension-fill.webp", alt: "Chrome extension filling saved application details into an employer's application form.", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 656, height: 1350 } },
+  providers: { src: "/hero/ai-providers.webp", alt: "AI settings with options to connect Anthropic Claude, Google Gemini, xAI Grok, and Mistral AI.", width: 1800, height: 1566 },
   connector: { src: "/hero/claude-connector.webp", alt: "Job Search connected to Claude, with tools for reading and updating applications, profiles, and resumes.", width: 1840, height: 1436 },
-  importSheet: { src: "/hero/import-sheet.webp", alt: "Job import options for a Google Sheet link or CSV upload.", width: 1018, height: 776 },
-  resumes: { src: "/hero/resumes.webp", alt: "Saved resumes with tags showing the companies each version was used for.", width: 1714, height: 1419 },
+  importSheet: { src: "/hero/import-sheet.webp", alt: "Job import options for a Google Sheet link or CSV upload.", width: 968, height: 728 },
+  resumes: { src: "/hero/resumes.webp", alt: "Saved resumes with tags showing the companies each version was used for.", width: 1728, height: 1560 },
 } satisfies Record<string, Shot>;
 
 const HIGHLIGHTS = [
