@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getJob } from "@/lib/db/jobs";
 import { createSubmission } from "@/lib/db/submissions";
 import { withUser } from "@/lib/api-auth";
+import { pdfBytes } from "@/lib/pdf-attachment";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,7 @@ export const POST = withUser<Params>(async (request, userId, ctx) => {
       format?: string;
       content?: string;
     };
+    if (body.format === "pdf") pdfBytes(body.content ?? "");
     const submission = await createSubmission({
       job_id: job.id,
       type: body.type ?? "other",

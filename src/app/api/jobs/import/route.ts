@@ -36,6 +36,7 @@ function statusFromSheet(raw: string, hasDate: boolean): string {
   if (lower === "applied") return "applied";
   if (lower === "offer") return "offer";
   if (lower === "rejected") return "rejected";
+  if (lower === "stale" || lower === "ghosted" || lower === "no response") return "stale";
   if (lower === "withdrawn") return "withdrawn";
   if (hasDate) return "applied";
   return "saved";

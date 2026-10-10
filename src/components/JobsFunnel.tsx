@@ -14,6 +14,7 @@ import { HStack } from "@astryxdesign/core/Stack";
 
 const TERMINAL_LINES = [
   { status: "rejected", label: "Rejected", color: STATUS_TEXT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
+  { status: "stale", label: "Stale", color: STATUS_TEXT_COLORS.stale, stages: ["applied", "interview", "interview2", "onsite"] },
   { status: "abandoned", label: "Abandoned", color: STATUS_TEXT_COLORS.abandoned, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
   { status: "closed", label: "Closed", color: STATUS_TEXT_COLORS.closed, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
 ];

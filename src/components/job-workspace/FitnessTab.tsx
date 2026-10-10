@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
+import { apiGet } from "@/lib/api-client";
 import { FitnessReportView } from "../FitnessReportView";
 import { Button } from "@astryxdesign/core/Button";
 import { Text } from "@astryxdesign/core/Text";
@@ -18,9 +20,25 @@ interface FitnessTabProps {
   onEditProfile: () => void;
 }
 
+/** Which candidate documents are still empty — the fitness check is grounded in both. Null until known. */
+function useMissingCandidateDocs(): string[] | null {
+  const [missing, setMissing] = useState<string[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    apiGet<{ profile?: string; gaps?: string }>("/api/candidate-docs")
+      .then((d) => {
+        if (active) setMissing([!d.profile?.trim() && "positive profile", !d.gaps?.trim() && "negative profile"].filter(Boolean) as string[]);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+  return missing;
+}
+
 /** Profile tab: how well the posting fits the candidate profile and gaps. */
 export function FitnessTab({ job, fitness, withAi, onWithAiChange, onEditProfile }: FitnessTabProps) {
   const { saved, runAt, method, running, saving, error, notesFlash } = fitness;
+  const missingDocs = useMissingCandidateDocs();
 
   return (
     <>
@@ -33,7 +51,6 @@ export function FitnessTab({ job, fitness, withAi, onWithAiChange, onEditProfile
         />
 
         <div className="flex shrink-0 items-center gap-2">
-          <WithAiToggle checked={withAi} onChange={onWithAiChange} />
           <Button
             label={running ? "Analyzing…" : saved ? "Re-run analysis" : "Analyze"}
             variant="primary"
@@ -41,8 +58,18 @@ export function FitnessTab({ job, fitness, withAi, onWithAiChange, onEditProfile
             onClick={() => fitness.run(withAi)}
             isDisabled={running || !job.posting_text.trim()}
           />
+          <WithAiToggle checked={withAi} onChange={onWithAiChange} />
         </div>
       </div>
+
+      {missingDocs && missingDocs.length > 0 && (
+        <Banner
+          status="warning"
+          title={`Add your ${missingDocs.join(" and ")} to ground the fitness check.`}
+          description="The AI check won't run without both; the rule-based check scores against your default resume instead."
+          endContent={<Button label="Open Tools › Profile" variant="secondary" size="sm" onClick={onEditProfile} />}
+        />
+      )}
 
       <div className="py-2">
         {notesFlash && (

@@ -76,7 +76,7 @@ export function ScoreRing({ score, size = 88 }: ScoreRingProps) {
           strokeDashoffset={offset}
         />
       </svg>
-      <span className={`absolute inset-0 flex items-center justify-center font-bold text-primary ${size <= 64 ? "text-lg" : "text-2xl"}`}>
+      <span className="absolute inset-0 flex items-center justify-center text-2xl font-semibold text-primary">
         {score}
       </span>
     </div>

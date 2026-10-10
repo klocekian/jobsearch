@@ -44,6 +44,9 @@ describe("API", () => {
   it("a closing status remembers the previous one; reopening clears it", async () => {
     const closed = await app.req("PATCH", `/api/jobs/${jobId}`, { body: { status: "withdrawn" } });
     assert.deepEqual([closed.data.job.status, closed.data.job.previous_status], ["withdrawn", "applied"]);
+    const stale = await app.req("PATCH", `/api/jobs/${jobId}`, { body: { status: "stale" } });
+    // Stale is a closing status too; moving between closing statuses keeps the live one.
+    assert.deepEqual([stale.data.job.status, stale.data.job.previous_status], ["stale", "applied"]);
     assert.equal((await app.req("PATCH", `/api/jobs/${jobId}`, { body: { status: "interview2" } })).data.job.previous_status, null);
     assert.equal((await app.req("PATCH", `/api/jobs/${jobId}`, { body: { is_starred: 1 } })).data.job.is_starred, 1);
   });
@@ -74,6 +77,27 @@ describe("API", () => {
   it("fitness on a job with no posting is 422", async () => {
     const empty = await app.req("POST", "/api/jobs", { body: { company: "Empty", title: "NoPosting" } });
     assert.equal((await app.req("POST", "/api/fitness-check", { body: { job_id: empty.data.job.id } })).status, 422);
+  });
+
+  it("a submission can be a PDF: previewed inline, left out of the job payload", async () => {
+    const pdf = Buffer.from("%PDF-1.4\n%test\n").toString("base64");
+    const created = await app.req("POST", `/api/jobs/${jobId}/submissions`, { body: { type: "resume", label: "Resume", format: "pdf", content: pdf } });
+    assert.equal(created.status, 201);
+    const sub = `/api/jobs/${jobId}/submissions/${created.data.submission.id}`;
+
+    const inline = await app.req("GET", `${sub}?inline=1`);
+    assert.equal(inline.headers.get("content-type"), "application/pdf");
+    assert.match(inline.headers.get("content-disposition"), /^inline/);
+    assert.ok(inline.text.startsWith("%PDF-"));
+    const { submissions } = (await app.req("GET", `/api/jobs/${jobId}`)).data;
+    assert.equal(submissions.find((s) => s.id === created.data.submission.id).content, "");
+
+    // Not a PDF, or a switch to text with no text, is refused.
+    assert.equal((await app.req("POST", `/api/jobs/${jobId}/submissions`, { body: { format: "pdf", content: Buffer.from("hi").toString("base64") } })).status, 400);
+    assert.equal((await app.req("PATCH", sub, { body: { content: Buffer.from("hi").toString("base64") } })).status, 400);
+    assert.equal((await app.req("PATCH", sub, { body: { format: "md" } })).status, 400);
+    const toText = await app.req("PATCH", sub, { body: { format: "md", content: "# Resume" } });
+    assert.deepEqual([toText.status, toText.data.submission.format, toText.data.submission.content], [200, "md", "# Resume"]);
   });
 });
 
@@ -110,7 +134,7 @@ describe("MCP", () => {
     assert.ok(add.properties.status.enum.includes("interview2"));
     assert.equal(add.properties.status.description, "Defaults to saved.");
     const update = tools.find((t) => t.name === "update_job").inputSchema;
-    assert.equal(update.properties.notes.description, "Replaces the notes entirely.");
+    assert.equal(update.properties.notes, undefined, "MCP may add to notes, never replace them");
     assert.ok(update.properties.append_note);
     assert.deepEqual(update.required, ["job_id"]);
   });
@@ -125,6 +149,10 @@ describe("MCP", () => {
     assert.equal(updated.data.job.starred, true);
     assert.equal((await call("get_job", { job_id: created.data.job.id })).data.notes, `[${today}] Phone screen booked`);
     assert.equal((await call("update_job", { job_id: created.data.job.id })).text, "Nothing to update.");
+
+    // A merge adds its notes below the existing ones.
+    await call("add_job", { company: "Globex", title: "PM", notes: "Referred by Dana" });
+    assert.equal((await call("get_job", { job_id: created.data.job.id })).data.notes, `[${today}] Phone screen booked\n\nReferred by Dana`);
   });
 
   it("fitness: rule-based run, brief needs both docs, report header filled from the job", async () => {

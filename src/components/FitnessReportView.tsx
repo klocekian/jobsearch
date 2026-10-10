@@ -38,23 +38,23 @@ const VERDICT_TONES: Record<string, keyof typeof PILL_TONES> = {
 
 function Pill({ tone, label }: { tone: keyof typeof PILL_TONES; label: string }) {
   return (
-    <span className={`inline-block rounded-full px-1.5 text-[9px] font-semibold leading-4 tracking-wide ${PILL_TONES[tone]}`}>{label}</span>
+    <span className={`inline-block rounded-full px-1.5 text-xs font-semibold uppercase leading-4 tracking-wider ${PILL_TONES[tone]}`}>{label}</span>
   );
 }
 
 function VerdictRow({ item }: { item: FitnessRequirement }) {
   return (
-    <div className="grid grid-cols-[64px_1fr] gap-2 py-2.5 text-xs">
+    <div className="grid grid-cols-[64px_1fr] gap-2 py-2.5 text-sm">
       <div>
         <Pill tone={VERDICT_TONES[item.verdict] ?? "neutral"} label={item.verdict} />
       </div>
       <div className="min-w-0">
         <blockquote className="border-l-2 border-border pl-2.5">
-          <Text className="italic text-xs leading-snug">{item.verbatim}</Text>
+          <Text className="text-sm leading-snug">{item.verbatim}</Text>
         </blockquote>
         {item.note && (
           <div className="mt-1">
-            <Text type="supporting" color="secondary" className="text-xs">{item.note}</Text>
+            <Text type="supporting" color="secondary" className="text-sm">{item.note}</Text>
           </div>
         )}
       </div>
@@ -76,7 +76,7 @@ function Section({
       <Text type="label" weight="semibold" display="block" className="text-xs uppercase tracking-wider text-muted-foreground">{title}</Text>
       {subtitle && (
         <div className="mt-0.5">
-          <Text type="supporting" color="secondary" className="text-xs">{subtitle}</Text>
+          <Text type="supporting" color="secondary" className="text-sm">{subtitle}</Text>
         </div>
       )}
       <div className="mt-1">{children}</div>
@@ -112,7 +112,7 @@ export function FitnessReportView({
 
   return (
     // One rule between sections, no boxes.
-    <div className="divide-y divide-border pb-6 text-xs [&>*]:py-4 [&>*:first-child]:pt-0">
+    <div className="divide-y divide-border pb-6 text-sm [&>*]:py-4 [&>*:first-child]:pt-0">
       {result.hard_stop.triggered && (
         <div>
           <Banner
@@ -126,8 +126,8 @@ export function FitnessReportView({
       {/* Score header, and the actions on it */}
       <div>
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-2xl font-bold text-primary">{result.score}</span>
-          <span className="text-xs text-muted-foreground">/ 10</span>
+          <span className="text-2xl font-semibold text-primary">{result.score}</span>
+          <span className="text-sm text-muted-foreground">/ 10</span>
           <div className="ml-auto">
             <Pill
               tone={result.verdict === "APPLY" ? "good" : "bad"}
@@ -136,9 +136,9 @@ export function FitnessReportView({
           </div>
         </div>
         <div className="mt-1.5">
-          <Text className="text-xs leading-relaxed">{result.one_line}</Text>
+          <Text className="text-sm leading-relaxed">{result.one_line}</Text>
         </div>
-        <div className="mt-2 text-[11px] text-muted-foreground">
+        <div className="mt-2 text-sm text-muted-foreground">
           <div>{result.company} — {result.title}</div>
           <div>{result.location} · {result.work_arrangement} · travel {result.travel_percent} · {result.salary}</div>
         </div>
@@ -172,24 +172,24 @@ export function FitnessReportView({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Text type="supporting" color="secondary" display="block" className="text-[11px]">Employer type</Text>
+          <Text type="supporting" color="secondary" display="block" className="text-sm">Employer type</Text>
           <div className="mt-0.5">
-            <Text weight="semibold" className="text-xs">
+            <Text weight="semibold" className="text-sm">
               {EMPLOYER_TYPE_LABELS[result.employer_type] ?? result.employer_type}
             </Text>
           </div>
           {result.employer_type_note && (
             <div className="mt-0.5">
-              <Text type="supporting" color="secondary" className="text-xs">{result.employer_type_note}</Text>
+              <Text type="supporting" color="secondary" className="text-sm">{result.employer_type_note}</Text>
             </div>
           )}
         </div>
         <div>
-          <Text type="supporting" color="secondary" display="block" className="text-[11px]">
+          <Text type="supporting" color="secondary" display="block" className="text-sm">
             Logistics (light touch at this stage)
           </Text>
           <div className="mt-0.5">
-            <Text className="text-xs">{result.logistics_note}</Text>
+            <Text className="text-sm">{result.logistics_note}</Text>
           </div>
         </div>
       </div>
@@ -197,7 +197,7 @@ export function FitnessReportView({
       <Section title={`Stated minimums, objective (${objective.length})`}>
         {objective.length === 0 ? (
           <div className="py-2.5">
-            <Text color="secondary" className="text-xs">Posting states no checkable minimums.</Text>
+            <Text color="secondary" className="text-sm">Posting states no checkable minimums.</Text>
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -225,12 +225,12 @@ export function FitnessReportView({
         <Section title="Preferred" subtitle="Informs the score modestly, never decisively.">
           <div className="divide-y divide-border">
             {result.preferred.map((p, i) => (
-              <div key={`${i}-${p.verbatim.slice(0, 24)}`} className="grid grid-cols-[64px_1fr] gap-2 py-2.5 text-xs">
+              <div key={`${i}-${p.verbatim.slice(0, 24)}`} className="grid grid-cols-[64px_1fr] gap-2 py-2.5 text-sm">
                 <div>
                   <Pill tone={VERDICT_TONES[p.verdict] ?? "neutral"} label={p.verdict} />
                 </div>
                 <blockquote className="border-l-2 border-border pl-2.5">
-                  <Text className="italic text-xs leading-snug">{p.verbatim}</Text>
+                  <Text className="text-sm leading-snug">{p.verbatim}</Text>
                 </blockquote>
               </div>
             ))}
@@ -246,9 +246,9 @@ export function FitnessReportView({
           <div className="divide-y divide-border">
             {result.gaps.map((g, i) => (
               <div key={`${i}-${g.gap.slice(0, 24)}`} className="py-2.5">
-                <Text weight="semibold" display="block" className="text-xs">{g.gap}</Text>
+                <Text weight="semibold" display="block" className="text-sm">{g.gap}</Text>
                 <div className="mt-1">
-                  <Text color="secondary" className="text-xs">{g.framing}</Text>
+                  <Text color="secondary" className="text-sm">{g.framing}</Text>
                 </div>
               </div>
             ))}
@@ -264,8 +264,8 @@ export function FitnessReportView({
             ["Worst case", result.outcomes.worst_case],
           ].map(([label, value]) => (
             <div key={label} className="grid grid-cols-[80px_1fr] gap-2 py-2.5">
-              <Text color="secondary" className="text-xs">{label}</Text>
-              <Text className="text-xs">{value}</Text>
+              <Text color="secondary" className="text-sm">{label}</Text>
+              <Text className="text-sm">{value}</Text>
             </div>
           ))}
         </div>
@@ -274,19 +274,19 @@ export function FitnessReportView({
       <Section title="Tradeoffs of pursuing">
         <div className="divide-y divide-border">
           <div className="grid grid-cols-[80px_1fr] gap-2 py-2.5">
-            <Text color="secondary" className="text-xs">Gained</Text>
-            <Text className="text-xs">{result.tradeoffs.gained}</Text>
+            <Text color="secondary" className="text-sm">Gained</Text>
+            <Text className="text-sm">{result.tradeoffs.gained}</Text>
           </div>
           <div className="grid grid-cols-[80px_1fr] gap-2 py-2.5">
-            <Text color="secondary" className="text-xs">Lost</Text>
-            <Text className="text-xs">{result.tradeoffs.lost}</Text>
+            <Text color="secondary" className="text-sm">Lost</Text>
+            <Text className="text-sm">{result.tradeoffs.lost}</Text>
           </div>
         </div>
       </Section>
 
       {(runAt || model) && (
         <div>
-          <Text type="supporting" color="secondary" className="text-xs">
+          <Text type="supporting" color="secondary" className="text-sm">
             {runAt ? `Run ${new Date(runAt).toLocaleString()}` : ""}
             {runAt && model ? " · " : ""}
             {model ?? ""}

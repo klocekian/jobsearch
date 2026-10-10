@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { analyze } from "@/lib/analysis/analyze";
 import type { MatchReport } from "@/lib/analysis/types";
 import { apiSend } from "@/lib/api-client";
-import { clearCoverLetter, clearRewrite } from "@/lib/storage";
 import type { JobRow } from "@/lib/db/jobs";
 import type { ResumeRow } from "@/lib/db/resumes";
 
@@ -42,10 +41,6 @@ export function useMatchAnalysis({ jobId, job, setJob, resumeText, savedResumes 
   /** Runs the match in the browser and records it. Returns false if there was nothing to run. */
   const run = useCallback((): boolean => {
     if (!job || !resumeText.trim() || !job.posting_text.trim()) return false;
-    if (!analyzed || analyzed.jobText !== job.posting_text) {
-      clearCoverLetter();
-      clearRewrite();
-    }
     const report = analyze({
       resumeText, jobText: job.posting_text,
       company: job.company, jobTitle: job.title, jobUrl: job.url, fileName: "",
@@ -64,7 +59,7 @@ export function useMatchAnalysis({ jobId, job, setJob, resumeText, savedResumes 
       apiSend(`/api/resumes/${selectedResume.id}`, "PATCH", { add_tag: job.company }).catch(() => {});
     }
     return true;
-  }, [job, resumeText, analyzed, savedResumes, jobId, setJob]);
+  }, [job, resumeText, savedResumes, jobId, setJob]);
 
   return { analyzed, run };
 }

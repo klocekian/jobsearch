@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { extractContact, type Contact } from "@/lib/contact";
 import { downloadCoverLetterPdf } from "@/lib/pdf/cover-letter";
+import { documentFileBase } from "@/lib/pdf/shared";
+import { downloadText } from "@/lib/download";
 import { loadCoverLetter, saveCoverLetter } from "@/lib/storage";
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
+import { DownloadMenu } from "./DownloadMenu";
+import { DocumentField } from "./DocumentField";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
 import { apiFetch, errorMessage, readTextStream } from "@/lib/api-client";
 import { Button } from "@astryxdesign/core/Button";
@@ -17,6 +21,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { Heading } from "@astryxdesign/core/Heading";
 
 interface CoverLetterViewProps {
+  jobId: number;
   resumeText: string;
   jobText: string;
   jobTitle: string;
@@ -32,6 +37,7 @@ function todayDisplay(): string {
 }
 
 export function CoverLetterView({
+  jobId,
   resumeText,
   jobText,
   jobTitle,
@@ -39,7 +45,7 @@ export function CoverLetterView({
   materials,
   onMaterialsChange,
 }: CoverLetterViewProps) {
-  const saved = useMemo(() => (typeof window === "undefined" ? null : loadCoverLetter()), []);
+  const saved = useMemo(() => (typeof window === "undefined" ? null : loadCoverLetter(jobId)), [jobId]);
 
   const [interests, setInterests] = useState(saved?.interests ?? "");
   const [letter, setLetter] = useState(saved?.letter ?? "");
@@ -52,8 +58,8 @@ export function CoverLetterView({
   const restored = saved !== null && saved.letter.trim().length > 0;
 
   useEffect(() => {
-    saveCoverLetter({ letter, interests, contact, date });
-  }, [letter, interests, contact, date]);
+    saveCoverLetter(jobId, { letter, interests, contact, date });
+  }, [jobId, letter, interests, contact, date]);
 
   const setField = (key: keyof Contact, value: string) =>
     setContact((prev) => ({ ...prev, [key]: value }));
@@ -92,11 +98,18 @@ export function CoverLetterView({
   const downloadPdf = () =>
     downloadCoverLetterPdf({ contact, body: letter, date, company });
 
+  const downloadMarkdown = () => {
+    const header = [contact.name, [contact.address, contact.phone, contact.email, contact.website].filter(Boolean).join(" · "), date]
+      .filter(Boolean)
+      .join("\n\n");
+    downloadText(`${documentFileBase("Cover Letter", contact.name, company)}.md`, `${header}\n\n${letter.trim()}\n`);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {restored && <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">Restored saved draft</span>}
+          {restored && <span className="text-sm text-emerald-700 dark:text-emerald-400">Restored saved draft</span>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
@@ -104,15 +117,9 @@ export function CoverLetterView({
             variant="primary"
             size="sm"
             onClick={generate}
-            isDisabled={status === "loading"}
+            isDisabled={status === "loading" || !resumeText.trim() || !jobText.trim()}
           />
-          <Button
-            label="Download PDF"
-            variant="secondary"
-            size="sm"
-            onClick={downloadPdf}
-            isDisabled={!letter.trim()}
-          />
+          <DownloadMenu onPdf={downloadPdf} onMarkdown={downloadMarkdown} isDisabled={!letter.trim()} />
         </div>
       </div>
 
@@ -127,7 +134,7 @@ export function CoverLetterView({
       />
 
       {status === "error" && (
-        <Banner status="error" title={error} className="text-xs" />
+        <Banner status="error" title={error} className="text-sm" />
       )}
 
       {status === "loading" && (
@@ -168,22 +175,12 @@ export function CoverLetterView({
                   size="sm"
                   onClick={copy}
                 />
-                <Button
-                  label="Download PDF"
-                  variant="primary"
-                  size="sm"
-                  onClick={downloadPdf}
-                  isDisabled={!letter.trim()}
-                />
+                <DownloadMenu onPdf={downloadPdf} onMarkdown={downloadMarkdown} isDisabled={!letter.trim()} />
               </div>
             </div>
-            <TextArea
-              label="Cover letter body"
-              isLabelHidden
-              value={letter}
-              onChange={setLetter}
-              rows={16}
-            />
+            <div className="p-3">
+              <DocumentField label="Cover letter body" value={letter} editing draft={letter} onDraftChange={setLetter} autoFocus={false} />
+            </div>
           </Card>
         </>
       )}

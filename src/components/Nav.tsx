@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { TopNav, TopNavHeading, TopNavItem } from "@astryxdesign/core/TopNav";
 import { Button } from "@astryxdesign/core/Button";
 import { Selector } from "@astryxdesign/core/Selector";
-import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { HStack } from "@astryxdesign/core/HStack";
 import { STATUS_OPTIONS } from "@/lib/status";
@@ -158,44 +157,81 @@ export function Nav({ user }: { user: NavUser | null }) {
     return () => window.removeEventListener("job-workspace-sync", handler);
   }, []);
 
+  const userItem = user ? (
+    <TopNavItem
+      label={user.name || user.email || "Profile"}
+      href="/profile"
+      isSelected={pathname.startsWith("/profile")}
+      icon={<StatusDot variant={dotVariant} label={providerLabel} tooltip={providerLabel} />}
+    />
+  ) : null;
+
+  const jobStepper = (
+    <HStack gap={1} className="items-center">
+      <Button
+        label="Previous job"
+        isIconOnly
+        icon={<ChevronUpIcon className="h-4 w-4" />}
+        variant="ghost"
+        size="sm"
+        onClick={() => prevJobId && router.push(`/jobs/${prevJobId}`)}
+        isDisabled={!prevJobId}
+        tooltip="Previous job (k)"
+      />
+      <Button
+        label="Next job"
+        isIconOnly
+        icon={<ChevronDownIcon className="h-4 w-4" />}
+        variant="ghost"
+        size="sm"
+        onClick={() => nextJobId && router.push(`/jobs/${nextJobId}`)}
+        isDisabled={!nextJobId}
+        tooltip="Next job (j)"
+      />
+      {currentIndex >= 0 && (
+        <span className="text-sm text-secondary ml-1 select-none whitespace-nowrap">
+          {currentIndex + 1} of {totalJobs}
+        </span>
+      )}
+    </HStack>
+  );
+
+  const jobControls = jobWorkspaceState?.status ? (
+    <HStack gap={1.5} className="items-center">
+      <span className="text-sm text-secondary whitespace-nowrap">Change Status:</span>
+      <Selector
+        label="Change Status"
+        isLabelHidden
+        size="sm"
+        className="w-36"
+        startIcon={<JobStatusDot status={jobWorkspaceState.status} />}
+        options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
+        value={jobWorkspaceState.status}
+        onChange={(v) => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "status", status: v } }))}
+      />
+    </HStack>
+  ) : null;
+
   return (
     <header className="sticky top-0 z-30 bg-surface border-b border-border">
+      {isJobPage && user && (
+        // Right-aligned to the job workspace's left column (--job-split, set
+        // by the workspace); the analysis card covers the nav to its right.
+        <div
+          className="absolute inset-y-0 z-10 flex items-center gap-3"
+          style={{ right: "calc(100% - var(--job-split, 100%) + 16px)" }}
+        >
+          {jobControls}
+        </div>
+      )}
       <TopNav
         label="Main navigation"
         heading={<TopNavHeading heading={headingText} headingHref="/jobs" />}
-        startContent={
-          isJobPage && totalJobs > 0 ? (
-            <HStack gap={1} className="items-center">
-              <Button
-                label="Previous job"
-                isIconOnly
-                icon={<ChevronUpIcon className="h-4 w-4" />}
-                variant="ghost"
-                size="sm"
-                onClick={() => prevJobId && router.push(`/jobs/${prevJobId}`)}
-                isDisabled={!prevJobId}
-                tooltip="Previous job (k)"
-              />
-              <Button
-                label="Next job"
-                isIconOnly
-                icon={<ChevronDownIcon className="h-4 w-4" />}
-                variant="ghost"
-                size="sm"
-                onClick={() => nextJobId && router.push(`/jobs/${nextJobId}`)}
-                isDisabled={!nextJobId}
-                tooltip="Next job (j)"
-              />
-              {currentIndex >= 0 && (
-                <span className="text-xs text-secondary font-medium ml-1 select-none whitespace-nowrap">
-                  {currentIndex + 1} of {totalJobs}
-                </span>
-              )}
-            </HStack>
-          ) : undefined
-        }
+        startContent={isJobPage && totalJobs > 0 ? jobStepper : undefined}
         endContent={
-          user ? (
+          // On a job page everything sits on the left, leaving the right
+          // for the workspace's analysis card to rise into.
+          isJobPage && user ? undefined : user ? (
             <HStack gap={3} className="items-center">
               {!isSubPage && (
                 <HStack gap={2} className="items-center mr-2">
@@ -217,57 +253,23 @@ export function Nav({ user }: { user: NavUser | null }) {
                 </HStack>
               )}
 
-              {isJobPage && (
-                <HStack gap={2} className="items-center mr-2">
-                  {jobWorkspaceState?.status && (
-                    <HStack gap={1.5} className="items-center">
-                      <span className="text-xs text-secondary font-medium whitespace-nowrap">Change Status:</span>
-                      <Selector
-                        label="Change Status"
-                        isLabelHidden
-                        size="sm"
-                        className="w-36"
-                        startIcon={<JobStatusDot status={jobWorkspaceState.status} />}
-                        options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
-                        value={jobWorkspaceState.status}
-                        onChange={(v) => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "status", status: v } }))}
-                      />
-                    </HStack>
-                  )}
-                  <DropdownMenu
-                    button={{ label: "⋯", variant: "ghost", size: "sm" }}
-                    items={[
-                      {
-                        label: "Delete Job",
-                        onClick: () => window.dispatchEvent(new CustomEvent("job-workspace-action", { detail: { action: "delete" } })),
-                      },
-                    ]}
-                  />
-                </HStack>
-              )}
-
-              <TopNavItem
-                label={user.name || user.email || "Profile"}
-                href="/profile"
-                isSelected={pathname.startsWith("/profile")}
-                icon={<StatusDot variant={dotVariant} label={providerLabel} tooltip={providerLabel} />}
-              />
+              {userItem}
             </HStack>
           ) : (
             <HStack gap={3} className="items-center">
-              <a href="#capture" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+              <a href="#capture" className="text-sm text-secondary hover:text-primary hidden lg:inline-block transition-colors">
                 Save jobs
               </a>
-              <a href="#fitness" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+              <a href="#fitness" className="text-sm text-secondary hover:text-primary hidden lg:inline-block transition-colors">
                 Understand your fit
               </a>
-              <a href="#ats-engine" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+              <a href="#ats-engine" className="text-sm text-secondary hover:text-primary hidden lg:inline-block transition-colors">
                 Resume checks
               </a>
-              <a href="#rewriter" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+              <a href="#rewriter" className="text-sm text-secondary hover:text-primary hidden lg:inline-block transition-colors">
                 Tailor your resume
               </a>
-              <a href="#ai" className="text-xs text-secondary hover:text-primary hidden lg:inline-block transition-colors">
+              <a href="#ai" className="text-sm text-secondary hover:text-primary hidden lg:inline-block transition-colors">
                 Use with Claude
               </a>
               {process.env.NODE_ENV === "development" && (

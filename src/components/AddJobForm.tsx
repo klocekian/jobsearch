@@ -99,6 +99,18 @@ export function AddJobForm() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <Button label="Cancel" variant="secondary" onClick={() => router.push("/jobs")} />
+        <Button
+          label={saving ? "Saving…" : "Save Job"}
+          variant="primary"
+          onClick={save}
+          isDisabled={saving || (!company.trim() && !title.trim())}
+        />
+      </div>
+
+      {saveError && <Banner status="error" title={saveError} />}
+
       <div>
         <div className="flex gap-2 items-end">
           <TextInput
@@ -164,21 +176,6 @@ export function AddJobForm() {
         placeholder="Any notes — who referred you, why you're interested, etc."
       />
 
-      {saveError && <Banner status="error" title={saveError} />}
-
-      <div className="flex gap-3">
-        <Button
-          label={saving ? "Saving…" : "Save Job"}
-          variant="primary"
-          onClick={save}
-          isDisabled={saving || (!company.trim() && !title.trim())}
-        />
-        <Button
-          label="Cancel"
-          variant="secondary"
-          onClick={() => router.push("/jobs")}
-        />
-      </div>
     </div>
   );
 }

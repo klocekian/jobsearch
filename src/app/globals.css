@@ -10,6 +10,16 @@
 
 @plugin "@tailwindcss/typography";
 
+/*
+ * Type: one family (Geist, which the Astryx components use too — the theme
+ * names Figtree but never loads it) and a five-step scale. Note Astryx
+ * remaps Tailwind's sizes — text-xs is 10px, text-sm 12px, text-base 14px.
+ *   20px semibold  page title (Heading level 2)
+ *   14px           controls: buttons, tabs, inputs (Astryx defaults)
+ *   12px  text-sm  all reading text and metadata; secondary is a colour, not a size
+ *   10px  text-xs  labels only: uppercase, semibold, tracking-wider (section titles, pills, table heads)
+ *   24px  text-2xl semibold  score figures
+ */
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -25,6 +35,9 @@
       --color-background-body: light-dark(#ffffff, #1b1b1b);
       --color-background-card: light-dark(#ffffff, #1b1b1b);
       --color-background-muted: light-dark(#f5f5f5, #222222);
+      --font-family-body: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-family-heading: var(--font-family-body);
+      --font-family-code: var(--font-geist-mono), ui-monospace, "SF Mono", Monaco, Consolas, monospace;
     }
   }
 }
@@ -33,6 +46,30 @@ body {
   background-color: var(--color-background-body);
   color: var(--color-text-primary);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Markdown at body size (notes, submissions): prose-sm sets 14px text and
+   30px headings; here text is 12px and headings top out at 14px. Unlayered,
+   so it wins over the typography plugin. */
+.prose-app {
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+.prose-app * {
+  font-size: inherit;
+}
+/* Keep single line breaks, so reading shows the lines the editor does. */
+.prose-app :where(p, li) {
+  white-space: pre-line;
+}
+.prose-app :where(h1, h2, h3, h4, h5, h6) {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1.25em 0 0.5em;
+}
+.prose-app :where(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
 }
 
 @layer components {

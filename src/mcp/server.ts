@@ -238,7 +238,7 @@ export function createJobsearchMcpServer(
           label: s.label,
           format: s.format,
           created_at: s.created_at,
-          content: s.file_path ? undefined : s.content,
+          content: s.file_path || s.format === "pdf" ? undefined : s.content,
         })),
       });
     }),
@@ -249,7 +249,7 @@ export function createJobsearchMcpServer(
     {
       title: "Add job",
       description:
-        "Add a job to the tracker. If one with the same URL, or the same company + title, already exists, the new details are merged into it instead of creating a duplicate.",
+        "Add a job to the tracker. If one with the same URL, or the same company + title, already exists, the new details are merged into it instead of creating a duplicate (notes are added to its notes, not replaced).",
       inputSchema: {
         ...JobFieldsSchema.required({ company: true, title: true }).shape,
         status: JobFieldsSchema.shape.status.describe("Defaults to saved."),
@@ -266,12 +266,11 @@ export function createJobsearchMcpServer(
     {
       title: "Update job",
       description:
-        "Update fields on a job. Changing status follows the app's rules: 'applied' stamps applied_at, and closing statuses remember the prior status so it can be restored. Use append_note to add a dated line to the notes without replacing them. After logging activity (an interview booked or held, a reply, an offer), call update_job_summary so the job's banner in the app reflects it.",
+        "Update fields on a job. Changing status follows the app's rules: 'applied' stamps applied_at, and closing statuses remember the prior status so it can be restored. Notes can only be added to, never replaced: use append_note to add a dated line (the user edits the notes themselves in the app). After logging activity (an interview booked or held, a reply, an offer), call update_job_summary so the job's banner in the app reflects it.",
       inputSchema: {
         job_id: z.number().int(),
-        ...JobFieldsSchema.shape,
+        ...JobFieldsSchema.omit({ notes: true }).shape,
         starred: z.boolean().optional(),
-        notes: z.string().optional().describe("Replaces the notes entirely."),
         append_note: z.string().optional().describe("Appended to the existing notes with today's date."),
       },
     },
@@ -302,7 +301,7 @@ export function createJobsearchMcpServer(
     "delete_job",
     {
       title: "Delete job",
-      description: "Permanently delete a job and its saved submissions. Prefer update_job with a closing status (withdrawn, abandoned, closed) unless the job was added by mistake.",
+      description: "Permanently delete a job and its saved submissions. Prefer update_job with a closing status (stale, withdrawn, abandoned, closed) unless the job was added by mistake.",
       inputSchema: { job_id: z.number().int() },
       annotations: { destructiveHint: true },
     },

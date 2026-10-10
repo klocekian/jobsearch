@@ -1,20 +1,18 @@
-// Client-side persistence for the editable resume and the generated cover
-// letter. Centralized so the export packager (and each view) share one source
-// of truth for storage keys and shapes.
+// Client-side persistence for the tailored resume and the generated cover
+// letter. Centralized so the submission snapshot (and each view) share one
+// source of truth for storage keys and shapes.
 
 import type { ResumeData } from "./resume/types";
 import type { Contact } from "./contact";
 import type { ContextMaterial } from "./context";
 import type { AiDetection } from "./analysis/types";
 
-// v3: bust older caches (broken heuristic parse / pre-LinkedIn-field shape).
-export const RESUME_STORAGE_KEY = "jobsearch.resume.v3";
-// v2: now stores the full draft (letter + interests + header + date), not just text.
-export const COVER_LETTER_STORAGE_KEY = "jobsearch.coverletter.v2";
+// v3: one draft per job (the key is suffixed with the job id).
+const COVER_LETTER_STORAGE_KEY = "jobsearch.coverletter.v3";
 // Candidate-level supplementary materials, shared by the cover letter + suggestions.
 export const CONTEXT_MATERIALS_STORAGE_KEY = "jobsearch.context.v1";
-// Job-specific tailored resume rewrite (with the user's manual edits).
-export const REWRITE_STORAGE_KEY = "jobsearch.rewrite.v1";
+// v2: one tailored resume rewrite per job (the key is suffixed with the job id).
+const REWRITE_STORAGE_KEY = "jobsearch.rewrite.v2";
 
 export function isResumeData(value: unknown): value is ResumeData {
   if (!value || typeof value !== "object") return false;
@@ -27,16 +25,6 @@ export function isResumeData(value: unknown): value is ResumeData {
   );
 }
 
-export function loadSavedResume(): ResumeData | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(RESUME_STORAGE_KEY) ?? "null");
-    return isResumeData(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 /** The full, editable cover-letter draft, persisted so it survives navigation. */
 export interface SavedCoverLetter {
   letter: string;
@@ -45,10 +33,10 @@ export interface SavedCoverLetter {
   date: string;
 }
 
-export function loadCoverLetter(): SavedCoverLetter | null {
+export function loadCoverLetter(jobId: number): SavedCoverLetter | null {
   if (typeof window === "undefined") return null;
   try {
-    const v: unknown = JSON.parse(localStorage.getItem(COVER_LETTER_STORAGE_KEY) ?? "null");
+    const v: unknown = JSON.parse(localStorage.getItem(`${COVER_LETTER_STORAGE_KEY}.${jobId}`) ?? "null");
     if (v && typeof v === "object" && typeof (v as SavedCoverLetter).letter === "string") {
       return v as SavedCoverLetter;
     }
@@ -58,25 +46,17 @@ export function loadCoverLetter(): SavedCoverLetter | null {
   }
 }
 
-export function saveCoverLetter(state: SavedCoverLetter): void {
+export function saveCoverLetter(jobId: number, state: SavedCoverLetter): void {
   try {
-    localStorage.setItem(COVER_LETTER_STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(`${COVER_LETTER_STORAGE_KEY}.${jobId}`, JSON.stringify(state));
   } catch {
     // ignore unavailable storage
   }
 }
 
-/** Just the letter body — used by the export packager. */
-export function coverLetterText(): string {
-  return loadCoverLetter()?.letter ?? "";
-}
-
-export function clearCoverLetter(): void {
-  try {
-    localStorage.removeItem(COVER_LETTER_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
+/** Just the letter body — what gets saved as the job's submitted cover letter. */
+export function coverLetterText(jobId: number): string {
+  return loadCoverLetter(jobId)?.letter ?? "";
 }
 
 // --- Context materials (candidate-level; persist across jobs) ---
@@ -105,10 +85,12 @@ export function saveContextMaterials(materials: ContextMaterial[]): void {
   }
 }
 
-// --- Tailored resume rewrite (job-specific; cleared when the job changes) ---
+// --- Tailored resume rewrite (one per job) ---
 
 /** The AI suggestion, the working result the user is building, and dismissed changes. */
 export interface RewriteState {
+  /** The resume the working result started from; a draft built on another resume is ignored. */
+  base: string;
   /** Full AI rewrite (the suggestion source). */
   rewrite: string;
   /** The working document the user is assembling (accepted changes + manual edits). */
@@ -117,18 +99,19 @@ export interface RewriteState {
   dismissed: string[];
 }
 
-export function loadRewriteState(): RewriteState | null {
+export function loadRewriteState(jobId: number): RewriteState | null {
   if (typeof window === "undefined") return null;
   try {
-    const v: unknown = JSON.parse(localStorage.getItem(REWRITE_STORAGE_KEY) ?? "null");
+    const v: unknown = JSON.parse(localStorage.getItem(`${REWRITE_STORAGE_KEY}.${jobId}`) ?? "null");
     if (
       v &&
       typeof v === "object" &&
+      typeof (v as RewriteState).base === "string" &&
       typeof (v as RewriteState).rewrite === "string" &&
       typeof (v as RewriteState).result === "string"
     ) {
       const s = v as RewriteState;
-      return { rewrite: s.rewrite, result: s.result, dismissed: Array.isArray(s.dismissed) ? s.dismissed : [] };
+      return { base: s.base, rewrite: s.rewrite, result: s.result, dismissed: Array.isArray(s.dismissed) ? s.dismissed : [] };
     }
     return null;
   } catch {
@@ -136,20 +119,18 @@ export function loadRewriteState(): RewriteState | null {
   }
 }
 
-export function saveRewriteState(state: RewriteState): void {
+export function saveRewriteState(jobId: number, state: RewriteState): void {
   try {
-    localStorage.setItem(REWRITE_STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(`${REWRITE_STORAGE_KEY}.${jobId}`, JSON.stringify(state));
   } catch {
     // ignore
   }
 }
 
-export function clearRewrite(): void {
-  try {
-    localStorage.removeItem(REWRITE_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
+/** The resume tailored for this job, or "" when the working result hasn't moved off its starting resume. */
+export function tailoredResumeText(jobId: number): string {
+  const s = loadRewriteState(jobId);
+  return s && s.result.trim() && s.result !== s.base ? s.result : "";
 }
 
 // --- AI-detection result cache (keyed by resume text, so the LLM call is made

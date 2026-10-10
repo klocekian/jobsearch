@@ -212,8 +212,14 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
 
           {adding && (
             <div className="mb-4 rounded-lg border border-border bg-muted p-4">
-              <div className="mb-3">
-                <TextInput label="Name" value={newName} onChange={setNewName} placeholder="e.g. General, Design Lead, IC Focus" />
+              <div className="mb-3 flex items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <TextInput label="Name" value={newName} onChange={setNewName} placeholder="e.g. General, Design Lead, IC Focus" />
+                </div>
+                <HStack gap={2} className="shrink-0">
+                  <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); setResumeError(null); }} />
+                  <Button label={saving ? "Saving…" : "Save Resume"} variant="primary" onClick={saveNew} isDisabled={!newContent.trim() || saving} />
+                </HStack>
               </div>
               <div className="mb-3">
                 <div className="mb-1 flex items-center justify-between">
@@ -223,10 +229,6 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                 </div>
                 <TextArea label="Content" isLabelHidden value={newContent} onChange={setNewContent} placeholder="Paste your resume text, or upload a file above." rows={10} />
               </div>
-              <HStack gap={2}>
-                <Button label={saving ? "Saving…" : "Save Resume"} variant="primary" onClick={saveNew} isDisabled={!newContent.trim() || saving} />
-                <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); setResumeError(null); }} />
-              </HStack>
             </div>
           )}
 
@@ -243,8 +245,14 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                 <Card key={r.id}>
                   {editingId === r.id ? (
                     <div className="p-4">
-                      <div className="mb-3">
-                        <TextInput label="Name" value={editName} onChange={setEditName} />
+                      <div className="mb-3 flex items-end gap-2">
+                        <div className="min-w-0 flex-1">
+                          <TextInput label="Name" value={editName} onChange={setEditName} />
+                        </div>
+                        <HStack gap={2} className="shrink-0">
+                          <Button label="Cancel" variant="secondary" onClick={() => { setEditingId(null); setResumeError(null); }} />
+                          <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={saveEdit} isDisabled={saving} />
+                        </HStack>
                       </div>
                       <div className="mb-3">
                         <div className="mb-1 flex items-center justify-between">
@@ -254,10 +262,6 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                         </div>
                         <TextArea label="Content" isLabelHidden value={editContent} onChange={setEditContent} rows={10} />
                       </div>
-                      <HStack gap={2}>
-                        <Button label={saving ? "Saving…" : "Save"} variant="primary" onClick={saveEdit} isDisabled={saving} />
-                        <Button label="Cancel" variant="secondary" onClick={() => { setEditingId(null); setResumeError(null); }} />
-                      </HStack>
                     </div>
                   ) : (
                     <div className="flex items-start justify-between p-4">
