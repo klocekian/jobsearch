@@ -8,6 +8,7 @@ export const STATUS_OPTIONS = [
   { value: "offer", label: "Offer" },
   { value: "accepted", label: "Accepted" },
   { value: "rejected", label: "Rejected" },
+  { value: "stale", label: "Stale" },
   { value: "declined", label: "Declined" },
   { value: "withdrawn", label: "Withdrawn" },
   { value: "abandoned", label: "Abandoned" },
@@ -22,6 +23,9 @@ export function statusLabel(status: string): string {
  * The forward pipeline, in order. Every other status is terminal: it ends a
  * job's run, and previous_status records the stage it stopped at.
  */
+/** Closing statuses. Entering one remembers the live status it left, so the job can be restored. */
+export const TERMINAL_STATUSES: ReadonlySet<string> = new Set(["rejected", "stale", "declined", "withdrawn", "abandoned", "closed"]);
+
 export const PIPELINE_STATUSES: readonly string[] = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
 
 /** Statuses that mean an application went in. */
@@ -68,6 +72,7 @@ export const STATUS_DOT_COLORS: Record<string, string> = {
   offer: "#8b5cf6",
   accepted: "#22c55e",
   rejected: "#f43f5e",
+  stale: "#93a5c4",
   declined: "#fda4af",
   withdrawn: "#a8a29e",
   abandoned: "#78716c",
@@ -89,6 +94,7 @@ export const STATUS_TEXT_COLORS: Record<string, string> = {
   offer: "light-dark(#6d28d9, #a78bfa)",
   accepted: "light-dark(#15803d, #4ade80)",
   rejected: "light-dark(#be123c, #fb7185)",
+  stale: "light-dark(#52627a, #a5b4cc)",
   declined: "light-dark(#9f1239, #fda4af)",
   withdrawn: "light-dark(#57534e, #a8a29e)",
   abandoned: "light-dark(#57534e, #a8a29e)",
@@ -105,6 +111,7 @@ export const STATUS_BADGE_VARIANTS: Record<string, "success" | "error" | "warnin
   offer: "purple",
   accepted: "success",
   rejected: "error",
+  stale: "neutral",
   withdrawn: "neutral",
   closed: "neutral",
   abandoned: "neutral",
@@ -120,6 +127,7 @@ export const STATUS_COLORS: Record<string, string> = {
   offer: "bg-purple-500/15 text-purple-800 dark:text-purple-300",
   accepted: "bg-green-500/20 text-green-800 dark:text-green-300",
   rejected: "bg-rose-500/15 text-rose-800 dark:text-rose-300",
+  stale: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
   declined: "bg-orange-500/15 text-orange-800 dark:text-orange-300",
   withdrawn: "bg-muted text-secondary",
   abandoned: "bg-muted text-secondary",

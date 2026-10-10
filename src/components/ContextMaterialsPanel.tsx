@@ -101,7 +101,7 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
           e.preventDefault();
           void handleFiles(e.dataTransfer.files);
         }}
-        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-1.5 text-xs"
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-1.5 text-sm"
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-semibold text-foreground shrink-0">Context:</span>
@@ -130,12 +130,12 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
             {materials.map((m) => (
               <span
                 key={m.id}
-                className="inline-flex items-center gap-1 rounded bg-surface border border-border px-2 py-0.5 text-xs text-foreground shadow-xs"
+                className="inline-flex items-center gap-1 rounded bg-surface border border-border px-2 py-0.5 text-sm text-foreground shadow-xs"
               >
-                <span className="max-w-[130px] truncate font-medium">{m.name}</span>
+                <span className="max-w-[130px] truncate">{m.name}</span>
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-foreground ml-0.5 cursor-pointer font-bold leading-none"
+                  className="text-muted-foreground hover:text-foreground ml-0.5 cursor-pointer font-semibold leading-none"
                   onClick={() => remove(m.id)}
                   title="Remove"
                 >
@@ -148,18 +148,26 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
       </div>
 
       {status.kind === "error" && (
-        <Banner status="error" title={status.message ?? "An error occurred."} className="text-xs" />
+        <Banner status="error" title={status.message ?? "An error occurred."} className="text-sm" />
       )}
 
       {pasteOpen && (
-        <div className="space-y-1.5 rounded-lg border border-border bg-muted/60 p-2 text-xs">
-          <div className="flex gap-1.5">
-            <TextInput
-              label="Label"
-              isLabelHidden
-              value={pasteName}
-              onChange={setPasteName}
-              placeholder="Label (e.g. 2024 brag doc)"
+        <div className="space-y-1.5 rounded-lg border border-border bg-muted/60 p-2 text-sm">
+          <div className="flex items-center gap-1.5">
+            <div className="min-w-0 flex-1">
+              <TextInput
+                label="Label"
+                isLabelHidden
+                value={pasteName}
+                onChange={setPasteName}
+                placeholder="Label (e.g. 2024 brag doc)"
+              />
+            </div>
+            <Button
+              label="Cancel"
+              variant="secondary"
+              size="sm"
+              onClick={() => setPasteOpen(false)}
             />
             <Button
               label="Add"
@@ -167,12 +175,6 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
               size="sm"
               onClick={addPaste}
               isDisabled={!pasteText.trim()}
-            />
-            <Button
-              label="Cancel"
-              variant="ghost"
-              size="sm"
-              onClick={() => setPasteOpen(false)}
             />
           </div>
           <TextArea

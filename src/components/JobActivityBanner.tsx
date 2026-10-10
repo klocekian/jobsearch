@@ -45,11 +45,11 @@ export function JobActivityBanner({
   return (
     <section
       aria-label="Job activity"
-      className={`bg-muted/50 text-xs ${flush ? "border-b border-border px-4 py-3" : "rounded-lg border border-border px-3 py-2.5"}`}
+      className={`bg-muted/50 text-sm ${flush ? "border-b border-border px-4 py-3" : "rounded-lg border border-border px-3 py-2.5"}`}
     >
       <div className="flex items-start gap-2">
         <span
-          className={`mt-px shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_COLORS[job.status] ?? STATUS_COLORS.saved}`}
+          className={`mt-px shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wider ${STATUS_COLORS[job.status] ?? STATUS_COLORS.saved}`}
         >
           {statusLabel(job.status)}
         </span>
@@ -79,9 +79,9 @@ export function JobActivityBanner({
               <ul className="space-y-1">
                 {activity.upcoming.map((e, i) => (
                   <li key={i}>
-                    <span className="font-medium text-primary">{e.what}</span>
+                    <span className="font-semibold text-primary">{e.what}</span>
                     <span className="text-secondary"> — {formatEventWhen(e)}</span>
-                    <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-px text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                    <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-px text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
                       {relativeDay(e.when)}
                     </span>
                     {e.details && e.details !== e.what && activity.source !== "derived" && (
@@ -115,7 +115,7 @@ export function JobActivityBanner({
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-2 leading-relaxed">
-      <span className="font-medium text-secondary">{label}</span>
+      <span className="text-secondary">{label}</span>
       <div className="min-w-0">{children}</div>
     </div>
   );

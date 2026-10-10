@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { statusLabel } from "./status";
+import { TERMINAL_STATUSES, statusLabel } from "./status";
 
 /**
  * The at-a-glance activity banner at the top of a job: where it stands, what's
@@ -245,7 +245,6 @@ function eventsInEntry(entry: NoteEntry, fallbackYear: number): ActivityEvent[] 
 // ── Derived summary ────────────────────────────────────────────────────────
 
 const INTERVIEW_STATUSES = new Set(["interview", "interview2", "onsite"]);
-const CLOSED_STATUSES = new Set(["rejected", "declined", "withdrawn", "abandoned", "closed"]);
 
 function daysSince(dateText: string | null, now: Date): number | null {
   if (!dateText) return null;
@@ -288,7 +287,7 @@ export function deriveJobActivity(job: JobLike, submissions: SubmissionLike[], n
   let headline: string;
   if (next) {
     headline = `${next.what} ${relativeDay(next.when, now)}.`;
-  } else if (CLOSED_STATUSES.has(status)) {
+  } else if (TERMINAL_STATUSES.has(status)) {
     headline = job.previous_status
       ? `${stage} after reaching ${statusLabel(job.previous_status)}.`
       : `${stage}.`;

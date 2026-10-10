@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { ContextMaterial } from "@/lib/context";
+import type { ResumeRow } from "@/lib/db/resumes";
 import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { CoverLetterView } from "./CoverLetterView";
+import { ResumeView } from "./ResumeView";
 import { JobActivityBanner } from "./JobActivityBanner";
-import { loadContextMaterials, saveContextMaterials } from "@/lib/storage";
+import { loadContextMaterials, saveContextMaterials, tailoredResumeText } from "@/lib/storage";
 import { apiSend, errorMessage } from "@/lib/api-client";
 import { useJob } from "@/hooks/useJob";
 import { useAiDetection } from "@/hooks/useAiDetection";
@@ -18,24 +20,25 @@ import { useMatchAnalysis } from "./job-workspace/useMatchAnalysis";
 import { useWithAi } from "./job-workspace/useWithAi";
 import { useDraft } from "./job-workspace/useDraft";
 import { useSplitPane } from "./job-workspace/useSplitPane";
-import { saveApplicationPackage } from "./job-workspace/applicationPackage";
+import { saveApplicationDocs } from "./job-workspace/applicationDocs";
 import { JobHeader, EMPTY_HEADER } from "./job-workspace/JobHeader";
 import { PostingPane, type LeftTab } from "./job-workspace/PostingPane";
 import { FitnessTab } from "./job-workspace/FitnessTab";
 import { MatchTab } from "./job-workspace/MatchTab";
-import { SubmissionsPanel } from "./job-workspace/SubmissionsPanel";
+import { ResumePicker } from "./job-workspace/ResumePicker";
+import { SubmissionPanel, type SubmissionEdit } from "./job-workspace/SubmissionPanel";
 import { NotesPanel } from "./job-workspace/NotesPanel";
 import { TabList, Tab } from "@astryxdesign/core/TabList";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
+import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
 
-type RightTab = "profile" | "resume" | "application";
+type RightTab = "profile" | "resume" | "application" | "tools";
 type MobilePane = "posting" | "analysis";
-type ProfileSubTab = "score" | "edit";
-type ResumeSubTab = "score" | "edit";
-type AppSubTab = "cover" | "submission" | "notes";
+type AppSubTab = "notes" | "submission";
+type ToolsSubTab = "profile" | "resume" | "cover";
 
 export function JobWorkspace({ jobId }: { jobId: number }) {
   const router = useRouter();
@@ -54,20 +57,29 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
   const [rightTab, setRightTab] = useState<RightTab>("profile");
-  const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>("score");
-  const [resumeSubTab, setResumeSubTab] = useState<ResumeSubTab>("score");
-  const [appSubTab, setAppSubTab] = useState<AppSubTab>("cover");
+  const [appSubTab, setAppSubTab] = useState<AppSubTab>("notes");
+  const [toolsSubTab, setToolsSubTab] = useState<ToolsSubTab>("profile");
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
   const { splitPct, containerRef, onDragStart } = useSplitPane();
+  // The nav right-aligns the job controls to the left column's edge, where the card begins.
+  useEffect(() => {
+    if (isMobile) return;
+    const root = document.documentElement;
+    root.style.setProperty("--job-split", `${splitPct}%`);
+    return () => { root.style.removeProperty("--job-split"); };
+  }, [isMobile, splitPct]);
 
   const headerDraft = useDraft(EMPTY_HEADER);
   const notesDraft = useDraft("");
   const pasteDraft = useDraft("");
-  const [viewingSubmission, setViewingSubmission] = useState<number | null>(null);
+  const [resumeUploadError, setResumeUploadError] = useState<string | null>(null);
 
   const [materials, setMaterials] = useState<ContextMaterial[]>(() => loadContextMaterials());
   useEffect(() => { saveContextMaterials(materials); }, [materials]);
+
+  // The saved resume the picked text came from (none for an edited, unsaved one).
+  const pickedResume = savedResumes.find((r) => r.content === resumeText) ?? null;
 
   useEffect(() => {
     if (job) {
@@ -80,7 +92,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const runAnalysis = () => {
     if (!match.run()) return;
     setRightTab("resume");
-    setResumeSubTab("score");
   };
 
   // The resume tab's Analyze "with AI" also re-runs the fitness check.
@@ -93,7 +104,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     setAnalyzing(false);
   };
 
+  const openTool = (tool: ToolsSubTab) => {
+    setToolsSubTab(tool);
+    setRightTab("tools");
+  };
+
   const updateStatus = useCallback(async (newStatus: string) => {
+    const wasApplied = job?.status === "applied";
     setActionError(null);
     try {
       await updateJob({ status: newStatus });
@@ -101,15 +118,16 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       setActionError(errorMessage(err, "Could not change the status."));
       return;
     }
-    if (newStatus === "applied" && analyzed && job) {
+    // Marking it Applied records what was sent: the resume and cover letter.
+    if (newStatus === "applied" && !wasApplied) {
       try {
-        await saveApplicationPackage(job, analyzed.resumeText);
+        await saveApplicationDocs(jobId, { name: pickedResume?.name ?? null, text: resumeText });
       } catch (err) {
-        setActionError(errorMessage(err, "Status changed, but the application package could not be saved."));
+        setActionError(errorMessage(err, "Status changed, but the resume and cover letter could not be saved."));
       }
     }
     fetchJob();
-  }, [analyzed, job, fetchJob, updateJob]);
+  }, [job, jobId, pickedResume, resumeText, fetchJob, updateJob]);
 
   const deleteJob = useCallback(async () => {
     if (!(await confirm({ title: "Delete this job?", description: "Its notes, saved documents and reports are deleted too. This can't be undone.", actionLabel: "Delete" }))) return;
@@ -122,20 +140,15 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     router.push("/jobs");
   }, [jobId, router, confirm]);
 
-  // The nav's status selector and delete menu act on this job through events.
+  // The nav's status selector acts on this job through an event.
   useEffect(() => {
     const handler = (e: Event) => {
       const custom = e as CustomEvent<{ action: string; status?: string }>;
-      if (!custom.detail) return;
-      if (custom.detail.action === "status" && custom.detail.status) {
-        updateStatus(custom.detail.status);
-      } else if (custom.detail.action === "delete") {
-        deleteJob();
-      }
+      if (custom.detail?.action === "status" && custom.detail.status) updateStatus(custom.detail.status);
     };
     window.addEventListener("job-workspace-action", handler);
     return () => window.removeEventListener("job-workspace-action", handler);
-  }, [updateStatus, deleteJob]);
+  }, [updateStatus]);
 
   // Runs a write, reporting failure in the workspace's error banner. Edit
   // forms stay open on failure so nothing typed is lost.
@@ -163,25 +176,29 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     if (await attempt(() => updateJob({ notes: notesDraft.value }), "Could not save notes.")) notesDraft.close();
   };
 
-  const uploadFile = async (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    form.append("type", "other");
-    form.append("label", file.name);
-    if (await attempt(() => apiSend(`/api/jobs/${jobId}/submissions`, "POST", form), "Could not upload the file.")) fetchJob();
+  const saveSubmission = async ({ type, existing, label, format, content }: SubmissionEdit): Promise<boolean> => {
+    const ok = await attempt(
+      () => existing
+        ? apiSend(`/api/jobs/${jobId}/submissions/${existing.id}`, "PATCH", { label, format, content })
+        : apiSend(`/api/jobs/${jobId}/submissions`, "POST", { type, label, format, content }),
+      "Could not save the submission.",
+    );
+    if (ok) fetchJob();
+    return ok;
   };
 
   const deleteSubmission = async (sid: number) => {
     if (await attempt(() => apiSend(`/api/jobs/${jobId}/submissions/${sid}`, "DELETE"), "Could not remove the submission.")) fetchJob();
   };
 
+  // Tools › Resume saved over the picked resume, or as a new one: pick it.
+  const onResumeSaved = (row: ResumeRow, isNew: boolean) => {
+    setSavedResumes((prev) => (isNew ? [...prev, row] : prev.map((r) => (r.id === row.id ? row : r))));
+    setResumeText(row.content);
+  };
+
   if (loading) return <div className="py-12 text-center"><Spinner label="Loading…" /></div>;
   if (!job) return <div className="py-12"><Banner status="error" title="Job not found." /></div>;
-
-  const savePackage = async () => {
-    if (!analyzed) return;
-    if (await attempt(() => saveApplicationPackage(job, analyzed.resumeText), "Could not save the package.")) fetchJob();
-  };
 
   const jobHeaderInner = (
     <JobHeader
@@ -189,6 +206,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       draft={headerDraft}
       onSave={saveHeader}
       onRestoreStatus={updateStatus}
+      onDelete={deleteJob}
       error={actionError}
       onDismissError={() => setActionError(null)}
     />
@@ -214,24 +232,33 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       <Tab value="profile" label={fitness.saved ? `Profile (${fitness.saved.score}/10)` : "Profile"} />
       <Tab value="resume" label={analyzed ? `Resume (${analyzed.report.score}/100)` : "Resume"} />
       <Tab value="application" label={submissions.length > 0 ? `Application (${submissions.length})` : "Application"} />
+      <Tab value="tools" label="Tools" />
     </TabList>
+  );
+
+  const editingNotes = appSubTab === "notes" && notesDraft.isOpen;
+
+  const resumePicker = (
+    <ResumePicker
+      resumes={savedResumes}
+      resumeText={resumeText}
+      onPick={setResumeText}
+      onAdded={(r) => { setSavedResumes(prev => [...prev, r]); setResumeText(r.content); }}
+      onError={setResumeUploadError}
+    />
   );
 
   const rightPaneBody = (
     <>
       {rightTab === "profile" && (
         <div className="space-y-4">
-          {profileSubTab === "score" ? (
-            <FitnessTab
-              job={job}
-              fitness={fitness}
-              withAi={withAi}
-              onWithAiChange={setWithAi}
-              onEditProfile={() => setProfileSubTab("edit")}
-            />
-          ) : (
-            <CandidateProfilePanel onBack={() => setProfileSubTab("score")} />
-          )}
+          <FitnessTab
+            job={job}
+            fitness={fitness}
+            withAi={withAi}
+            onWithAiChange={setWithAi}
+            onEditProfile={() => openTool("profile")}
+          />
         </div>
       )}
 
@@ -249,72 +276,97 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             onWithAiChange={setWithAi}
             analyzing={analyzing}
             onAnalyze={() => (withAi ? runUnifiedAnalysis() : runAnalysis())}
-            editing={resumeSubTab === "edit"}
-            onEditingChange={(edit) => setResumeSubTab(edit ? "edit" : "score")}
-            materials={materials}
-            onMaterialsChange={setMaterials}
+            onEdit={() => openTool("resume")}
           />
         </div>
       )}
 
       {rightTab === "application" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <SegmentedControl
-              value={appSubTab}
-              onChange={(v) => setAppSubTab(v as AppSubTab)}
-              label="Application view"
-            >
-              <SegmentedControlItem
-                value="cover"
-                label="Cover letter"
-              />
+        // Editing notes, the text area takes the rest of the pane's height.
+        <div className={editingNotes ? "flex h-full min-h-0 flex-col gap-4" : "space-y-4"}>
+          <div className="flex items-center gap-2">
+            <SegmentedControl value={appSubTab} onChange={(v) => setAppSubTab(v as AppSubTab)} label="Application view">
+              <SegmentedControlItem value="notes" label="Notes" />
               <SegmentedControlItem
                 value="submission"
                 label={submissions.length > 0 ? `Submission (${submissions.length})` : "Submission"}
               />
-              <SegmentedControlItem
-                value="notes"
-                label="Notes"
-              />
             </SegmentedControl>
+            {appSubTab === "notes" && !editingNotes && (
+              <Button label="Edit" variant="secondary" size="sm" onClick={() => notesDraft.open(job.notes)} />
+            )}
+            {editingNotes && (
+              <div className="ml-auto flex shrink-0 gap-2">
+                <Button label="Cancel" variant="secondary" size="sm" onClick={notesDraft.close} />
+                <Button label="Save" variant="primary" size="sm" onClick={saveNotes} />
+              </div>
+            )}
           </div>
 
-          {appSubTab === "cover" && (
-            analyzed ? (
-              <CoverLetterView
-                resumeText={analyzed.resumeText}
-                jobText={job.posting_text}
-                jobTitle={job.title}
-                company={job.company}
-                materials={materials}
-                onMaterialsChange={setMaterials}
-              />
-            ) : (
-              <div className="py-12">
-                <Banner
-                  status="info"
-                  title={job.posting_text.trim()
-                    ? 'Select a resume and click "Analyze" to generate a cover letter.'
-                    : 'Add a job posting first to generate a cover letter.'}
-                />
-              </div>
-            )
-          )}
+          {appSubTab === "notes" && <NotesPanel notes={job.notes} draft={notesDraft} />}
 
           {appSubTab === "submission" && (
-            <SubmissionsPanel
+            <SubmissionPanel
               jobId={jobId}
               submissions={submissions}
-              onSavePackage={analyzed ? savePackage : null}
-              onUpload={uploadFile}
+              resumes={savedResumes}
+              onSave={saveSubmission}
               onRemove={deleteSubmission}
-              viewingId={viewingSubmission}
-              onViewingChange={setViewingSubmission}
             />
           )}
+        </div>
+      )}
 
-          {appSubTab === "notes" && <NotesPanel notes={job.notes} draft={notesDraft} onSave={saveNotes} />}
+      {rightTab === "tools" && (
+        <div className="space-y-4">
+          <SegmentedControl value={toolsSubTab} onChange={(v) => setToolsSubTab(v as ToolsSubTab)} label="Tool">
+            <SegmentedControlItem value="profile" label="Profile" />
+            <SegmentedControlItem value="resume" label="Resume" />
+            <SegmentedControlItem value="cover" label="Cover letter" />
+          </SegmentedControl>
+
+          {toolsSubTab === "profile" && <CandidateProfilePanel embedded />}
+
+          {toolsSubTab === "resume" && (
+            <>
+              {resumeUploadError && <Banner status="error" title={resumeUploadError} />}
+              {resumeText.trim() ? (
+                <ResumeView
+                  // A different resume starts a fresh working copy.
+                  key={resumeText}
+                  jobId={jobId}
+                  resumeText={resumeText}
+                  resume={pickedResume}
+                  company={job.company}
+                  jobText={job.posting_text}
+                  jobTitle={job.title}
+                  missingSkills={analyzed?.report.highlights.missing ?? []}
+                  aiDetection={aiDetection.data}
+                  materials={materials}
+                  onMaterialsChange={setMaterials}
+                  onSaved={onResumeSaved}
+                  picker={resumePicker}
+                />
+              ) : (
+                <>
+                  {resumePicker}
+                  <Banner status="info" title="Add a resume to tailor it for this job." />
+                </>
+              )}
+            </>
+          )}
+
+          {toolsSubTab === "cover" && (
+            <CoverLetterView
+              jobId={jobId}
+              resumeText={tailoredResumeText(jobId) || resumeText}
+              jobText={job.posting_text}
+              jobTitle={job.title}
+              company={job.company}
+              materials={materials}
+              onMaterialsChange={setMaterials}
+            />
+          )}
         </div>
       )}
     </>
@@ -359,13 +411,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   return (
     <div
       ref={containerRef}
-      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden bg-surface text-primary"
+      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] bg-surface text-primary"
       style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}
     >
       {/* Drag handle */}
       <div
         onMouseDown={onDragStart}
-        className="absolute top-0 bottom-0 z-10 w-1 cursor-col-resize bg-transparent hover:bg-brand/30 active:bg-brand/50 transition-colors"
+        className="absolute -top-[57px] bottom-0 z-50 w-1 cursor-col-resize bg-transparent hover:bg-brand/30 active:bg-brand/50 transition-colors"
         style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
       />
       {/* Header */}
@@ -383,12 +435,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       {/* Left content */}
       <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto bg-surface p-4">{leftPaneBody}</div>
 
-      {/* Right pane: activity banner, tabs, content */}
-      <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col p-3 sm:p-4">
+      {/* Right pane: activity banner, tabs, content. It rises over the nav
+          (whose controls sit on the left on job pages) to the top of the window. */}
+      <div className="relative z-40 col-start-2 row-start-1 row-span-3 -mt-[57px] flex min-h-0 flex-col p-3 sm:p-4">
         <div className={rightPaneCardClass}>
           <div className="shrink-0">{activityBanner}</div>
           <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-sm">{rightPaneBody}</div>
         </div>
       </div>
       {confirmDialog}

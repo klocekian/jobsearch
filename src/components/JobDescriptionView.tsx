@@ -58,7 +58,7 @@ export function JobDescriptionView({ jobText, matched, missing, hideLegend = fal
           </HStack>
         </HStack>
       )}
-      <div className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-primary">
+      <div className="whitespace-pre-wrap break-words">
         {tokens.map((t, i) =>
           t.state ? (
             <span

@@ -3,9 +3,7 @@
 import { useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import type { ResumeRow } from "@/lib/db/resumes";
-import type { ContextMaterial } from "@/lib/context";
 import { MatchReportView, type AiDetectionState } from "../MatchReportView";
-import { ResumeView } from "../ResumeView";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
 import { ResumePicker } from "./ResumePicker";
@@ -24,50 +22,29 @@ interface MatchTabProps {
   onWithAiChange: (value: boolean) => void;
   analyzing: boolean;
   onAnalyze: () => void;
-  /** Showing the resume tailoring editor instead of the ATS report. */
-  editing: boolean;
-  onEditingChange: (editing: boolean) => void;
-  materials: ContextMaterial[];
-  onMaterialsChange: (materials: ContextMaterial[]) => void;
+  /** Open the picked resume in Tools to tailor it. */
+  onEdit: () => void;
 }
 
-/** Resume tab: the ATS match report for the picked resume, and tailoring it. */
+/** Resume tab: the ATS match report for the picked resume. */
 export function MatchTab({
   job, match, aiDetection, resumes, resumeText, onPickResume, onResumeAdded,
-  withAi, onWithAiChange, analyzing, onAnalyze, editing, onEditingChange, materials, onMaterialsChange,
+  withAi, onWithAiChange, analyzing, onAnalyze, onEdit,
 }: MatchTabProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const { analyzed } = match;
-
-  if (editing) {
-    return analyzed ? (
-      <ResumeView
-        resumeText={analyzed.resumeText}
-        company={job.company}
-        jobText={job.posting_text}
-        jobTitle={job.title}
-        missingSkills={analyzed.report.highlights.missing}
-        aiDetection={aiDetection.data}
-        materials={materials}
-        onMaterialsChange={onMaterialsChange}
-        onBack={() => onEditingChange(false)}
-      />
-    ) : (
-      <div className="py-12">
-        <Banner
-          status="info"
-          title={job.posting_text.trim()
-            ? 'Select a resume and click "Analyze" to begin tailoring.'
-            : 'Add a job posting first to tailor your resume.'}
-        />
-      </div>
-    );
-  }
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
+          <Button
+            label="Edit"
+            variant="secondary"
+            size="sm"
+            onClick={onEdit}
+            isDisabled={!resumeText.trim()}
+          />
           <ResumePicker
             resumes={resumes}
             resumeText={resumeText}
@@ -75,17 +52,9 @@ export function MatchTab({
             onAdded={onResumeAdded}
             onError={setUploadError}
           />
-          <Button
-            label="Edit"
-            variant="secondary"
-            size="sm"
-            onClick={() => onEditingChange(true)}
-            isDisabled={!analyzed}
-          />
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <WithAiToggle checked={withAi} onChange={onWithAiChange} />
           <Button
             label={analyzing ? "Analyzing…" : analyzed ? "Re-run analysis" : "Analyze"}
             variant="primary"
@@ -93,6 +62,7 @@ export function MatchTab({
             onClick={onAnalyze}
             isDisabled={analyzing || !job.posting_text.trim() || !resumeText.trim()}
           />
+          <WithAiToggle checked={withAi} onChange={onWithAiChange} />
         </div>
       </div>
 

@@ -52,12 +52,12 @@ function SummaryCards({ report }: { report: MatchReport }) {
       <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
         {cards.map((c) => (
           <Card key={c.label} className="px-3 py-2">
-            <Text type="supporting" color="secondary" display="block" className="text-xs">{c.label}</Text>
+            <Text type="supporting" color="secondary" display="block" className="text-sm">{c.label}</Text>
             <div className="mt-0.5">
               <span className={`text-base font-semibold ${c.n === 0 ? "text-emerald-700 dark:text-emerald-400" : "text-primary"}`}>
                 {c.n}
               </span>{" "}
-              <span className="text-xs text-muted-foreground">{c.n === 1 ? "issue" : "issues"}</span>
+              <span className="text-sm text-muted-foreground">{c.n === 1 ? "issue" : "issues"}</span>
             </div>
           </Card>
         ))}
@@ -92,11 +92,11 @@ function Section({
 function SkillCounts({ section }: { section: SkillSection }) {
   return (
     <>
-      <Text color="secondary" className="text-xs">
-        Matched <Text weight="semibold" className="text-emerald-700 dark:text-emerald-400 text-xs">{section.matched}</Text>
+      <Text color="secondary" className="text-sm">
+        Matched <Text weight="semibold" className="text-emerald-700 dark:text-emerald-400 text-sm">{section.matched}</Text>
       </Text>
-      <Text color="secondary" className="text-xs">
-        Missing <Text weight="semibold" className="text-rose-700 dark:text-rose-400 text-xs">{section.missing}</Text>
+      <Text color="secondary" className="text-sm">
+        Missing <Text weight="semibold" className="text-rose-700 dark:text-rose-400 text-sm">{section.missing}</Text>
       </Text>
     </>
   );
@@ -104,15 +104,15 @@ function SkillCounts({ section }: { section: SkillSection }) {
 
 function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
   return (
-    <div className="divide-y divide-border text-xs">
+    <div className="divide-y divide-border text-sm">
       {groups.map((g) => (
         <div key={g.label} className="grid grid-cols-1 gap-1.5 py-2 sm:grid-cols-[130px_1fr]">
-          <Text weight="semibold" display="block" className="text-xs">{g.label}</Text>
+          <Text weight="semibold" display="block" className="text-sm">{g.label}</Text>
           <ul className="space-y-1">
             {g.items.map((item, i) => (
               <li key={i} className="flex gap-2 leading-snug">
                 <StatusIcon status={item.status} className="h-4 w-4 shrink-0 mt-0.5" />
-                <Text color="secondary" className="text-xs">{item.message}</Text>
+                <Text color="secondary" className="text-sm">{item.message}</Text>
               </li>
             ))}
           </ul>
@@ -124,16 +124,16 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
 
 function SkillsTable({ section }: { section: SkillSection }) {
   return (
-    <div className="text-xs">
+    <div className="text-sm">
       {section.rows.length === 0 ? (
-        <Text type="supporting" color="secondary" display="block" className="py-2 text-xs">No skills of this type detected in the job description.</Text>
+        <Text type="supporting" color="secondary" display="block" className="py-2 text-sm">No skills of this type detected in the job description.</Text>
       ) : (
-        <table className="w-full text-xs">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="text-left uppercase tracking-wider text-muted-foreground border-b border-border">
-              <th className="py-1 pr-3 text-[11px] font-medium">Skill</th>
-              <th className="px-3 py-1 text-right text-[11px] font-medium">Resume</th>
-              <th className="py-1 pl-3 text-right text-[11px] font-medium">Job</th>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <th className="py-1 pr-3 text-xs font-semibold">Skill</th>
+              <th className="px-3 py-1 text-right text-xs font-semibold">Resume</th>
+              <th className="py-1 pl-3 text-right text-xs font-semibold">Job</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -142,16 +142,16 @@ function SkillsTable({ section }: { section: SkillSection }) {
                 <td className="py-1.5 pr-3">
                   <span className="inline-flex items-center gap-1.5">
                     <StatusIcon status={row.state === "missing" ? "fail" : "pass"} className="h-3.5 w-3.5 shrink-0" />
-                    <Text className="text-xs">{row.skill}</Text>
+                    <Text className="text-sm">{row.skill}</Text>
                     {row.state === "exceeds" && (
                       <Badge variant="warning" label="over-indexed" />
                     )}
                   </span>
                 </td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-xs">
-                  {row.state === "missing" ? <Text className="text-rose-700 dark:text-rose-400 text-xs">✕</Text> : <Text className="text-xs">{row.resumeCount}</Text>}
+                <td className="px-3 py-1.5 text-right tabular-nums text-sm">
+                  {row.state === "missing" ? <Text className="text-rose-700 dark:text-rose-400 text-sm">✕</Text> : <Text className="text-sm">{row.resumeCount}</Text>}
                 </td>
-                <td className="py-1.5 pl-3 text-right tabular-nums text-xs"><Text className="text-xs">{row.jobCount}</Text></td>
+                <td className="py-1.5 pl-3 text-right tabular-nums text-sm"><Text className="text-sm">{row.jobCount}</Text></td>
               </tr>
             ))}
           </tbody>
@@ -163,23 +163,23 @@ function SkillsTable({ section }: { section: SkillSection }) {
 
 function RecruiterTable({ tips }: { tips: RecruiterTip[] }) {
   return (
-    <div className="divide-y divide-border text-xs">
+    <div className="divide-y divide-border text-sm">
       {tips.map((t) => (
         <div key={t.label} className="grid grid-cols-1 gap-1.5 py-2 sm:grid-cols-[130px_1fr]">
-          <Text weight="semibold" display="block" className="text-xs">{t.label}</Text>
+          <Text weight="semibold" display="block" className="text-sm">{t.label}</Text>
           <div className="space-y-1">
             <div className="flex gap-2 leading-snug">
               <StatusIcon status={t.status} className="h-4 w-4 shrink-0 mt-0.5" />
-              <Text color="secondary" className="text-xs">{t.message}</Text>
+              <Text color="secondary" className="text-sm">{t.message}</Text>
             </div>
             {t.evidence && t.evidence.length > 0 && (
               <div className="ml-6 rounded bg-muted px-2.5 py-1">
-                <Text type="supporting" weight="semibold" display="block" className="mb-0.5 text-[10px] uppercase tracking-wide">
+                <Text type="supporting" weight="semibold" display="block" className="mb-0.5 text-xs uppercase tracking-wider">
                   Evidence
                 </Text>
-                <ul className="space-y-0.5 italic text-xs">
+                <ul className="space-y-0.5 text-sm">
                   {t.evidence.map((e, i) => (
-                    <li key={i}><Text type="supporting" color="secondary" className="text-xs">&ldquo;{e}&rdquo;</Text></li>
+                    <li key={i}><Text type="supporting" color="secondary" className="text-sm">&ldquo;{e}&rdquo;</Text></li>
                   ))}
                 </ul>
               </div>
@@ -197,7 +197,7 @@ function AiDetectionSection({ state }: { state: AiDetectionState }) {
       <div className="px-4 py-4">
         <div className="flex items-center gap-2">
           <Spinner size="sm" />
-          <Text color="secondary" className="text-xs">Checking the writing for AI authorship…</Text>
+          <Text color="secondary" className="text-sm">Checking the writing for AI authorship…</Text>
         </div>
       </div>
     );
@@ -217,28 +217,28 @@ function AiDetectionPanel({ ai, note }: { ai: AiDetection; note?: string }) {
   const bandColor =
     ai.band === "high" ? "text-rose-700 dark:text-rose-400" : ai.band === "moderate" ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400";
   return (
-    <div className="py-2 text-xs">
+    <div className="py-2 text-sm">
       <div className="flex items-center gap-3">
-        <span className={`text-2xl font-bold ${bandColor}`}>{ai.confidence}%</span>
+        <span className={`text-2xl font-semibold ${bandColor}`}>{ai.confidence}%</span>
         <div>
-          <Text weight="semibold" display="block" className={`capitalize text-xs ${bandColor}`}>{ai.band} AI signal</Text>
-          <Text color="secondary" display="block" className="text-xs">
+          <Text weight="semibold" display="block" className={`capitalize text-sm ${bandColor}`}>{ai.band} AI signal</Text>
+          <Text color="secondary" display="block" className="text-sm">
             Probabilistic estimate of how AI-generated the resume reads.
           </Text>
         </div>
       </div>
-      {note && <Text type="supporting" display="block" className="mt-1 text-amber-700 dark:text-amber-400 text-xs">{note}</Text>}
+      {note && <Text type="supporting" display="block" className="mt-1 text-amber-700 dark:text-amber-400 text-sm">{note}</Text>}
       <div className="mt-4 space-y-3">
         {ai.patterns.map((p) => (
           <div key={p.label}>
             <div className="flex items-center justify-between">
-              <Text weight="semibold" className="text-xs">{p.label}</Text>
-              <Text type="supporting" color="secondary" className="tabular-nums text-xs">{p.signal}</Text>
+              <Text weight="semibold" className="text-sm">{p.label}</Text>
+              <Text type="supporting" color="secondary" className="tabular-nums text-sm">{p.signal}</Text>
             </div>
             <ProgressBar value={p.signal} max={100} label={p.label} isLabelHidden className="mt-1 h-1.5" />
-            <Text type="supporting" color="secondary" display="block" className="mt-1 text-xs leading-snug">{p.message}</Text>
+            <Text type="supporting" color="secondary" display="block" className="mt-1 text-sm leading-snug">{p.message}</Text>
             {p.examples.length > 0 && (
-              <Text type="supporting" color="secondary" display="block" className="mt-0.5 text-xs">e.g. {p.examples.join(", ")}</Text>
+              <Text type="supporting" color="secondary" display="block" className="mt-0.5 text-sm">e.g. {p.examples.join(", ")}</Text>
             )}
           </div>
         ))}

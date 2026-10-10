@@ -1,6 +1,9 @@
 import { getDb, plainRow } from "./index";
 import type { Row } from "@libsql/client";
 
+/** txt and md hold text; pdf holds the file as base64. */
+export const SUBMISSION_FORMATS = ["txt", "md", "pdf"] as const;
+
 export interface SubmissionRow {
   id: number;
   job_id: number;
@@ -42,6 +45,19 @@ export async function createSubmission(data: {
     args: [data.job_id, data.type, data.label, data.format, data.content, data.file_path ?? null],
   });
   return rowToSub(result.rows[0]);
+}
+
+export async function updateSubmission(
+  id: number,
+  jobId: number,
+  data: { label?: string; format?: string; content?: string },
+): Promise<SubmissionRow | undefined> {
+  const db = await getDb();
+  const result = await db.execute({
+    sql: "UPDATE submissions SET label = COALESCE(?, label), format = COALESCE(?, format), content = COALESCE(?, content) WHERE id = ? AND job_id = ? RETURNING *",
+    args: [data.label ?? null, data.format ?? null, data.content ?? null, id, jobId],
+  });
+  return result.rows[0] ? rowToSub(result.rows[0]) : undefined;
 }
 
 export async function deleteSubmission(id: number, jobId: number): Promise<boolean> {

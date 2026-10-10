@@ -2,6 +2,7 @@
 
 import { memo, useRef, useState } from "react";
 import { applyChange, buildReview, type ReviewNode } from "@/lib/diff";
+import { DOC_SURFACE_EDITING } from "./DocumentField";
 
 interface RewriteEditorProps {
   /** The AI rewrite (suggestion source). Empty string = no suggestions yet. */
@@ -77,7 +78,7 @@ function RewriteEditorInner({ rewrite, initialResult, initialDismissed, onChange
       suppressContentEditableWarning
       onBlur={handleBlur}
       spellCheck={false}
-      className="min-h-[28rem] w-full whitespace-pre-wrap break-words rounded-xl border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+      className={`${DOC_SURFACE_EDITING} min-h-40 w-full whitespace-pre-wrap break-words`}
     >
       {nodes.map((n, i) =>
         n.kind === "text" ? (

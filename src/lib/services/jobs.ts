@@ -11,7 +11,7 @@ import {
 import { getCandidateProfiles } from "@/lib/db/candidate-docs";
 import { getDefaultResume } from "@/lib/db/resumes";
 import { looksLikeHtml, normalizePostingText } from "@/lib/html-text";
-import { STATUS_OPTIONS } from "@/lib/status";
+import { STATUS_OPTIONS, TERMINAL_STATUSES } from "@/lib/status";
 import { checkJobStatus, type JobCheckResult } from "@/lib/job-status-check";
 import { evaluateFitnessDeterministic } from "@/lib/fitness/deterministic";
 import { FitnessResultSchema, type FitnessResult } from "@/lib/fitness/schema";
@@ -28,9 +28,6 @@ import { generateStructured } from "@/lib/ai";
 // ── Statuses ────────────────────────────────────────────────────────────────
 
 export const STATUS_VALUES = STATUS_OPTIONS.map((s) => s.value) as [string, ...string[]];
-
-/** Closing statuses. Entering one remembers the live status it left, so the job can be restored. */
-export const TERMINAL_STATUSES = new Set(["rejected", "declined", "withdrawn", "abandoned", "closed"]);
 
 /** Still in play: worth checking whether the posting is up, counted as active in summaries. */
 export const ACTIVE_STATUSES = new Set(["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"]);
@@ -125,6 +122,12 @@ async function mergeInto(existing: JobRow, incoming: JobInsert): Promise<JobRow>
     if (!oldVal || (typeof oldVal === "string" && oldVal.length < (newVal as string).length)) {
       updates[key] = newVal;
     }
+  }
+  // Notes are added to, never replaced — they may hold the user's own writing.
+  const notes = incoming.notes?.trim();
+  if (notes && !existing.notes.includes(notes)) {
+    const base = existing.notes.trimEnd();
+    updates.notes = `${base}${base ? "\n\n" : ""}${notes}`;
   }
   if (Object.keys(updates).length === 0) return existing;
   return (await updateJob(existing.id, updates))!;

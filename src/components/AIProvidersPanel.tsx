@@ -213,21 +213,21 @@ export function AIProvidersPanel() {
                     )}
                     <HStack gap={2}>
                       <Button
-                        label={saving ? "Validating…" : "Save"}
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleSave(p.id)}
-                        isDisabled={!inputKey.trim() || saving}
-                      />
-                      <Button
                         label="Cancel"
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
                         onClick={() => {
                           setEditingId(null);
                           setInputKey("");
                           setStatusMsg(null);
                         }}
+                      />
+                      <Button
+                        label={saving ? "Validating…" : "Save"}
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleSave(p.id)}
+                        isDisabled={!inputKey.trim() || saving}
                       />
                     </HStack>
                     <div className="w-full text-xs text-secondary">

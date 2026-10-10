@@ -27,7 +27,7 @@ export function ResumePicker({ resumes, resumeText, onPick, onAdded, onError }: 
         <Selector
           label="Resume"
           isLabelHidden
-          className="max-w-[220px]"
+          className="max-w-[220px] border-transparent"
           options={[
             ...resumes.map(r => ({ value: String(r.id), label: `${r.name}${r.is_default ? " (default)" : ""}` })),
             { value: "__add_new__", label: "+ Add resume…" },

@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
-import { TextArea } from "@astryxdesign/core/TextArea";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Text } from "@astryxdesign/core/Text";
 import { Heading } from "@astryxdesign/core/Heading";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
+import { downloadText } from "@/lib/download";
+import { downloadMarkdownPdf } from "@/lib/pdf/markdown";
+import { DownloadMenu } from "./DownloadMenu";
+import { DocumentField } from "./DocumentField";
+import { useDraft, type Draft } from "./job-workspace/useDraft";
 
 /**
  * Editor for the two documents the fitness check runs against.
@@ -72,18 +76,6 @@ Grounding for fitness checks. Listed items prevent false-positive keyword matchi
 - **Years of Experience Near-Miss**: 8 years total software engineering; if a role asks for 10+ years in general full-stack, reframe on depth of systems architecture and rapid modern stack execution.
 `;
 
-function downloadSample(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 interface DocsResponse {
   profile: string;
   gaps: string;
@@ -108,50 +100,69 @@ function canonMayBeStale(docs: DocsResponse | null): boolean {
 }
 
 interface CandidateProfilePanelProps {
-  onBack?: () => void;
+  /** Inside the job workspace: no page heading. */
+  embedded?: boolean;
 }
 
-export function CandidateProfilePanel({ onBack }: CandidateProfilePanelProps = {}) {
+
+type DocKind = "profile" | "gaps";
+
+export function CandidateProfilePanel({ embedded = false }: CandidateProfilePanelProps = {}) {
   const [docs, setDocs] = useState<DocsResponse | null>(null);
-  const [profile, setProfile] = useState("");
-  const [gaps, setGaps] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const profileDraft = useDraft("");
+  const gapsDraft = useDraft("");
 
   useEffect(() => {
     let active = true;
     apiGet<DocsResponse>("/api/candidate-docs")
-      .then((d) => {
-        if (!active) return;
-        setDocs(d);
-        setProfile(d.profile ?? "");
-        setGaps(d.gaps ?? "");
-      })
+      .then((d) => { if (active) setDocs(d); })
       .catch(() => {})
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
 
-  const dirty = docs !== null && (profile !== docs.profile || gaps !== docs.gaps);
+  const profile = docs?.profile ?? "";
+  const gaps = docs?.gaps ?? "";
 
-  const save = async () => {
+  // Each document saves on its own; the other goes along unchanged.
+  const save = async (kind: DocKind) => {
+    const draft = kind === "profile" ? profileDraft : gapsDraft;
     setSaving(true);
     setMessage(null);
     try {
-      const d = await apiSend<Partial<DocsResponse>>("/api/candidate-docs", "PUT", { profile, gaps });
+      const body = { profile, gaps, [kind]: draft.value };
+      const d = await apiSend<Partial<DocsResponse>>("/api/candidate-docs", "PUT", body);
       setDocs((prev) => prev ? {
         ...prev,
-        profile: d.profile ?? profile,
-        gaps: d.gaps ?? gaps,
+        profile: d.profile ?? body.profile,
+        gaps: d.gaps ?? body.gaps,
         profile_updated_at: d.profile_updated_at ?? prev.profile_updated_at,
         gaps_updated_at: d.gaps_updated_at ?? prev.gaps_updated_at,
       } : prev);
-      setMessage({ kind: "success", text: "Saved." });
+      draft.close();
     } catch (err) {
       setMessage({ kind: "error", text: errorMessage(err, "Save failed.") });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Both saved documents in one file.
+  const combinedMarkdown = () =>
+    [profile.trim(), gaps.trim()].filter(Boolean).join("\n\n---\n\n") + "\n";
+
+  const downloadPdf = async () => {
+    setExporting(true);
+    try {
+      await downloadMarkdownPdf("Candidate Profile", combinedMarkdown());
+    } catch (err) {
+      setMessage({ kind: "error", text: errorMessage(err, "Could not build the PDF.") });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -165,103 +176,114 @@ export function CandidateProfilePanel({ onBack }: CandidateProfilePanelProps = {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {onBack ? (
-            <Button label="← Back" variant="ghost" size="sm" onClick={onBack} />
-          ) : (
-            <div>
-              <Heading level={2} className="tracking-tight">Candidate Profile</Heading>
-              <div className="mt-0.5">
-                <Text type="supporting" color="secondary">
-                  Grounding for the fitness check. Both documents are required.
-                </Text>
-              </div>
+        {embedded ? (
+          <Text type="supporting" color="secondary">
+            Grounding for the fitness check. Both documents are required.
+          </Text>
+        ) : (
+          <div>
+            <Heading level={2} className="tracking-tight">Candidate Profile</Heading>
+            <div className="mt-0.5">
+              <Text type="supporting" color="secondary">
+                Grounding for the fitness check. Both documents are required.
+              </Text>
             </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {dirty && <Text type="supporting" color="secondary">Unsaved changes.</Text>}
-          <Button
-            label={saving ? "Saving…" : "Save"}
-            variant="primary"
-            size="sm"
-            onClick={save}
-            isDisabled={saving || !dirty}
-          />
-        </div>
+          </div>
+        )}
+        <DownloadMenu
+          onPdf={downloadPdf}
+          onMarkdown={() => downloadText("Candidate Profile.md", combinedMarkdown())}
+          isDisabled={!profile.trim() && !gaps.trim()}
+          busy={exporting}
+        />
       </div>
 
-      {missing.length > 0 && (
-        <div>
-          <Banner
-            status="warning"
-            title={`Fitness check is unavailable until you add your ${missing.join(" and ")}.`}
-          />
-        </div>
+      {/* In the job workspace this lives with the fitness scorer (Profile tab). */}
+      {!embedded && missing.length > 0 && (
+        <Banner
+          status="warning"
+          title={`Fitness check is unavailable until you add your ${missing.join(" and ")}.`}
+        />
       )}
 
       {canonMayBeStale(docs) && docs?.default_resume && (
-        <div>
-          <Banner
-            status="info"
-            title="Your master resume is newer than your fact canon."
-            description={`"${docs.default_resume.name}" updated ${fmt(docs.default_resume.updated_at)} · positive profile last saved ${fmt(docs.profile_updated_at)}. Worth a look — they may have drifted apart.`}
-          />
-        </div>
+        <Banner
+          status="info"
+          title="Your master resume is newer than your fact canon."
+          description={`"${docs.default_resume.name}" updated ${fmt(docs.default_resume.updated_at)} · positive profile last saved ${fmt(docs.profile_updated_at)}. Worth a look — they may have drifted apart.`}
+        />
       )}
 
-      {message && (
-        <div>
-          <Banner status={message.kind} title={message.text} />
-        </div>
-      )}
+      {message && <Banner status={message.kind} title={message.text} />}
 
-      <div>
-        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-          <Text type="supporting" color="secondary">
-            Verified figures, ownership scope, technologies actually held. Last saved {fmt(docs?.profile_updated_at ?? null)}. {profile.length.toLocaleString()} characters.
-          </Text>
-          <Button
-            label="Download sample profile.md"
-            variant="ghost"
-            size="sm"
-            onClick={() => downloadSample("sample_profile.md", SAMPLE_PROFILE_MD)}
-          />
-        </div>
-        <TextArea
-          label="Positive profile (the fact canon)"
-          value={profile}
-          onChange={(v) => setProfile(v)}
-          rows={16}
-          className="font-mono"
-          placeholder="Paste profile.md here"
-        />
-      </div>
+      <ProfileDoc
+        title="Positive profile (the fact canon)"
+        help={`Verified figures, ownership scope, technologies actually held. Last saved ${fmt(docs?.profile_updated_at ?? null)}.`}
+        value={profile}
+        draft={profileDraft}
+        saving={saving}
+        onSave={() => save("profile")}
+        placeholder="Not written yet — paste your profile.md."
+        sample={{ name: "sample_profile.md", content: SAMPLE_PROFILE_MD }}
+      />
 
-      <div>
-        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-          <Text type="supporting" color="secondary">
-            Keep this current. Every posting or interview that surfaces something
-            you don&apos;t have earns a line — it is the one part of this that
-            can&apos;t be regenerated. Last saved {fmt(docs?.gaps_updated_at ?? null)}. {gaps.length.toLocaleString()} characters.
-          </Text>
-          <Button
-            label="Download sample gaps.md"
-            variant="ghost"
-            size="sm"
-            onClick={() => downloadSample("sample_gaps.md", SAMPLE_GAPS_MD)}
-          />
-        </div>
-        <TextArea
-          label="Negative profile (gaps and standing reframes)"
-          value={gaps}
-          onChange={(v) => setGaps(v)}
-          rows={16}
-          className="font-mono"
-          placeholder="Paste gaps.md here"
-        />
+      <ProfileDoc
+        title="Negative profile (gaps and standing reframes)"
+        help={`Keep this current. Every posting or interview that surfaces something you don't have earns a line — it is the one part of this that can't be regenerated. Last saved ${fmt(docs?.gaps_updated_at ?? null)}.`}
+        value={gaps}
+        draft={gapsDraft}
+        saving={saving}
+        onSave={() => save("gaps")}
+        placeholder="Not written yet — paste your gaps.md."
+        sample={{ name: "sample_gaps.md", content: SAMPLE_GAPS_MD }}
+      />
+    </div>
+  );
+}
+
+interface ProfileDocProps {
+  title: string;
+  help: string;
+  value: string;
+  draft: Draft<string>;
+  saving: boolean;
+  onSave: () => void;
+  placeholder: string;
+  sample: { name: string; content: string };
+}
+
+/** One profile document: read as Markdown until Edit, then the same surface takes input. */
+function ProfileDoc({ title, help, value, draft, saving, onSave, placeholder, sample }: ProfileDocProps) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2">
+        <Text weight="semibold">{title}</Text>
+        {draft.isOpen ? (
+          <div className="ml-auto flex shrink-0 gap-2">
+            <Button label="Cancel" variant="secondary" size="sm" onClick={draft.close} isDisabled={saving} />
+            <Button label={saving ? "Saving…" : "Save"} variant="primary" size="sm" onClick={onSave} isDisabled={saving} />
+          </div>
+        ) : (
+          <Button label="Edit" variant="secondary" size="sm" onClick={() => draft.open(value)} />
+        )}
       </div>
+      <div className="mb-2">
+        <Text type="supporting" color="secondary">
+          {help}{" "}
+          <button type="button" className="cursor-pointer underline hover:no-underline" onClick={() => downloadText(sample.name, sample.content)}>
+            Download a sample
+          </button>
+        </Text>
+      </div>
+      <DocumentField
+        label={title}
+        value={value}
+        format="markdown"
+        editing={draft.isOpen}
+        draft={draft.value}
+        onDraftChange={draft.set}
+        placeholder={placeholder}
+      />
     </div>
   );
 }

@@ -15,7 +15,8 @@ export const GET = withUser<Params>(async (_request, userId, ctx) => {
   const { id } = await ctx.params;
   const job = await getJob(Number(id), userId);
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const submissions = await listSubmissions(job.id);
+  // A PDF's base64 can run to megabytes and the page shows it from its own URL, so leave it out.
+  const submissions = (await listSubmissions(job.id)).map((s) => (s.format === "pdf" ? { ...s, content: "" } : s));
   return NextResponse.json({ job, submissions });
 });
 
