@@ -34,6 +34,17 @@ type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "mat
 // are refetched right after mutations (restore, confirm, import, status checks).
 const NO_STORE: RequestInit = { cache: "no-store" };
 
+/**
+ * ATS match bands: 90+ is the bar a resume is tuned to (see job-activity),
+ * 80s are close, below that needs work. A palette apart from the fitness
+ * bands, so the two numbers never read as the same kind of thing.
+ */
+function matchVariant(score: number): "purple" | "teal" | "error" {
+  if (score >= 90) return "purple";
+  if (score >= 80) return "teal";
+  return "error";
+}
+
 interface JobsListProps {
   /** The page's full list, newest first (null until it loads) — the default view. */
   allJobs: JobRow[] | null;
@@ -337,8 +348,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       renderCell: (job) => <Text>{job.location || "—"}</Text>,
     },
     {
-      // The pursuit score. Carries the color, because it is the number that
-      // makes a recommendation.
+      // The pursuit score: the number that makes a recommendation.
       key: "fitness_score",
       header: "Fitness",
       width: pixel(90),
@@ -357,7 +367,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
         job.match_score != null
           ? (
             <span title={job.match_resume_name ? `Scored with: ${job.match_resume_name}` : undefined}>
-              <Badge variant="neutral" label={`${job.match_score}%`} />
+              <Badge variant={matchVariant(job.match_score)} label={`${job.match_score}%`} />
             </span>
           )
           : <Text>—</Text>,
