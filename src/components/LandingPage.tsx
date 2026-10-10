@@ -20,7 +20,7 @@ function BrowserFrame({
   className?: string;
 }) {
   return (
-    <div className={`overflow-hidden rounded-2xl bg-zinc-950/80 shadow-2xl shadow-black/60 ${className}`}>
+    <div className={`overflow-hidden rounded-2xl bg-zinc-950/80 shadow-xl shadow-black/15 dark:shadow-black/40 ${className}`}>
       {/* Chrome bar */}
       <div className="flex items-center gap-1.5 border-b border-border/60 bg-zinc-900/90 px-3 py-1.5">
         <span className="h-2 w-2 rounded-full bg-rose-500/80" />
@@ -481,7 +481,7 @@ export function LandingPage() {
                     width={SHOTS.importSheet.width}
                     height={SHOTS.importSheet.height}
                     sizes="(min-width: 1024px) 480px, 100vw"
-                    className="w-full max-w-md h-auto block drop-shadow-xl"
+                    className="w-full max-w-md h-auto block drop-shadow-md"
                   />
                 </div>
               </BrowserFrame>
