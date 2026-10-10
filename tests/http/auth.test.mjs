@@ -23,7 +23,7 @@ before(async () => {
   assert.equal(sub.status, 201);
   submissionId = sub.data.submission.id;
   // An auto-closed job, as the posting check leaves it.
-  await app.db.execute({ sql: "UPDATE jobs SET status = 'closed', previous_status = 'applied' WHERE id = ?", args: [jobId] });
+  await app.db.execute({ sql: "UPDATE jobs SET status = 'closed', previous_status = 'applied', auto_closed = 1 WHERE id = ?", args: [jobId] });
 });
 
 after(() => app?.stop());
@@ -120,6 +120,8 @@ describe("your own records", () => {
   it("confirming an auto-closed job makes it final", async () => {
     assert.equal((await app.req("POST", "/api/jobs/check-status", { as: A, body: { action: "confirm", job_ids: [jobId] } })).data.confirmed, 1);
     assert.equal((await app.req("GET", "/api/jobs/check-status", { as: A })).data.restorableCount, 0);
+    // The job still records how far it got, so the pipeline funnel can place it.
+    assert.equal((await app.req("GET", `/api/jobs/${jobId}`, { as: A })).data.job.previous_status, "applied");
   });
 
   it("jobs can be read and edited", async () => {

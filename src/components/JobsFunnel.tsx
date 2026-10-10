@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { PIPELINE_STATUSES, STATUS_DOT_COLORS, STATUS_TEXT_COLORS, reachedStage, statusLabel } from "@/lib/status";
+import { PIPELINE_STATUSES, STATUS_DOT_COLORS, STATUS_TEXT_COLORS, furthestStage, reachedStage, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
@@ -81,18 +81,15 @@ export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
   ];
   const max = Math.max(...pipelineStages.map((s) => s.count), 1);
 
-  // Terminal breakdown by previous_status
+  // Terminal breakdown by the stage each job stopped at
   const terminalByStage: Record<string, Record<string, number>> = {};
   for (const tl of TERMINAL_LINES) {
     terminalByStage[tl.status] = {};
     for (const stage of tl.stages) terminalByStage[tl.status][stage] = 0;
   }
   for (const j of jobs) {
-    if (terminalByStage[j.status] && j.previous_status) {
-      if (terminalByStage[j.status][j.previous_status] !== undefined) {
-        terminalByStage[j.status][j.previous_status]++;
-      }
-    }
+    const stage = furthestStage(j);
+    if (terminalByStage[j.status]?.[stage] !== undefined) terminalByStage[j.status][stage]++;
   }
 
   // SVG layout — main chart only (compact 1/2 height)
@@ -122,7 +119,7 @@ export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
       selectedJobs = jobs;
       selectedLabel = "Total";
     } else if (selected.stage) {
-      selectedJobs = jobs.filter((j) => j.status === selected.status && j.previous_status === selected.stage);
+      selectedJobs = jobs.filter((j) => j.status === selected.status && furthestStage(j) === selected.stage);
       selectedLabel = `${statusLabel(selected.status)} (from ${statusLabel(selected.stage)})`;
     } else {
       selectedJobs = jobs.filter((j) => j.status === selected.status);

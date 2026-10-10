@@ -36,13 +36,14 @@ export const ACTIVE_STATUSES = new Set(["saved", "applying", "applied", "intervi
  * Fields that ride along with a status change: moving to "applied" stamps
  * applied_at (unless the caller supplied one), and moving into a terminal
  * status remembers the live status it left so the job can be restored later.
+ * Any status change settles a pending auto-closure.
  */
 export function statusChangeUpdates(
   next: string,
   currentStatus: string | undefined,
   opts?: { appliedAtGiven?: boolean },
 ): JobUpdate {
-  const updates: JobUpdate = {};
+  const updates: JobUpdate = { auto_closed: 0 };
   if (next === "applied" && !opts?.appliedAtGiven) {
     updates.applied_at = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
   }
@@ -165,7 +166,7 @@ export async function editJob(
 export async function checkAndCloseJob(job: JobRow): Promise<{ result: JobCheckResult; closed: boolean }> {
   const result = await checkJobStatus(job);
   const closed = result.status === "closed" && ACTIVE_STATUSES.has(job.status);
-  if (closed) await updateJob(job.id, { status: "closed", previous_status: job.status });
+  if (closed) await updateJob(job.id, { status: "closed", previous_status: job.status, auto_closed: 1 });
   return { result, closed };
 }
 

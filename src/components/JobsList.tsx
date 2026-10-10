@@ -141,7 +141,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
 
   const [restoring, setRestoring] = useState(false);
   const autoClosedJobs = useMemo(
-    () => jobs.filter((j) => j.status === "closed" && !!j.previous_status),
+    () => jobs.filter((j) => j.status === "closed" && !!j.auto_closed && !!j.previous_status),
     [jobs],
   );
   // Dismissal is remembered per set of jobs, so a newly auto-closed job brings the banner back.

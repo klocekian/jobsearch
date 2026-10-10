@@ -66,7 +66,7 @@ export function JobHeader({ job, draft, onSave, onRestoreStatus, onDelete, error
             {job.location && <> · {job.location}</>}
             {job.salary_text && <> · {job.salary_text}</>}
           </Text>
-          {job.status === "closed" && job.previous_status && (
+          {job.status === "closed" && !!job.auto_closed && job.previous_status && (
             <div className="mt-2 flex items-center justify-between p-2 px-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100 text-sm">
               <span>This job was auto-marked closed (previously <strong>{job.previous_status}</strong>).</span>
               <button

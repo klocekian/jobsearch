@@ -30,6 +30,8 @@ export interface JobRow {
   updated_at: string;
   applied_at: string | null;
   previous_status: string | null;
+  /** 1 while a closure made by the posting check awaits the user's keep/restore decision. */
+  auto_closed: number;
   is_starred: number;
 }
 
@@ -81,7 +83,7 @@ export async function listJobs(userId: number | null, opts?: {
   }
   const where = `WHERE ${conditions.join(" AND ")}`;
 
-  const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, notes, source, match_score, match_resume_name, fitness_score, fitness_run_at, is_starred, created_at, updated_at, applied_at";
+  const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, auto_closed, notes, source, match_score, match_resume_name, fitness_score, fitness_run_at, is_starred, created_at, updated_at, applied_at";
   const result = await db.execute({ sql: `SELECT ${listCols} FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });
   return result.rows.map(rowToJob);
 }
@@ -170,13 +172,16 @@ export async function claimUnownedJobs(userId: number): Promise<number> {
   return jobs.rowsAffected;
 }
 
-/** Accept auto-closures as final: the jobs forget their prior status, so they're no longer offered for restore. */
+/**
+ * Accept auto-closures as final, so they're no longer offered for restore. The
+ * jobs keep previous_status: it still records how far they got in the pipeline.
+ */
 export async function confirmClosedJobs(userId: number | null, ids: number[]): Promise<number> {
   if (ids.length === 0) return 0;
   const db = await getDb();
   const owner = ownedBy(userId);
   const result = await db.execute({
-    sql: `UPDATE jobs SET previous_status = NULL, updated_at = datetime('now') WHERE status = 'closed' AND id IN (${ids.map(() => "?").join(", ")}) AND ${owner.sql}`,
+    sql: `UPDATE jobs SET auto_closed = 0, updated_at = datetime('now') WHERE status = 'closed' AND id IN (${ids.map(() => "?").join(", ")}) AND ${owner.sql}`,
     args: [...ids, ...owner.args],
   });
   return result.rowsAffected;
@@ -187,7 +192,7 @@ export async function listRestorableJobs(userId: number | null): Promise<Pick<Jo
   const db = await getDb();
   const owner = ownedBy(userId);
   const result = await db.execute({
-    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' AND ${owner.sql}`,
+    sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND auto_closed = 1 AND previous_status IS NOT NULL AND previous_status != '' AND ${owner.sql}`,
     args: owner.args,
   });
   return result.rows.map((row) => plainRow<Pick<JobRow, "id" | "company" | "title" | "previous_status">>(row));
@@ -206,7 +211,7 @@ export async function restoreClosedJobs(userId: number | null): Promise<{
     const id = Number(row.id);
     const restoredTo = String(row.previous_status);
     await db.execute({
-      sql: "UPDATE jobs SET status = previous_status, previous_status = NULL, updated_at = datetime('now') WHERE id = ?",
+      sql: "UPDATE jobs SET status = previous_status, previous_status = NULL, auto_closed = 0, updated_at = datetime('now') WHERE id = ?",
       args: [id],
     });
     restoredJobs.push({
