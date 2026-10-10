@@ -440,7 +440,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       <div className="relative z-40 col-start-2 row-start-1 row-span-3 -mt-[57px] flex min-h-0 flex-col p-3 sm:p-4">
         <div className={rightPaneCardClass}>
           <div className="shrink-0">{activityBanner}</div>
-          <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
+          <div className="shrink-0 border-b border-border px-4">{rightTabBar}</div>
           <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-sm">{rightPaneBody}</div>
         </div>
       </div>
