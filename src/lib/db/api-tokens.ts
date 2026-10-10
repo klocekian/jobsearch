@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { getDb } from "./index";
+import { getDb, plainRow } from "./index";
 import type { Row } from "@libsql/client";
 
 /**
@@ -24,10 +24,7 @@ function hashToken(token: string): string {
 
 const COLUMNS = "id, user_id, label, created_at, last_used_at"; // never the hash
 
-// See rowToJob in jobs.ts for why the spread is needed.
-function rowToToken(row: Row): ApiTokenRow {
-  return { ...row } as unknown as ApiTokenRow;
-}
+const rowToToken = (row: Row) => plainRow<ApiTokenRow>(row);
 
 export async function createApiToken(userId: number, label: string): Promise<{ token: string; row: ApiTokenRow }> {
   const db = await getDb();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { loadLastSheetUrl, saveLastSheetUrl } from "@/lib/storage";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Stack, HStack } from "@astryxdesign/core/Stack";
@@ -15,16 +16,11 @@ interface ImportSheetModalProps {
   onSuccess: (msg: string) => void;
 }
 
-const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1iToTfa9tSrLq70vJ4_za_hRF7qsQKivD5d5akvSr5ds/edit#gid=0";
 
 export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModalProps) {
   const [mode, setMode] = useState<"url" | "file">("url");
-  const [sheetUrl, setSheetUrl] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("jobsLastSheetUrl") || DEFAULT_SHEET_URL;
-    }
-    return DEFAULT_SHEET_URL;
-  });
+  // Nothing renders while closed, so reading storage here never shows up in the server HTML.
+  const [sheetUrl, setSheetUrl] = useState(loadLastSheetUrl);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -48,7 +44,7 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
         if (!sheetUrl.trim()) {
           throw new Error("Please enter a Google Sheet URL or ID.");
         }
-        localStorage.setItem("jobsLastSheetUrl", sheetUrl.trim());
+        saveLastSheetUrl(sheetUrl.trim());
         bodyPayload = { sheetUrl: sheetUrl.trim() };
       }
 

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { parseResume } from "@/lib/resume/parse";
 import type { ResumeData } from "@/lib/resume/types";
 import { downloadResumePdf } from "@/lib/pdf/resume";
-import { RESUME_STORAGE_KEY, isResumeData, loadRewriteState, saveRewriteState } from "@/lib/storage";
+import { isResumeData, loadRewriteState, saveResume, saveRewriteState } from "@/lib/storage";
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { RewriteEditor } from "./RewriteEditor";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
@@ -46,6 +46,7 @@ export function ResumeView({
 
   const [rewrite, setRewrite] = useState(saved?.rewrite ?? "");
   const [result, setResult] = useState(saved?.result ?? original);
+  const [saveNote, setSaveNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [dismissed, setDismissed] = useState<string[]>(saved?.dismissed ?? []);
   // Mirror of result/rewrite for event handlers (Download captures the latest
   // even if a blur-commit's setState hasn't flushed yet).
@@ -120,11 +121,7 @@ export function ResumeView({
     } catch {
       data = parseResume(text);
     }
-    try {
-      localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(data));
-    } catch {
-      // ignore unavailable storage
-    }
+    saveResume(data);
     try {
       await downloadResumePdf(data, company);
       setExporting({ kind: "idle" });
@@ -164,15 +161,18 @@ export function ResumeView({
               const name = `${company ? company.replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, "_").toLowerCase() : "tailored"}_resume_${new Date().getFullYear()}`;
               try {
                 await apiSend("/api/resumes", "POST", { name, content: text, tags: [company].filter(Boolean) });
-                alert("Saved as new resume in your Profile.");
+                setSaveNote({ ok: true, text: "Saved as a new resume in your Profile." });
               } catch (err) {
-                alert(errorMessage(err, "Could not save the resume."));
+                setSaveNote({ ok: false, text: errorMessage(err, "Could not save the resume.") });
               }
             }}
           />
         </div>
       </div>
 
+      {saveNote && (
+        <Banner status={saveNote.ok ? "success" : "error"} title={saveNote.text} className="text-xs" />
+      )}
       {exporting.kind === "error" && (
         <Banner status="error" title={exporting.message ?? "An error occurred."} className="text-xs" />
       )}

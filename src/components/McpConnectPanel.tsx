@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm, type ConfirmOptions } from "@/hooks/useConfirm";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
 import { Button } from "@astryxdesign/core/Button";
@@ -26,6 +27,7 @@ interface McpSettings {
  */
 export function McpConnectPanel() {
   const [settings, setSettings] = useState<McpSettings | null>(null);
+  const { confirm, dialog } = useConfirm();
   const [label, setLabel] = useState("");
   const [newToken, setNewToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,8 +45,8 @@ export function McpConnectPanel() {
     return () => { ignore = true; };
   }, []);
 
-  const act = async (body: Record<string, unknown>, confirmText?: string) => {
-    if (confirmText && !confirm(confirmText)) return null;
+  const act = async (body: Record<string, unknown>, ask?: ConfirmOptions) => {
+    if (ask && !(await confirm(ask))) return null;
     setBusy(true);
     setError(null);
     try {
@@ -92,7 +94,11 @@ export function McpConnectPanel() {
             isDisabled={busy}
             onClick={() => act(
               { action: "disconnect_clients" },
-              "Sign out every connected app (Claude, ChatGPT, …)? Each will need to sign in again. Access tokens are not affected.",
+              {
+                title: "Disconnect all apps?",
+                description: "Every connected app (Claude, ChatGPT, …) is signed out and will need to sign in again. Access tokens are not affected.",
+                actionLabel: "Disconnect",
+              },
             )}
           />
         </div>
@@ -156,7 +162,7 @@ export function McpConnectPanel() {
                   variant="ghost"
                   size="sm"
                   isDisabled={busy}
-                  onClick={() => act({ action: "revoke_token", id: t.id }, `Revoke "${t.label}"? Anything using it loses access immediately.`)}
+                  onClick={() => act({ action: "revoke_token", id: t.id }, { title: `Revoke "${t.label}"?`, description: "Anything using it loses access immediately.", actionLabel: "Revoke" })}
                 />
               </div>
             ))}
@@ -186,6 +192,7 @@ export function McpConnectPanel() {
 
         {error && <Text type="supporting" display="block" className="mt-3 text-rose-700 dark:text-rose-400">{error}</Text>}
       </div>
+      {dialog}
     </Card>
   );
 }

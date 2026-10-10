@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Job Search Clipper",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Capture job postings from any page and save them to your local job tracker.",
   "permissions": [
     "activeTab",
@@ -24,16 +24,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "autofill.js"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ],
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",

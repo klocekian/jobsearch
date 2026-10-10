@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useStoredValue } from "@/hooks/useStoredValue";
+import { isOnboardingDone, markOnboardingDone } from "@/lib/storage";
 import { Button } from "@astryxdesign/core/Button";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
@@ -236,21 +238,17 @@ const STEPS: OnboardingStep[] = [
   },
 ];
 
-const ONBOARDING_STORAGE_KEY = "has_completed_onboarding_wizard_v1";
-
 export function OnboardingWizardModal() {
-  const [isOpen, setIsOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      return !localStorage.getItem(ONBOARDING_STORAGE_KEY);
-    }
-    return false;
-  });
+  // Shown on a first visit; the server renders it closed, so it opens after hydration.
+  const [done, setDone] = useStoredValue(isOnboardingDone, (d) => { if (d) markOnboardingDone(); }, true);
+  const [reopened, setReopened] = useState(false);
+  const isOpen = reopened || !done;
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
     const openHandler = () => {
       setStepIndex(0);
-      setIsOpen(true);
+      setReopened(true);
     };
 
     window.addEventListener("open-onboarding-wizard", openHandler);
@@ -258,10 +256,8 @@ export function OnboardingWizardModal() {
   }, []);
 
   const close = () => {
-    setIsOpen(false);
-    try {
-      localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
-    } catch {}
+    setReopened(false);
+    setDone(true);
   };
 
   const next = () => {

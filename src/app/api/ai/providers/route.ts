@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { parseBody } from "@/lib/api-response";
 import { withUser } from "@/lib/api-auth";
 import { getUserById } from "@/lib/db/users";
 import { upsertUserAIProvider } from "@/lib/db/ai-providers";
@@ -38,28 +40,21 @@ export const GET = withUser(async (_request, userId) => {
   return NextResponse.json({ providers });
 });
 
+const ConnectSchema = z.object({
+  provider: z.enum(Object.keys(AI_PROVIDERS) as [AIProviderId, ...AIProviderId[]]),
+  apiKey: z.string().trim().min(1, "API key is required").max(500),
+  model: z.string().max(100).optional(),
+  isActive: z.boolean().optional(),
+});
+
 export const POST = withUser(async (request, userId) => {
+  const body = await parseBody(request, ConnectSchema);
+  if (body.error) return body.error;
+  const { provider, apiKey, model, isActive } = body.data;
+
   try {
-    const body = await request.json();
-    const { provider, apiKey, model, isActive } = body as {
-      provider: AIProviderId;
-      apiKey: string;
-      model?: string;
-      isActive?: boolean;
-    };
-
-    if (!provider || !AI_PROVIDERS[provider]) {
-      return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
-    }
-
-    if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
-      return NextResponse.json({ error: "API key is required" }, { status: 400 });
-    }
-
-    const trimmedKey = apiKey.trim();
-
     // Verify key with provider API
-    const isValid = await testProviderKey(provider, trimmedKey);
+    const isValid = await testProviderKey(provider, apiKey);
     if (!isValid) {
       return NextResponse.json(
         { error: `Could not validate ${AI_PROVIDERS[provider].name} key. Please check that the key is correct and active.` },
@@ -70,8 +65,8 @@ export const POST = withUser(async (request, userId) => {
     await upsertUserAIProvider({
       userId,
       provider,
-      apiKey: trimmedKey,
-      model: model || AI_PROVIDERS[provider].defaultModel,
+      apiKey,
+      model: supportedModel(provider, model),
       isActive,
     });
 

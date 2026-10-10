@@ -1,4 +1,4 @@
-import { getDb } from "./index";
+import { getDb, plainRow } from "./index";
 import type { Row } from "@libsql/client";
 
 export interface UserRow {
@@ -16,11 +16,7 @@ export interface UserRow {
   updated_at: string;
 }
 
-// See rowToJob in jobs.ts for why the spread is needed — libsql's Row isn't
-// actually a plain object (it carries hidden array-index own properties).
-function rowToUser(row: Row): UserRow {
-  return { ...row } as unknown as UserRow;
-}
+const rowToUser = (row: Row) => plainRow<UserRow>(row);
 
 export async function getUserById(id: number): Promise<UserRow | undefined> {
   const db = await getDb();

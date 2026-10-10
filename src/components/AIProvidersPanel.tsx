@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/hooks/useConfirm";
 import { useEffect, useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
 import { Button } from "@astryxdesign/core/Button";
@@ -31,6 +32,7 @@ interface ProviderConfig {
 
 export function AIProvidersPanel() {
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
+  const { confirm, dialog } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<AIProviderId | null>(null);
   const [inputKey, setInputKey] = useState("");
@@ -97,7 +99,8 @@ export function AIProvidersPanel() {
   };
 
   const handleDelete = async (providerId: AIProviderId) => {
-    if (!confirm(`Disconnect ${providerId.toUpperCase()} API key?`)) return;
+    const name = providers.find((p) => p.id === providerId)?.name ?? providerId;
+    if (!(await confirm({ title: `Disconnect ${name}?`, description: "Its API key is deleted from your account. You can connect it again later.", actionLabel: "Disconnect" }))) return;
     try {
       await apiSend(`/api/ai/providers/${providerId}`, "DELETE");
       await fetchProviders();
@@ -240,6 +243,7 @@ export function AIProvidersPanel() {
           })}
         </div>
       </div>
+      {dialog}
     </Card>
   );
 }
