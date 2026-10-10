@@ -8,7 +8,7 @@ export function unauthorized(): NextResponse {
 /**
  * Route handler wrapper: answers 401 unless a user is signed in, and hands the
  * handler their id. Every query the handler runs must be scoped to that id —
- * the middleware lets /api/* through, so this is the only gate.
+ * the proxy (src/proxy.ts) lets /api/* through, so this is the only gate.
  */
 export function withUser<Ctx = unknown>(
   handler: (request: Request, userId: number, ctx: Ctx) => Promise<Response>,

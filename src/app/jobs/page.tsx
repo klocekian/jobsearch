@@ -4,7 +4,7 @@ import { listJobs } from "@/lib/db/jobs";
 import { JobsPageClient } from "@/components/JobsPageClient";
 
 export default async function JobsPage() {
-  // The middleware only checks that a cookie exists; this verifies it.
+  // The proxy (src/proxy.ts) only checks that a cookie exists; this verifies it.
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
   // Not awaited — the promise streams to the client so the page shell (nav,
