@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/hooks/useConfirm";
 import { useRef, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -13,6 +14,7 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Banner } from "@astryxdesign/core/Banner";
 import { readResumeFile } from "@/lib/extract";
+import { formatDate } from "@/lib/format";
 import { apiSend, errorMessage } from "@/lib/api-client";
 import { useResumes } from "@/hooks/useResumes";
 import type { ClaudeStatus } from "@/lib/anthropic";
@@ -31,6 +33,7 @@ interface ProfileViewProps {
 export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewProps) {
   const [user] = useState<AuthUser | null>(initialUser);
   const { resumes, loading, refetch: fetchResumes } = useResumes();
+  const { confirm, dialog } = useConfirm();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -100,7 +103,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
     writeResumes(() => apiSend(`/api/resumes/${id}`, "PATCH", { is_default: true }), "Could not set the default resume.");
 
   const deleteResume = async (id: number) => {
-    if (!confirm("Delete this resume?")) return;
+    if (!(await confirm({ title: "Delete this resume?", description: "It's removed from your profile. Jobs keep the reports already run against it.", actionLabel: "Delete" }))) return;
     await writeResumes(() => apiSend(`/api/resumes/${id}`, "DELETE"), "Could not delete the resume.");
   };
 
@@ -275,7 +278,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                         <Text type="supporting" className="mt-1">
                           {r.content.length.toLocaleString()} chars
                           {" · Updated "}
-                          {new Date(r.updated_at.replace(" ", "T")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {formatDate(r.updated_at)}
                         </Text>
                         {(() => {
                           const tags: string[] = (() => { try { return JSON.parse(r.tags || "[]"); } catch { return []; } })();
@@ -307,6 +310,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
       </>}
 
       <OnboardingWizardModal />
+      {dialog}
     </Stack>
   );
 }

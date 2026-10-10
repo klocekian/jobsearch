@@ -47,7 +47,6 @@ describe("signed out", () => {
     ["POST", "/api/parse-resume", {}],
     ["POST", "/api/fetch-job", {}],
     ["POST", "/api/jobs/extract", {}],
-    ["POST", "/api/jobs/apply", {}],
     ["POST", "/api/jobs/import", {}],
     ["POST", "/api/fitness-check", {}],
     ["GET", "/api/profile/autofill"],
@@ -60,6 +59,11 @@ describe("signed out", () => {
       const res = await app.req(method, path, { as: null, body });
       assert.equal(res.status, 401, `${method} ${path}`);
     }
+  });
+
+  it("the old sheet-row updater is gone", async () => {
+    // The path now falls through to /api/jobs/[id], which has no POST.
+    assert.equal((await app.req("POST", "/api/jobs/apply", { as: A, body: { row: 2, date: "Oct 9" } })).status, 405);
   });
 
   it("a malformed session cookie is 401, not 500", async () => {

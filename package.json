@@ -2,6 +2,7 @@
   "name": "jobsearch",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.8.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -21,7 +22,6 @@
     "@libsql/client": "^0.17.4",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@tailwindcss/typography": "^0.5.20",
-    "better-sqlite3": "^12.11.1",
     "geist": "^1.7.2",
     "jspdf": "^4.2.1",
     "next": "16.2.9",
@@ -35,7 +35,6 @@
   "devDependencies": {
     "@astryxdesign/cli": "^0.1.2",
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

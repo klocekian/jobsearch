@@ -1,4 +1,4 @@
-import { getDb, ownedBy } from "./index";
+import { getDb, ownedBy, plainRow } from "./index";
 import type { Row, InValue } from "@libsql/client";
 
 export interface JobRow {
@@ -36,13 +36,7 @@ export interface JobRow {
 export type JobInsert = Partial<Omit<JobRow, "id">>;
 export type JobUpdate = Partial<Omit<JobRow, "id" | "created_at" | "user_id">>;
 
-// libsql's Row is array-like (numeric indices + a `length` own property
-// alongside the named columns), so casting it directly isn't a plain object —
-// React's Server-to-Client serialization rejects it. Spreading strips those
-// non-enumerable extras and leaves just the named fields.
-function rowToJob(row: Row): JobRow {
-  return { ...row } as unknown as JobRow;
-}
+const rowToJob = (row: Row) => plainRow<JobRow>(row);
 
 export async function listJobs(userId: number | null, opts?: {
   sort?: string;
@@ -103,14 +97,8 @@ export async function getJob(id: number, userId: number | null): Promise<JobRow 
   return result.rows[0] ? rowToJob(result.rows[0]) : undefined;
 }
 
-function pacificNow(): string {
-  return new Date().toLocaleString("sv-SE", { timeZone: "America/Los_Angeles" }).replace(",", "");
-}
-
 export async function createJob(data: JobInsert): Promise<JobRow> {
   const db = await getDb();
-  if (!data.created_at) (data as Record<string, unknown>).created_at = pacificNow();
-  if (!data.updated_at) (data as Record<string, unknown>).updated_at = pacificNow();
   const fields = Object.keys(data).filter((k) => (data as Record<string, unknown>)[k] !== undefined);
   const values = fields.map((k) => (data as Record<string, unknown>)[k] as InValue);
 
@@ -167,8 +155,16 @@ export async function deleteJob(id: number): Promise<boolean> {
   return result.rowsAffected > 0;
 }
 
+/**
+ * Hand rows created before anyone signed in — the stdio MCP server against a
+ * fresh local database — to that database's only user. Does nothing once a
+ * second user exists: on a shared install, unowned rows belong to no one who
+ * happens to sign in next.
+ */
 export async function claimUnownedJobs(userId: number): Promise<number> {
   const db = await getDb();
+  const users = await db.execute("SELECT COUNT(*) AS n FROM users");
+  if (Number(users.rows[0].n) !== 1) return 0;
   const jobs = await db.execute({ sql: "UPDATE jobs SET user_id = ? WHERE user_id IS NULL", args: [userId] });
   await db.execute({ sql: "UPDATE resumes SET user_id = ? WHERE user_id IS NULL", args: [userId] });
   return jobs.rowsAffected;
@@ -194,7 +190,7 @@ export async function listRestorableJobs(userId: number | null): Promise<Pick<Jo
     sql: `SELECT id, company, title, previous_status FROM jobs WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != '' AND ${owner.sql}`,
     args: owner.args,
   });
-  return result.rows.map((row) => ({ ...row }) as unknown as Pick<JobRow, "id" | "company" | "title" | "previous_status">);
+  return result.rows.map((row) => plainRow<Pick<JobRow, "id" | "company" | "title" | "previous_status">>(row));
 }
 
 export async function restoreClosedJobs(userId: number | null): Promise<{

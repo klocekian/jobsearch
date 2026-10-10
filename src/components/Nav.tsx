@@ -8,6 +8,7 @@ import { Selector } from "@astryxdesign/core/Selector";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { HStack } from "@astryxdesign/core/HStack";
 import { STATUS_OPTIONS } from "@/lib/status";
+import { loadJobListIds, loadJobListSortKey, loadJobListSortOrder, loadJobListStatus, saveJobListIds } from "@/lib/storage";
 import { apiGet } from "@/lib/api-client";
 import type { ClaudeStatus } from "@/lib/anthropic";
 import type { UserAIStatus } from "@/lib/ai";
@@ -62,32 +63,23 @@ export function Nav({ user }: { user: NavUser | null }) {
     if (!isJobPage) return;
 
     const loadIds = async () => {
-      try {
-        const stored = sessionStorage.getItem("jobListIds");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setJobListIds(parsed);
-            return;
-          }
-        }
-      } catch {}
+      const stored = loadJobListIds();
+      if (stored.length > 0) {
+        setJobListIds(stored);
+        return;
+      }
 
       try {
-        const sortKey = (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey")) || "created_at";
-        const sortOrder = (typeof window !== "undefined" && sessionStorage.getItem("jobsSortOrder")) || "desc";
-        const statusFilter = (typeof window !== "undefined" && sessionStorage.getItem("jobsStatusFilter")) || "";
+        const statusFilter = loadJobListStatus();
         const params = new URLSearchParams();
-        params.set("sort", sortKey);
-        params.set("order", sortOrder);
+        params.set("sort", loadJobListSortKey());
+        params.set("order", loadJobListSortOrder());
         if (statusFilter) params.set("status", statusFilter);
 
         const data = await apiGet<{ jobs?: { id: number }[] }>(`/api/jobs?${params.toString()}`);
         const ids = (data.jobs || []).map((j) => j.id);
         setJobListIds(ids);
-        try {
-          sessionStorage.setItem("jobListIds", JSON.stringify(ids));
-        } catch {}
+        saveJobListIds(ids);
       } catch {}
     };
 

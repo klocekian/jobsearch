@@ -1,9 +1,15 @@
 import type { JobRow } from "./db/jobs";
 
-/** Short date like "Jun 3" — no year, matches the jobs table's Added/Applied columns. */
+/**
+ * Short date like "Jun 3" — no year, matches the jobs table's Added/Applied
+ * columns. Stored timestamps ("YYYY-MM-DD HH:MM:SS") are UTC; a bare date
+ * (applied_at) is a calendar day, so it's shown as-is.
+ */
 export function formatDate(iso: string | null): string {
   if (!iso) return "";
-  const d = new Date(iso.replace(" ", "T") + (iso.includes("T") || iso.includes(" ") ? "" : "T00:00:00"));
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso)
+    ? new Date(`${iso}T00:00:00`)
+    : new Date(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(iso) ? `${iso.replace(" ", "T")}Z` : iso);
   if (isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

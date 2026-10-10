@@ -85,13 +85,13 @@ describe("credentials", () => {
   });
 
   it("the user's own provider beats the server's keys", async () => {
-    await upsertUserAIProvider({ userId: 1, provider: "mistral", apiKey: "m-key", model: "open-mistral-nemo", isActive: true });
+    await upsertUserAIProvider({ userId: 1, provider: "mistral", apiKey: "m-key", model: "mistral-small-latest", isActive: true });
     assert.equal((await ai.resolveAICredentials(1)).provider, "mistral");
   });
 });
 
 describe("gemini", () => {
-  before(() => upsertUserAIProvider({ userId: 1, provider: "gemini", apiKey: "g-key", model: "gemini-2.0-flash", isActive: true }));
+  before(() => upsertUserAIProvider({ userId: 1, provider: "gemini", apiKey: "g-key", model: "gemini-3.8-flash", isActive: true }));
 
   it("retries 429s, strips fences and unwraps a wrapper object", async () => {
     let n = 0;
@@ -122,17 +122,17 @@ describe("gemini", () => {
 });
 
 describe("mistral (OpenAI-compatible)", () => {
-  before(() => upsertUserAIProvider({ userId: 1, provider: "mistral", apiKey: "m-key", model: "open-mistral-7b", isActive: true }));
+  before(() => upsertUserAIProvider({ userId: 1, provider: "mistral", apiKey: "m-key", model: "mistral-small-latest", isActive: true }));
 
   it("falls back to the next model, reads tool-call arguments, applies the caller's normalize", async () => {
-    handler = (_url, body) => body.model === "open-mistral-7b"
+    handler = (_url, body) => body.model === "mistral-small-latest"
       ? json({ message: "model not found" }, 404)
       : json({ choices: [{ message: { tool_calls: [{ function: { arguments: JSON.stringify({ hardStop: true, oneLine: "x", requirements: [{}] }) } }] } }] });
     const FitLike = z.object({ hard_stop: z.boolean(), one_line: z.string(), stated_minimums: z.array(z.object({})) });
     const res = await ai.generateStructured(1, { prompt: "p", schema: FitLike, schemaName: "FitnessResult", normalize: normalizeFitnessPayload });
-    assert.equal(res.model, "open-mistral-nemo");
+    assert.equal(res.model, "mistral-medium-latest");
     assert.deepEqual(res.data, { hard_stop: true, one_line: "x", stated_minimums: [{}] });
-    // 7b via tools, 7b via JSON mode, then nemo via tools.
+    // small via tools, small via JSON mode, then medium via tools.
     assert.equal(calls.length, 3);
     assert.deepEqual([calls[2].body.tool_choice, calls[2].body.tools?.[0].function.name], ["any", "FitnessResult"]);
   });

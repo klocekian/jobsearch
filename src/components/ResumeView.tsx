@@ -19,6 +19,7 @@ import type { AiDetection } from "@/lib/analysis/types";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface ResumeViewProps {
   jobId: number;
@@ -58,6 +59,7 @@ export function ResumeView({
   picker,
 }: ResumeViewProps) {
   const original = resumeText;
+  const { confirm, dialog: confirmDialog } = useConfirm();
   // A draft built on a different resume doesn't apply to this one.
   const saved = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -177,7 +179,7 @@ export function ResumeView({
 
   const save = async (asNew: boolean) => {
     const text = resultRef.current.trim() || original;
-    if (!asNew && resume && !confirm(`Save over "${resume.name}"? Other jobs using it will see the change.`)) return;
+    if (!asNew && resume && !(await confirm({ title: `Save over "${resume.name}"?`, description: "Other jobs using this resume will see the change.", actionLabel: "Save over it" }))) return;
     setSaving({ kind: "loading" });
     try {
       let row: ResumeRow;
@@ -201,6 +203,7 @@ export function ResumeView({
 
   return (
     <div className="space-y-3">
+      {confirmDialog}
       <div className="flex min-h-9 flex-wrap items-center gap-2">
         {editing ? (
           <span className="text-sm font-semibold text-primary">{resume?.name ?? "Resume"}</span>

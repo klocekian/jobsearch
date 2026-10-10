@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/hooks/useConfirm";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -41,6 +42,7 @@ type ToolsSubTab = "profile" | "resume" | "cover";
 
 export function JobWorkspace({ jobId }: { jobId: number }) {
   const router = useRouter();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const { job, setJob, submissions, loading, refetch: fetchJob, updateJob } = useJob(jobId);
   const { savedResumes, setSavedResumes, resumeText, setResumeText } = useSavedResumes(job);
   // Writes that fail outside a tab with its own error slot (status, header,
@@ -128,7 +130,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   }, [job, jobId, pickedResume, resumeText, fetchJob, updateJob]);
 
   const deleteJob = useCallback(async () => {
-    if (!confirm("Delete this job?")) return;
+    if (!(await confirm({ title: "Delete this job?", description: "Its notes, saved documents and reports are deleted too. This can't be undone.", actionLabel: "Delete" }))) return;
     try {
       await apiSend(`/api/jobs/${jobId}`, "DELETE");
     } catch (err) {
@@ -136,7 +138,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       return;
     }
     router.push("/jobs");
-  }, [jobId, router]);
+  }, [jobId, router, confirm]);
 
   // The nav's status selector acts on this job through an event.
   useEffect(() => {
@@ -401,6 +403,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             </div>
           </>
         )}
+        {confirmDialog}
       </div>
     );
   }
@@ -441,6 +444,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-sm">{rightPaneBody}</div>
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }

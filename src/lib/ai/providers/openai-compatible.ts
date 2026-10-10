@@ -115,6 +115,6 @@ export const grokAdapter = openAICompatible({ id: "grok", baseUrl: "https://api.
 export const mistralAdapter = openAICompatible({
   id: "mistral",
   baseUrl: "https://api.mistral.ai/v1",
-  fallbackModels: ["open-mistral-nemo", "open-mistral-7b", "open-mixtral-8x7b", "mistral-small-latest", "mistral-large-latest"],
+  fallbackModels: ["mistral-medium-latest", "mistral-small-latest", "mistral-large-latest"],
   structuredViaTools: true,
 });
