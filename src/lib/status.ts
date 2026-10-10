@@ -31,15 +31,21 @@ export const PIPELINE_STATUSES: readonly string[] = ["saved", "applying", "appli
 /** Statuses that mean an application went in. */
 export const SUBMITTED_STATUSES: ReadonlySet<string> = new Set(["applied", "interview", "interview2", "onsite", "offer", "accepted"]);
 
-type StatusFields = { status: string; previous_status: string | null };
+type StatusFields = { status: string; previous_status: string | null; applied_at?: string | null };
 
 /**
- * Index in PIPELINE_STATUSES of the furthest stage a job reached — for a
- * terminal status, wherever previous_status left off. -1 if unknown.
+ * The furthest pipeline stage a job reached — for a terminal status, wherever
+ * previous_status left off. A terminal job with no recorded stage counts as
+ * Applied if it has an applied date, else Saved.
  */
+export function furthestStage(job: StatusFields): string {
+  if (PIPELINE_STATUSES.includes(job.status)) return job.status;
+  return job.previous_status || (job.applied_at ? "applied" : "saved");
+}
+
+/** Index in PIPELINE_STATUSES of furthestStage. -1 if unknown. */
 export function furthestStageIndex(job: StatusFields): number {
-  const effective = PIPELINE_STATUSES.includes(job.status) ? job.status : (job.previous_status ?? "saved");
-  return PIPELINE_STATUSES.indexOf(effective);
+  return PIPELINE_STATUSES.indexOf(furthestStage(job));
 }
 
 /** Whether a job got at least as far as pipeline `stage`. */

@@ -24,14 +24,20 @@ export function getClient(): Client {
   return _client;
 }
 
-/** Columns added after their table first shipped; databases created before then lack them. */
-const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
+/**
+ * Columns added after their table first shipped; databases created before then
+ * lack them. An optional backfill runs once, right after its column is added.
+ */
+const ADDED_COLUMNS: [table: string, column: string, definition: string, backfill?: string][] = [
+  ["jobs", "previous_status", "TEXT"],
   ["jobs", "is_starred", "INTEGER NOT NULL DEFAULT 0"],
   ["jobs", "fitness_score", "INTEGER"],
   ["jobs", "fitness_report", "TEXT"],
   ["jobs", "fitness_run_at", "TEXT"],
   ["jobs", "match_resume_name", "TEXT"],
   ["jobs", "activity_summary", "TEXT"],
+  // Before this flag, a closed job remembering its previous status was taken to be an unconfirmed auto-closure.
+  ["jobs", "auto_closed", "INTEGER NOT NULL DEFAULT 0", "UPDATE jobs SET auto_closed = 1 WHERE status = 'closed' AND previous_status IS NOT NULL AND previous_status != ''"],
   ["users", "mcp_oauth_epoch", "INTEGER NOT NULL DEFAULT 0"],
   ["users", "mcp_last_used_at", "TEXT"],
 ];
@@ -51,9 +57,10 @@ async function addMissingColumns(client: Client): Promise<void> {
       }),
     ),
   );
-  for (const [table, column, definition] of ADDED_COLUMNS) {
+  for (const [table, column, definition, backfill] of ADDED_COLUMNS) {
     if (!existing.get(table)?.has(column)) {
       await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+      if (backfill) await client.execute(backfill);
     }
   }
 }
@@ -94,6 +101,7 @@ export async function getDb(): Promise<Client> {
       match_score   INTEGER,
       match_report  TEXT,
       previous_status TEXT,
+      auto_closed   INTEGER NOT NULL DEFAULT 0,
       is_starred    INTEGER NOT NULL DEFAULT 0,
       fitness_score INTEGER,
       fitness_report TEXT,
