@@ -1,58 +1,8 @@
-import { lookup } from "node:dns/promises";
-import net from "node:net";
-
-const BROWSER_UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+import { htmlToText } from "./html-text";
+import { fetchPublicPage, findJobPostingJsonLd } from "./page-fetch";
 
 const FETCH_TIMEOUT_MS = 6000;
 const MAX_BYTES = 1_500_000;
-
-function isBlockedIp(ip: string): boolean {
-  const v = net.isIP(ip);
-  if (v === 4) {
-    const p = ip.split(".").map(Number);
-    if (p[0] === 0 || p[0] === 127 || p[0] === 10) return true;
-    if (p[0] === 192 && p[1] === 168) return true;
-    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;
-    if (p[0] === 169 && p[1] === 254) return true;
-    if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true;
-    return false;
-  }
-  if (v === 6) {
-    const lower = ip.toLowerCase();
-    if (lower === "::1" || lower === "::") return true;
-    if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
-    if (lower.startsWith("fe80")) return true;
-    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isBlockedIp(mapped[1]);
-    return false;
-  }
-  return false;
-}
-
-async function assertSafeUrl(raw: string): Promise<URL> {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new Error("Invalid URL");
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Invalid protocol");
-  }
-  const host = url.hostname.replace(/^\[|\]$/g, "");
-  if (host === "localhost") throw new Error("Blocked host");
-
-  const addresses = net.isIP(host)
-    ? [{ address: host }]
-    : await lookup(host, { all: true }).catch(() => {
-        throw new Error("DNS resolution failed");
-      });
-  if (addresses.length === 0 || addresses.some((a) => isBlockedIp(a.address))) {
-    throw new Error("Blocked host address");
-  }
-  return url;
-}
 
 const CLOSED_PHRASES: string[] = [
   "no longer accepting applications",
@@ -147,23 +97,6 @@ const CLOSED_REGEXES: RegExp[] = [
   /\bsorry,\s+this\s+(job|position|posting|role)\s+is\s+(no\s+longer\s+available|no\s+longer\s+open|closed|filled)\b/i,
 ];
 
-function htmlToCleanText(html: string): string {
-  return html
-    .replace(/<(script|style|noscript|svg|head)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<\/(p|div|li|h[1-6]|br|tr|section|article)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&quot;/gi, '"')
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n\s*\n\s*\n+/g, "\n\n")
-    .trim();
-}
-
 /** Check if the URL was redirected away from a specific job post to a general careers/home page */
 function isRedirectedAway(originalUrlStr: string, finalUrlStr: string): boolean {
   try {
@@ -240,41 +173,14 @@ function isRedirectedAway(originalUrlStr: string, finalUrlStr: string): boolean 
   }
 }
 
-/** Check JSON-LD for expiration date */
+/** Check the posting's JSON-LD for an expiration date that has passed. */
 function checkJsonLdJobPosting(html: string): { found: boolean; isExpired: boolean; validThrough?: string } {
-  const blocks = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
-  for (const m of blocks) {
-    try {
-      const parsed = JSON.parse(m[1].trim());
-      const candidates = Array.isArray(parsed)
-        ? parsed
-        : parsed && typeof parsed === "object" && "@graph" in parsed
-          ? (parsed as { "@graph": unknown[] })["@graph"] ?? []
-          : [parsed];
-
-      for (const c of candidates) {
-        if (!c || typeof c !== "object") continue;
-        const type = (c as { "@type"?: unknown })["@type"];
-        const isJob = Array.isArray(type)
-          ? type.some((t) => String(t).includes("JobPosting"))
-          : String(type).includes("JobPosting");
-
-        if (isJob) {
-          const validThrough = (c as { validThrough?: string }).validThrough;
-          if (validThrough) {
-            const expDate = new Date(validThrough);
-            if (!isNaN(expDate.getTime()) && expDate < new Date()) {
-              return { found: true, isExpired: true, validThrough };
-            }
-          }
-          return { found: true, isExpired: false, validThrough };
-        }
-      }
-    } catch {
-      continue;
-    }
-  }
-  return { found: false, isExpired: false };
+  const posting = findJobPostingJsonLd(html);
+  if (!posting) return { found: false, isExpired: false };
+  const validThrough = typeof posting.validThrough === "string" ? posting.validThrough : undefined;
+  const expires = validThrough ? new Date(validThrough) : null;
+  const isExpired = !!expires && !isNaN(expires.getTime()) && expires < new Date();
+  return { found: true, isExpired, validThrough };
 }
 
 export interface JobCheckResult {
@@ -305,62 +211,34 @@ export async function checkJobStatus(job: {
     return result;
   }
 
-  let safeUrl: URL;
-  try {
-    safeUrl = await assertSafeUrl(job.url);
-  } catch (err: unknown) {
-    result.status = "unknown";
-    result.reason = err instanceof Error ? err.message : "Invalid URL";
-    return result;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
   let finalUrl = job.url;
   let html = "";
-
   try {
-    const res = await fetch(safeUrl, {
-      method: "GET",
-      headers: {
-        "User-Agent": BROWSER_UA,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      redirect: "follow",
-      signal: controller.signal,
-    });
+    const page = await fetchPublicPage(job.url, { timeoutMs: FETCH_TIMEOUT_MS, maxBytes: MAX_BYTES });
+    finalUrl = page.finalUrl;
 
-    finalUrl = res.url || job.url;
-
-    if (res.status === 404 || res.status === 410) {
+    if (page.status === 404 || page.status === 410) {
       result.status = "closed";
-      result.reason = `HTTP ${res.status} Not Found / Gone`;
+      result.reason = `HTTP ${page.status} Not Found / Gone`;
       return result;
     }
 
-    if (res.status === 401 || res.status === 403 || res.status === 429) {
+    if (page.status === 401 || page.status === 403 || page.status === 429) {
       result.status = "unknown";
-      result.reason = `Site blocked automated check (HTTP ${res.status} - requires browser)`;
+      result.reason = `Site blocked automated check (HTTP ${page.status} - requires browser)`;
       return result;
     }
 
-    if (!res.ok) {
+    if (!page.ok) {
       result.status = "unknown";
-      result.reason = `Server returned HTTP ${res.status}`;
+      result.reason = `Server returned HTTP ${page.status}`;
       return result;
     }
-
-    const buf = await res.arrayBuffer();
-    const bytes = buf.byteLength > MAX_BYTES ? buf.slice(0, MAX_BYTES) : buf;
-    html = new TextDecoder("utf-8").decode(bytes);
+    html = page.body;
   } catch (err: unknown) {
     result.status = "unknown";
     result.reason = err instanceof Error ? err.message : "Network request failed";
     return result;
-  } finally {
-    clearTimeout(timer);
   }
 
   // 1. Check if redirected to generic landing/careers page
@@ -379,7 +257,7 @@ export async function checkJobStatus(job: {
   }
 
   // 3. Clean HTML and search text
-  const cleanText = htmlToCleanText(html);
+  const cleanText = htmlToText(html);
   const textLower = cleanText.toLowerCase();
 
   // 4. Check explicit closed phrases
