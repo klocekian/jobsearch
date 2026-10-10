@@ -37,6 +37,10 @@ export function loadSavedResume(): ResumeData | null {
   }
 }
 
+export function saveResume(data: ResumeData): void {
+  writeKey("local", RESUME_STORAGE_KEY, JSON.stringify(data));
+}
+
 /** The full, editable cover-letter draft, persisted so it survives navigation. */
 export interface SavedCoverLetter {
   letter: string;
@@ -183,3 +187,76 @@ export function saveAiDetection(resumeText: string, detection: AiDetection): voi
     // ignore
   }
 }
+
+// ── Preferences and list state ───────────────────────────────────────────
+// Every key lives here, so components that share one (the jobs list and the
+// nav's prev/next both read the list's sort) can't drift on spelling or format.
+
+type Store = "local" | "session";
+
+function readKey(store: Store, key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return (store === "local" ? localStorage : sessionStorage).getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** null removes the key. Unavailable storage (private mode, quota) is ignored. */
+function writeKey(store: Store, key: string, value: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const s = store === "local" ? localStorage : sessionStorage;
+    if (value === null) s.removeItem(key);
+    else s.setItem(key, value);
+  } catch {}
+}
+
+export const isOnboardingDone = (): boolean => readKey("local", "has_completed_onboarding_wizard_v1") === "true";
+export const markOnboardingDone = (): void => writeKey("local", "has_completed_onboarding_wizard_v1", "true");
+
+/** The job workspace's "with AI" toggle, shared by both Analyze buttons. */
+export const loadWithAi = (): boolean => readKey("local", "jobWorkspaceWithAi") === "1";
+export const saveWithAi = (on: boolean): void => writeKey("local", "jobWorkspaceWithAi", on ? "1" : "0");
+
+/** null until the user has toggled the activity banner, so the caller's default applies. */
+export function loadActivityCollapsed(): boolean | null {
+  const v = readKey("local", "jobActivityBannerCollapsed");
+  return v === null ? null : v === "1";
+}
+export const saveActivityCollapsed = (collapsed: boolean): void =>
+  writeKey("local", "jobActivityBannerCollapsed", collapsed ? "1" : "0");
+
+export const loadLastSheetUrl = (): string => readKey("local", "jobsLastSheetUrl") ?? "";
+export const saveLastSheetUrl = (url: string): void => writeKey("local", "jobsLastSheetUrl", url);
+
+/** Auto-closed jobs whose banner was dismissed; a newly closed job brings it back. */
+export function loadDismissedAutoClosed(): number[] {
+  try {
+    const ids: unknown = JSON.parse(readKey("local", "dismissedAutoClosed") ?? "[]");
+    return Array.isArray(ids) ? ids.filter(Number.isInteger) : [];
+  } catch {
+    return [];
+  }
+}
+export const saveDismissedAutoClosed = (ids: number[]): void => writeKey("local", "dismissedAutoClosed", JSON.stringify(ids));
+
+// The jobs list's sort and filter (per tab), and its ids in that order so a
+// job page's prev/next can walk the same list.
+export const loadJobListSortKey = (): string => readKey("session", "jobsSortKey") ?? "created_at";
+export const saveJobListSortKey = (key: string): void => writeKey("session", "jobsSortKey", key);
+export const loadJobListSortOrder = (): "asc" | "desc" => (readKey("session", "jobsSortOrder") === "asc" ? "asc" : "desc");
+export const saveJobListSortOrder = (order: "asc" | "desc"): void => writeKey("session", "jobsSortOrder", order);
+export const loadJobListStatus = (): string => readKey("session", "jobsStatusFilter") ?? "";
+export const saveJobListStatus = (status: string): void => writeKey("session", "jobsStatusFilter", status || null);
+
+export function loadJobListIds(): number[] {
+  try {
+    const ids: unknown = JSON.parse(readKey("session", "jobListIds") ?? "[]");
+    return Array.isArray(ids) ? ids.filter(Number.isInteger) : [];
+  } catch {
+    return [];
+  }
+}
+export const saveJobListIds = (ids: number[]): void => writeKey("session", "jobListIds", JSON.stringify(ids));

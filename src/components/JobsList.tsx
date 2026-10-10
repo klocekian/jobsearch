@@ -7,6 +7,11 @@ import type { JobRow } from "@/lib/db/jobs";
 import { STATUS_OPTIONS, statusLabel } from "@/lib/status";
 import { BAND_VARIANTS, bandForScore } from "@/lib/fitness/schema";
 import { formatDate, formatSalary } from "@/lib/format";
+import { useStoredValue } from "@/hooks/useStoredValue";
+import {
+  loadDismissedAutoClosed, loadJobListSortKey, loadJobListSortOrder, loadJobListStatus,
+  saveDismissedAutoClosed, saveJobListIds, saveJobListSortKey, saveJobListSortOrder, saveJobListStatus,
+} from "@/lib/storage";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 import { JobStatusDot } from "./icons";
 import { Button } from "@astryxdesign/core/Button";
@@ -42,18 +47,11 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
   const isMobile = useMediaQuery("(max-width: 767px)");
   // Any other sort/filter/search is fetched from the server into viewJobs.
   const [viewJobs, setViewJobs] = useState<JobRow[] | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>(() =>
-    (typeof window !== "undefined" && sessionStorage.getItem("jobsSortKey") as SortKey) || "created_at"
-  );
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
-    (typeof window !== "undefined" && sessionStorage.getItem("jobsSortOrder") as "asc" | "desc") || "desc"
-  );
-  const [statusFilter, setStatusFilter] = useState(() => {
-    if (typeof window !== "undefined") {
-      return searchParams.get("status") ?? sessionStorage.getItem("jobsStatusFilter") ?? "";
-    }
-    return searchParams.get("status") ?? "";
-  });
+  // Remembered per tab; the server renders the defaults and the stored view applies after hydration.
+  const [sortKey, setSortKey] = useStoredValue<SortKey>(() => loadJobListSortKey() as SortKey, saveJobListSortKey, "created_at");
+  const [sortOrder, setSortOrder] = useStoredValue(loadJobListSortOrder, saveJobListSortOrder, "desc");
+  const [storedStatus, setStoredStatus] = useStoredValue(loadJobListStatus, saveJobListStatus, "");
+  const statusFilter = searchParams.get("status") ?? storedStatus;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [starredOnly, setStarredOnly] = useState(false);
@@ -96,7 +94,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
   useEffect(() => {
     if (jobs.length > 0) {
       try {
-        sessionStorage.setItem("jobListIds", JSON.stringify(jobs.map((j) => j.id)));
+        saveJobListIds(jobs.map((j) => j.id));
       } catch {}
     }
   }, [jobs]);
@@ -147,15 +145,16 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
     [jobs],
   );
   // Dismissal is remembered per set of jobs, so a newly auto-closed job brings the banner back.
-  const [dismissedAutoClosed, setDismissedAutoClosed] = useState<Set<number>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try { return new Set(JSON.parse(localStorage.getItem("dismissedAutoClosed") ?? "[]") as number[]); } catch { return new Set(); }
-  });
+  // Kept as a JSON string so useStoredValue can compare snapshots by value.
+  const [dismissedJson, setDismissedJson] = useStoredValue(
+    () => JSON.stringify(loadDismissedAutoClosed()),
+    (json) => saveDismissedAutoClosed(JSON.parse(json) as number[]),
+    "[]",
+  );
+  const dismissedAutoClosed = useMemo(() => new Set(JSON.parse(dismissedJson) as number[]), [dismissedJson]);
   const showAutoClosed = autoClosedJobs.some((j) => !dismissedAutoClosed.has(j.id));
   const dismissAutoClosed = () => {
-    const ids = new Set(autoClosedJobs.map((j) => j.id));
-    localStorage.setItem("dismissedAutoClosed", JSON.stringify([...ids]));
-    setDismissedAutoClosed(ids);
+    setDismissedJson(JSON.stringify(autoClosedJobs.map((j) => j.id)));
   };
 
   const [confirming, setConfirming] = useState(false);
@@ -191,9 +190,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
   };
 
   const updateStatusFilter = (value: string) => {
-    setStatusFilter(value);
-    if (value) sessionStorage.setItem("jobsStatusFilter", value);
-    else sessionStorage.removeItem("jobsStatusFilter");
+    setStoredStatus(value);
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set("status", value);
     else params.delete("status");
@@ -238,8 +235,6 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
     const newOrder = direction === "ascending" ? "asc" : "desc";
     setSortKey(key as SortKey);
     setSortOrder(newOrder);
-    sessionStorage.setItem("jobsSortKey", key);
-    sessionStorage.setItem("jobsSortOrder", newOrder);
   };
 
   const sortablePlugin = useTableSortable<JobRow & Record<string, unknown>>({

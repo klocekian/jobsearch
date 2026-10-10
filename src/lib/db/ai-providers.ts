@@ -1,4 +1,4 @@
-import { getDb } from "./index";
+import { getDb, plainRow } from "./index";
 import type { Row } from "@libsql/client";
 
 export type AIProviderId = "claude" | "gemini" | "grok" | "mistral";
@@ -14,9 +14,7 @@ export interface UserAIProviderRow {
   updated_at: string;
 }
 
-function rowToAIProvider(row: Row): UserAIProviderRow {
-  return { ...row } as unknown as UserAIProviderRow;
-}
+const rowToAIProvider = (row: Row) => plainRow<UserAIProviderRow>(row);
 
 export async function getUserAIProviders(userId: number): Promise<UserAIProviderRow[]> {
   const db = await getDb();

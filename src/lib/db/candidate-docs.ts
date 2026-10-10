@@ -1,4 +1,4 @@
-import { getDb, ownedBy } from "./index";
+import { getDb, ownedBy, plainRow } from "./index";
 import type { Row } from "@libsql/client";
 
 /**
@@ -26,11 +26,7 @@ export interface CandidateDocRow {
   updated_at: string;
 }
 
-// See rowToJob in jobs.ts for why the spread is needed — libsql's Row isn't
-// actually a plain object (it carries hidden array-index own properties).
-function rowToDoc(row: Row): CandidateDocRow {
-  return { ...row } as unknown as CandidateDocRow;
-}
+const rowToDoc = (row: Row) => plainRow<CandidateDocRow>(row);
 
 export async function getCandidateDoc(
   userId: number | null,

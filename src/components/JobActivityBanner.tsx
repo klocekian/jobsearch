@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useStoredValue } from "@/hooks/useStoredValue";
+import { loadActivityCollapsed, saveActivityCollapsed } from "@/lib/storage";
 import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 import { STATUS_COLORS, statusLabel } from "@/lib/status";
@@ -8,7 +10,6 @@ import { formatDate } from "@/lib/format";
 import { formatEventWhen, relativeDay, resolveJobActivity } from "@/lib/job-activity";
 import { ChevronDownIcon, ChevronUpIcon } from "./icons";
 
-const COLLAPSED_KEY = "jobActivityBannerCollapsed";
 
 /**
  * Where this job stands: stage, the next scheduled event, the latest
@@ -30,17 +31,13 @@ export function JobActivityBanner({
   flush?: boolean;
 }) {
   const activity = useMemo(() => resolveJobActivity(job, submissions), [job, submissions]);
-  const [collapsed, setCollapsed] = useState(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem(COLLAPSED_KEY) : null;
-    return stored ? stored === "1" : defaultCollapsed;
-  });
-
-  const toggle = () => {
-    setCollapsed((c) => {
-      localStorage.setItem(COLLAPSED_KEY, c ? "0" : "1");
-      return !c;
-    });
-  };
+  const [storedCollapsed, setStoredCollapsed] = useStoredValue(
+    loadActivityCollapsed,
+    (c) => { if (c !== null) saveActivityCollapsed(c); },
+    null,
+  );
+  const collapsed = storedCollapsed ?? defaultCollapsed;
+  const toggle = () => setStoredCollapsed(!collapsed);
 
   const next = activity.upcoming[0];
   const hasDetail = activity.upcoming.length > 0 || activity.latest || activity.next_steps.length > 0;
