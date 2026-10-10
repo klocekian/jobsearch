@@ -46,7 +46,7 @@ export function DocumentField({
         onChange={(e) => onDraftChange?.(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className={`${DOC_SURFACE_EDITING} block w-full resize-none ${fill ? "min-h-0 flex-1" : "min-h-40 [field-sizing:content]"}`}
+        className={`${DOC_SURFACE_EDITING} block w-full resize-none ${fill ? "min-h-[60dvh] flex-1 md:min-h-0" : "min-h-40 [field-sizing:content]"}`}
       />
     );
   }

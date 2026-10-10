@@ -109,7 +109,8 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
 
   return (
     <Stack gap={6}>
-      <div className="flex justify-center">
+      {/* Five tabs are wider than a phone: scroll them sideways there. */}
+      <div className="-mx-5 flex overflow-x-auto px-5 md:mx-0 md:justify-center md:px-0">
         <TabList value={profileTab} onChange={(v) => setProfileTab(v as typeof profileTab)}>
           <Tab value="account" label="Account" />
           <Tab value="ai" label="AI" />
