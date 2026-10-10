@@ -1,9 +1,7 @@
 "use client";
 
 import type { JobRow } from "@/lib/db/jobs";
-import type { AnalysisRunMeta } from "@/lib/db/analysis-runs";
 import { FitnessReportView } from "../FitnessReportView";
-import { RunHistory, runDate, runMethodLabel } from "../RunHistory";
 import { Button } from "@astryxdesign/core/Button";
 import { Text } from "@astryxdesign/core/Text";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -15,15 +13,14 @@ import type { useFitness } from "./useFitness";
 interface FitnessTabProps {
   job: JobRow;
   fitness: ReturnType<typeof useFitness>;
-  runs: AnalysisRunMeta[];
   withAi: boolean;
   onWithAiChange: (value: boolean) => void;
   onEditProfile: () => void;
 }
 
 /** Profile tab: how well the posting fits the candidate profile and gaps. */
-export function FitnessTab({ job, fitness, runs, withAi, onWithAiChange, onEditProfile }: FitnessTabProps) {
-  const { saved, shown, shownRunAt, shownMethod, viewed, running, saving, error, notesFlash, restoring } = fitness;
+export function FitnessTab({ job, fitness, withAi, onWithAiChange, onEditProfile }: FitnessTabProps) {
+  const { saved, runAt, method, running, saving, error, notesFlash } = fitness;
 
   return (
     <>
@@ -48,24 +45,11 @@ export function FitnessTab({ job, fitness, runs, withAi, onWithAiChange, onEditP
       </div>
 
       <div className="py-2">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {!running && (runs.length > 0 ? (
-            <RunHistory
-              runs={runs}
-              currentRunId={job.fitness_run_id}
-              viewingRunId={viewed?.id ?? null}
-              outOf={10}
-              onView={fitness.view}
-              onMakeCurrent={fitness.restore}
-              busy={restoring}
-            />
-          ) : job.fitness_run_at && (
-            <Text type="supporting" color="secondary">
-              Last run {new Date(job.fitness_run_at).toLocaleString()}
-            </Text>
-          ))}
-          {notesFlash && <Badge variant="success" label="Added to notes" />}
-        </div>
+        {notesFlash && (
+          <div className="mb-4">
+            <Badge variant="success" label="Added to notes" />
+          </div>
+        )}
 
         {error && (
           <div className="mb-4">
@@ -81,7 +65,7 @@ export function FitnessTab({ job, fitness, runs, withAi, onWithAiChange, onEditP
           </div>
         )}
 
-        {!running && !shown && !error && (
+        {!running && !saved && !error && (
           <Banner
             status="info"
             title={job.posting_text.trim()
@@ -90,11 +74,11 @@ export function FitnessTab({ job, fitness, runs, withAi, onWithAiChange, onEditP
           />
         )}
 
-        {!running && shown && (
+        {!running && saved && (
           <FitnessReportView
-            result={shown}
-            runAt={shownRunAt ? runDate(shownRunAt).toISOString() : null}
-            model={shownMethod ? runMethodLabel({ kind: "fitness", method: shownMethod, resume_name: null }) : null}
+            result={saved}
+            runAt={runAt}
+            model={method}
             busy={saving}
             onAddToNotes={() => fitness.addToNotes(false)}
             onAbandon={() => fitness.addToNotes(true)}

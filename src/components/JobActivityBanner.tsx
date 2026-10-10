@@ -5,17 +5,10 @@ import type { JobRow } from "@/lib/db/jobs";
 import type { SubmissionRow } from "@/lib/db/submissions";
 import { STATUS_COLORS, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
-import { apiSend, errorMessage } from "@/lib/api-client";
 import { formatEventWhen, relativeDay, resolveJobActivity } from "@/lib/job-activity";
 import { ChevronDownIcon, ChevronUpIcon } from "./icons";
 
 const COLLAPSED_KEY = "jobActivityBannerCollapsed";
-
-const SOURCE_LABELS = {
-  mcp: "Summary from Claude (MCP)",
-  ai: "AI summary",
-  derived: "From your notes and job signals",
-} as const;
 
 /**
  * Where this job stands: stage, the next scheduled event, the latest
@@ -26,22 +19,21 @@ const SOURCE_LABELS = {
 export function JobActivityBanner({
   job,
   submissions,
-  onJobUpdated,
   defaultCollapsed = false,
+  flush = false,
 }: {
   job: JobRow;
   submissions: SubmissionRow[];
-  onJobUpdated: (job: JobRow) => void;
   /** Used until the user toggles it; after that their choice sticks. */
   defaultCollapsed?: boolean;
+  /** Drawn as a card's header: edge to edge, with only a bottom rule. */
+  flush?: boolean;
 }) {
   const activity = useMemo(() => resolveJobActivity(job, submissions), [job, submissions]);
   const [collapsed, setCollapsed] = useState(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem(COLLAPSED_KEY) : null;
     return stored ? stored === "1" : defaultCollapsed;
   });
-  const [summarizing, setSummarizing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const toggle = () => {
     setCollapsed((c) => {
@@ -50,26 +42,13 @@ export function JobActivityBanner({
     });
   };
 
-  const summarize = async () => {
-    setSummarizing(true);
-    setError(null);
-    try {
-      const d = await apiSend<{ job: JobRow }>(`/api/jobs/${job.id}/activity-summary`, "POST");
-      onJobUpdated(d.job);
-    } catch (err) {
-      setError(errorMessage(err, "Could not summarize — no response from the server."));
-    } finally {
-      setSummarizing(false);
-    }
-  };
-
   const next = activity.upcoming[0];
   const hasDetail = activity.upcoming.length > 0 || activity.latest || activity.next_steps.length > 0;
 
   return (
     <section
       aria-label="Job activity"
-      className="rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-xs"
+      className={`bg-muted/50 text-xs ${flush ? "border-b border-border px-4 py-3" : "rounded-lg border border-border px-3 py-2.5"}`}
     >
       <div className="flex items-start gap-2">
         <span
@@ -130,27 +109,6 @@ export function JobActivityBanner({
               </ul>
             </Row>
           )}
-
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
-            <span className="text-secondary">
-              {SOURCE_LABELS[activity.source]}
-              {activity.source !== "derived" && activity.written_at && <> · {formatDate(activity.written_at)}</>}
-              {activity.stale && <> · notes changed since the last summary</>}
-            </span>
-            <div className="flex items-center gap-2">
-              {error && <span className="text-rose-700 dark:text-rose-400">{error}</span>}
-              {job.notes?.trim() && (
-                <button
-                  type="button"
-                  onClick={summarize}
-                  disabled={summarizing}
-                  className="rounded px-1.5 py-0.5 font-medium text-primary hover:bg-border/60 disabled:opacity-50 cursor-pointer disabled:cursor-default"
-                >
-                  {summarizing ? "Summarizing…" : activity.source === "derived" ? "Summarize with AI" : "Refresh"}
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </section>

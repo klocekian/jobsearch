@@ -44,8 +44,7 @@ export const POST = withUser(async (request, userId) => {
       result: run.result,
       text: renderFitnessText(run.result),
       model: run.model,
-      run_at: run.run.created_at,
-      run_id: run.run.id,
+      run_at: run.job?.fitness_run_at ?? null,
       job: run.job,
     });
   } catch (err: unknown) {

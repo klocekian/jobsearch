@@ -1,7 +1,6 @@
 import { SKILL_TAXONOMY } from "@/lib/analysis/taxonomy";
 import { Text } from "@astryxdesign/core/Text";
 import { HStack } from "@astryxdesign/core/Stack";
-import { Card } from "@astryxdesign/core/Card";
 
 interface JobDescriptionViewProps {
   jobText: string;
@@ -59,26 +58,24 @@ export function JobDescriptionView({ jobText, matched, missing, hideLegend = fal
           </HStack>
         </HStack>
       )}
-      <Card className="p-4 sm:p-5">
-        <div className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-primary">
-          {tokens.map((t, i) =>
-            t.state ? (
-              <span
-                key={i}
-                className={
-                  t.state === "matched"
-                    ? "underline decoration-emerald-600 dark:decoration-emerald-400 decoration-2 underline-offset-2"
-                    : "underline decoration-rose-600 dark:decoration-rose-400 decoration-2 underline-offset-2"
-                }
-              >
-                {t.text}
-              </span>
-            ) : (
-              <span key={i}>{t.text}</span>
-            )
-          )}
-        </div>
-      </Card>
+      <div className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-primary">
+        {tokens.map((t, i) =>
+          t.state ? (
+            <span
+              key={i}
+              className={
+                t.state === "matched"
+                  ? "underline decoration-emerald-600 dark:decoration-emerald-400 decoration-2 underline-offset-2"
+                  : "underline decoration-rose-600 dark:decoration-rose-400 decoration-2 underline-offset-2"
+              }
+            >
+              {t.text}
+            </span>
+          ) : (
+            <span key={i}>{t.text}</span>
+          )
+        )}
+      </div>
     </div>
   );
 }

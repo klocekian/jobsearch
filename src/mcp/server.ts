@@ -12,7 +12,6 @@ import { FitnessResultSchema, type FitnessResult } from "@/lib/fitness/schema";
 import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/prompt";
 import { renderFitnessText } from "@/lib/fitness/render";
 import { STATUS_OPTIONS } from "@/lib/status";
-import { saveFitnessRun, saveMatchRun } from "@/lib/db/analysis-runs";
 import {
   ACTIVE_STATUSES,
   JobFieldsSchema,
@@ -24,6 +23,8 @@ import {
   editJob,
   requireCandidateDocs,
   runRuleBasedFitness,
+  saveFitnessResult,
+  saveMatchResult,
 } from "@/lib/services/jobs";
 import { JobActivitySchema, resolveJobActivity, serializeActivity } from "@/lib/job-activity";
 
@@ -451,7 +452,7 @@ export function createJobsearchMcpServer(
         fileName: "",
       });
       if (save !== false) {
-        await saveMatchRun(job, report, { name: resume.name, text: resume.content });
+        await saveMatchResult(job, report, resume.name);
         if (job.company) await addResumeTag(resume.id, userId, job.company);
       }
       return json({ job: `${job.company} — ${job.title}`, resume: resume.name, saved: save !== false, ...matchDigest(report) });
@@ -516,15 +517,14 @@ export function createJobsearchMcpServer(
       inputSchema: {
         job_id: z.number().int(),
         report: z.record(z.string(), z.unknown()).describe("Object matching output_schema from get_fitness_brief."),
-        model: z.string().optional().describe("Which model produced the report, for the record."),
       },
     },
-    safe(async ({ job_id, report, model }) => {
+    safe(async ({ job_id, report }) => {
       const job = await requireJob(job_id);
       const parsed = FitnessResultSchema.safeParse(report);
       if (!parsed.success) return fail(`Report doesn't match the schema: ${z.prettifyError(parsed.error)}`);
       const result = completeFitnessResult(parsed.data, job);
-      await saveFitnessRun(job, result, `mcp:${model || "unknown"}`);
+      await saveFitnessResult(job, result);
       return { content: [{ type: "text" as const, text: renderFitnessText(result) }] };
     }),
   );

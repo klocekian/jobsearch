@@ -66,12 +66,39 @@ function SummaryCards({ report }: { report: MatchReport }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  aside,
+  className = "",
+  children,
+}: {
+  title: string;
+  /** Shown beside the title, e.g. matched/missing counts. */
+  aside?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="mt-4">
-      <Text type="label" weight="semibold" display="block" className="mb-1.5 text-xs uppercase tracking-wider text-muted-foreground">{title}</Text>
-      <Card className="overflow-hidden">{children}</Card>
+    <section className={className}>
+      <div className="mb-1.5 flex flex-wrap items-baseline gap-x-3">
+        <Text type="label" weight="semibold" className="text-xs uppercase tracking-wider text-muted-foreground">{title}</Text>
+        {aside}
+      </div>
+      {children}
     </section>
+  );
+}
+
+function SkillCounts({ section }: { section: SkillSection }) {
+  return (
+    <>
+      <Text color="secondary" className="text-xs">
+        Matched <Text weight="semibold" className="text-emerald-700 dark:text-emerald-400 text-xs">{section.matched}</Text>
+      </Text>
+      <Text color="secondary" className="text-xs">
+        Missing <Text weight="semibold" className="text-rose-700 dark:text-rose-400 text-xs">{section.missing}</Text>
+      </Text>
+    </>
   );
 }
 
@@ -79,7 +106,7 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
   return (
     <div className="divide-y divide-border text-xs">
       {groups.map((g) => (
-        <div key={g.label} className="grid grid-cols-1 gap-1.5 px-3.5 py-2 sm:grid-cols-[130px_1fr]">
+        <div key={g.label} className="grid grid-cols-1 gap-1.5 py-2 sm:grid-cols-[130px_1fr]">
           <Text weight="semibold" display="block" className="text-xs">{g.label}</Text>
           <ul className="space-y-1">
             {g.items.map((item, i) => (
@@ -95,33 +122,24 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
   );
 }
 
-function SkillsTable({ section, title }: { section: SkillSection; title: string }) {
+function SkillsTable({ section }: { section: SkillSection }) {
   return (
     <div className="text-xs">
-      <div className="flex items-center gap-3 border-b border-border px-3.5 py-1.5 bg-muted/30">
-        <Text weight="semibold" className="text-xs">{title}</Text>
-        <Text color="secondary" className="text-xs">
-          Matched <Text weight="semibold" className="text-emerald-700 dark:text-emerald-400 text-xs">{section.matched}</Text>
-        </Text>
-        <Text color="secondary" className="text-xs">
-          Missing <Text weight="semibold" className="text-rose-700 dark:text-rose-400 text-xs">{section.missing}</Text>
-        </Text>
-      </div>
       {section.rows.length === 0 ? (
-        <Text type="supporting" color="secondary" display="block" className="px-3.5 py-2 text-xs">No skills of this type detected in the job description.</Text>
+        <Text type="supporting" color="secondary" display="block" className="py-2 text-xs">No skills of this type detected in the job description.</Text>
       ) : (
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-left uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/20">
-              <th className="px-3.5 py-1 text-[11px] font-medium">Skill</th>
-              <th className="px-3.5 py-1 text-right text-[11px] font-medium">Resume</th>
-              <th className="px-3.5 py-1 text-right text-[11px] font-medium">Job</th>
+            <tr className="text-left uppercase tracking-wider text-muted-foreground border-b border-border">
+              <th className="py-1 pr-3 text-[11px] font-medium">Skill</th>
+              <th className="px-3 py-1 text-right text-[11px] font-medium">Resume</th>
+              <th className="py-1 pl-3 text-right text-[11px] font-medium">Job</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {section.rows.map((row) => (
-              <tr key={row.skill} className="hover:bg-muted/30">
-                <td className="px-3.5 py-1.5">
+              <tr key={row.skill}>
+                <td className="py-1.5 pr-3">
                   <span className="inline-flex items-center gap-1.5">
                     <StatusIcon status={row.state === "missing" ? "fail" : "pass"} className="h-3.5 w-3.5 shrink-0" />
                     <Text className="text-xs">{row.skill}</Text>
@@ -130,10 +148,10 @@ function SkillsTable({ section, title }: { section: SkillSection; title: string 
                     )}
                   </span>
                 </td>
-                <td className="px-3.5 py-1.5 text-right tabular-nums text-xs">
+                <td className="px-3 py-1.5 text-right tabular-nums text-xs">
                   {row.state === "missing" ? <Text className="text-rose-700 dark:text-rose-400 text-xs">✕</Text> : <Text className="text-xs">{row.resumeCount}</Text>}
                 </td>
-                <td className="px-3.5 py-1.5 text-right tabular-nums text-xs"><Text className="text-xs">{row.jobCount}</Text></td>
+                <td className="py-1.5 pl-3 text-right tabular-nums text-xs"><Text className="text-xs">{row.jobCount}</Text></td>
               </tr>
             ))}
           </tbody>
@@ -147,7 +165,7 @@ function RecruiterTable({ tips }: { tips: RecruiterTip[] }) {
   return (
     <div className="divide-y divide-border text-xs">
       {tips.map((t) => (
-        <div key={t.label} className="grid grid-cols-1 gap-1.5 px-3.5 py-2 sm:grid-cols-[130px_1fr]">
+        <div key={t.label} className="grid grid-cols-1 gap-1.5 py-2 sm:grid-cols-[130px_1fr]">
           <Text weight="semibold" display="block" className="text-xs">{t.label}</Text>
           <div className="space-y-1">
             <div className="flex gap-2 leading-snug">
@@ -264,20 +282,26 @@ export function MatchReportView({
       )}
 
       {subTab === "match" && (
-        <div className="space-y-3">
+        // One rule between sections; the skills pair sits side by side once the pane is wide enough.
+        <div className="@container divide-y divide-border [&>*]:py-4 [&>*:first-child]:pt-0">
           <SummaryCards report={report} />
 
           <Section title="Searchability">
             <SearchabilityTable groups={report.searchability} />
           </Section>
 
-          <Section title="Hard Skills">
-            <SkillsTable section={report.hardSkills} title="Hard skills" />
-          </Section>
-
-          <Section title="Soft Skills">
-            <SkillsTable section={report.softSkills} title="Soft skills" />
-          </Section>
+          <div className="grid gap-x-8 @xl:grid-cols-2">
+            <Section title="Hard Skills" aside={<SkillCounts section={report.hardSkills} />}>
+              <SkillsTable section={report.hardSkills} />
+            </Section>
+            <Section
+              title="Soft Skills"
+              aside={<SkillCounts section={report.softSkills} />}
+              className="mt-4 border-t border-border pt-4 @xl:mt-0 @xl:border-t-0 @xl:pt-0"
+            >
+              <SkillsTable section={report.softSkills} />
+            </Section>
+          </div>
 
           <Section title="Recruiter Tips">
             <RecruiterTable tips={report.recruiterTips} />

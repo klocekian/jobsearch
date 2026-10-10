@@ -4,11 +4,9 @@ import type { JobRow } from "@/lib/db/jobs";
 import type { MatchReport } from "@/lib/analysis/types";
 import { JobDescriptionView } from "../JobDescriptionView";
 import { Button } from "@astryxdesign/core/Button";
-import { TextArea } from "@astryxdesign/core/TextArea";
 import { Text } from "@astryxdesign/core/Text";
 import { Link as AstryxLink } from "@astryxdesign/core/Link";
 import { Banner } from "@astryxdesign/core/Banner";
-import { Card } from "@astryxdesign/core/Card";
 import type { Draft } from "./useDraft";
 
 export type LeftTab = "posting" | "apply";
@@ -40,36 +38,44 @@ export function PostingPane({ tab, job, report, paste, onSavePaste }: PostingPan
 
   return (
     <div className="space-y-3">
-      {!paste.isOpen && (
-        <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
-          {report && (
-            <>
-              <div className="flex items-center gap-1.5">
-                <span className="inline-block h-1 w-4 rounded bg-rose-600 dark:bg-rose-400" />
-                <Text type="supporting">Missing Skills</Text>
-              </div>
-              <div className="flex items-center gap-1.5 mr-1">
-                <span className="inline-block h-1 w-4 rounded bg-emerald-600 dark:bg-emerald-400" />
-                <Text type="supporting">Matched Skills</Text>
-              </div>
-            </>
-          )}
-          <Button label={job.posting_text ? "Update posting" : "Paste posting"} variant="secondary" size="sm" onClick={() => paste.open("")} />
-          {job.url && (
-            <AstryxLink href={job.url} isExternalLink>Open original</AstryxLink>
-          )}
-        </div>
-      )}
-      {paste.isOpen && (
-        <div className="rounded-lg border border-border bg-muted p-3">
-          <TextArea label="Paste posting" isLabelHidden value={paste.value} onChange={paste.set} placeholder="Paste job posting text…" rows={6} />
-          <div className="mt-2 flex gap-2">
-            <Button label="Save" variant="primary" size="sm" onClick={onSavePaste} isDisabled={!paste.value.trim()} />
+      <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
+        {paste.isOpen ? (
+          <>
             <Button label="Cancel" variant="secondary" size="sm" onClick={paste.close} />
-          </div>
-        </div>
-      )}
-      {job.posting_text ? (
+            <Button label="Save" variant="primary" size="sm" onClick={onSavePaste} isDisabled={!paste.value.trim()} />
+          </>
+        ) : (
+          <>
+            {report && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block h-1 w-4 rounded bg-rose-600 dark:bg-rose-400" />
+                  <Text type="supporting">Missing Skills</Text>
+                </div>
+                <div className="flex items-center gap-1.5 mr-1">
+                  <span className="inline-block h-1 w-4 rounded bg-emerald-600 dark:bg-emerald-400" />
+                  <Text type="supporting">Matched Skills</Text>
+                </div>
+              </>
+            )}
+            <Button label={job.posting_text ? "Edit" : "Paste posting"} variant="secondary" size="sm" onClick={() => paste.open(job.posting_text)} />
+            {job.url && (
+              <AstryxLink href={job.url} isExternalLink>Open original</AstryxLink>
+            )}
+          </>
+        )}
+      </div>
+      {paste.isOpen ? (
+        // The posting itself becomes editable, in place and in the same type.
+        <textarea
+          aria-label="Job posting"
+          value={paste.value}
+          onChange={(e) => paste.set(e.target.value)}
+          placeholder="Paste job posting text…"
+          autoFocus
+          className="-mx-2 block min-h-[50vh] w-[calc(100%+1rem)] resize-none rounded-md bg-transparent p-2 font-sans text-xs leading-relaxed text-primary outline-none ring-1 ring-border [field-sizing:content] focus:ring-2 focus:ring-blue-500/40"
+        />
+      ) : job.posting_text ? (
         report ? (
           <JobDescriptionView
             jobText={job.posting_text}
@@ -79,9 +85,7 @@ export function PostingPane({ tab, job, report, paste, onSavePaste }: PostingPan
             hideLegend
           />
         ) : (
-          <Card className="p-4 sm:p-5">
-            <Text display="block" className="whitespace-pre-wrap text-xs leading-relaxed">{job.posting_text}</Text>
-          </Card>
+          <Text display="block" className="whitespace-pre-wrap text-xs leading-relaxed">{job.posting_text}</Text>
         )
       ) : (
         <Banner status="info" title="No posting text. Paste it above or use the Chrome extension." />

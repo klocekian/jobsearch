@@ -10,7 +10,6 @@ import { JobActivityBanner } from "./JobActivityBanner";
 import { loadContextMaterials, saveContextMaterials } from "@/lib/storage";
 import { apiSend, errorMessage } from "@/lib/api-client";
 import { useJob } from "@/hooks/useJob";
-import { useAnalysisRuns } from "@/hooks/useAnalysisRuns";
 import { useAiDetection } from "@/hooks/useAiDetection";
 import { useSavedResumes } from "./job-workspace/useSavedResumes";
 import { useFitness } from "./job-workspace/useFitness";
@@ -40,19 +39,12 @@ type AppSubTab = "cover" | "submission" | "notes";
 export function JobWorkspace({ jobId }: { jobId: number }) {
   const router = useRouter();
   const { job, setJob, submissions, loading, refetch: fetchJob, updateJob } = useJob(jobId);
-  const { runs, refetch: fetchRuns, getRun, makeCurrent } = useAnalysisRuns(jobId);
   const { savedResumes, setSavedResumes, resumeText, setResumeText } = useSavedResumes(job);
   // Writes that fail outside a tab with its own error slot (status, header,
   // posting, notes, submissions) report here.
   const [actionError, setActionError] = useState<string | null>(null);
-  const fitness = useFitness({
-    jobId, job, setJob, updateJob, refetchJob: fetchJob,
-    runs: runs.fitness, refetchRuns: fetchRuns, getRun, makeCurrent, onRestoreError: setActionError,
-  });
-  const match = useMatchAnalysis({
-    jobId, job, setJob, resumeText, setResumeText, savedResumes,
-    refetchRuns: fetchRuns, getRun, makeCurrent, onRestoreError: setActionError,
-  });
+  const fitness = useFitness({ jobId, job, setJob, updateJob, refetchJob: fetchJob });
+  const match = useMatchAnalysis({ jobId, job, setJob, resumeText, savedResumes });
   const { analyzed } = match;
   const aiDetection = useAiDetection(analyzed);
   const [withAi, setWithAi] = useWithAi();
@@ -212,7 +204,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   );
 
   const activityBanner = (
-    <JobActivityBanner job={job} submissions={submissions} onJobUpdated={setJob} defaultCollapsed={isMobile} />
+    <JobActivityBanner job={job} submissions={submissions} defaultCollapsed={isMobile} flush={!isMobile} />
   );
 
   const rightTabBar = (
@@ -231,7 +223,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             <FitnessTab
               job={job}
               fitness={fitness}
-              runs={runs.fitness}
               withAi={withAi}
               onWithAiChange={setWithAi}
               onEditProfile={() => setProfileSubTab("edit")}
@@ -248,7 +239,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
             job={job}
             match={match}
             aiDetection={aiDetection}
-            runs={runs.match}
             resumes={savedResumes}
             resumeText={resumeText}
             onPickResume={setResumeText}
@@ -328,6 +318,9 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     </>
   );
 
+  const rightPaneCardClass =
+    "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-[0_0_20px_rgba(0,0,0,0.18)] dark:shadow-[0_0_20px_rgba(0,0,0,0.9)]";
+
   if (isMobile) {
     return (
       <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden bg-surface text-primary">
@@ -348,8 +341,12 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
           </>
         ) : (
           <>
-            <div className="shrink-0 border-b border-border bg-surface px-4">{rightTabBar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-4">{rightPaneBody}</div>
+            <div className="flex min-h-0 flex-1 flex-col p-3">
+              <div className={rightPaneCardClass}>
+                <div className="shrink-0 border-b border-border px-4">{rightTabBar}</div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
+              </div>
+            </div>
           </>
         )}
       </div>
@@ -369,21 +366,27 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
         style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
       />
       {/* Header */}
-      <div className="col-start-1 row-start-1 border-b border-r border-border bg-surface px-4 py-3">
+      <div className="col-start-1 row-start-1 border-b border-border bg-surface px-4 py-3">
         <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
       </div>
 
       {/* Left tabs */}
-      <div className="col-start-1 row-start-2 border-b border-r border-border bg-surface px-4">{leftTabBar}</div>
+      <div className="col-start-1 row-start-2 border-b border-border bg-surface px-4">{leftTabBar}</div>
+
+      {/* Carry the header and tab rules across the right column; the card paints over them */}
+      <div aria-hidden className="col-start-2 row-start-1 border-b border-border" />
+      <div aria-hidden className="col-start-2 row-start-2 border-b border-border" />
 
       {/* Left content */}
-      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto border-r border-border bg-surface p-4">{leftPaneBody}</div>
+      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto bg-surface p-4">{leftPaneBody}</div>
 
       {/* Right pane: activity banner, tabs, content */}
-      <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col bg-surface">
-        <div className="shrink-0 px-4 pt-3">{activityBanner}</div>
-        <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+      <div className="col-start-2 row-start-1 row-span-3 flex min-h-0 flex-col p-3 sm:p-4">
+        <div className={rightPaneCardClass}>
+          <div className="shrink-0">{activityBanner}</div>
+          <div className="shrink-0 border-b border-border px-4 py-3 flex items-center min-h-[57px]">{rightTabBar}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-xs">{rightPaneBody}</div>
+        </div>
       </div>
     </div>
   );
