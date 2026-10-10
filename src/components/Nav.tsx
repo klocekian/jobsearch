@@ -7,6 +7,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { Selector } from "@astryxdesign/core/Selector";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { HStack } from "@astryxdesign/core/HStack";
+import { MoreMenu } from "@astryxdesign/core/MoreMenu";
 import { STATUS_OPTIONS } from "@/lib/status";
 import { loadJobListIds, loadJobListSortKey, loadJobListSortOrder, loadJobListStatus, saveJobListIds } from "@/lib/storage";
 import { apiGet } from "@/lib/api-client";
@@ -150,12 +151,27 @@ export function Nav({ user }: { user: NavUser | null }) {
   }, []);
 
   const userItem = user ? (
+    <>
+    {/* Phone: just the AI status dot, linking to the profile. */}
+    <a
+      href="/profile"
+      aria-label={`Profile (${providerLabel})`}
+      className="relative flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-semibold text-primary md:hidden"
+    >
+      {(user.name || user.email || "?").charAt(0).toUpperCase()}
+      <span className="absolute -right-0.5 -bottom-0.5 flex rounded-full bg-surface p-0.5">
+        <StatusDot variant={dotVariant} label={providerLabel} />
+      </span>
+    </a>
+    <div className="hidden md:block">
     <TopNavItem
       label={user.name || user.email || "Profile"}
       href="/profile"
       isSelected={pathname.startsWith("/profile")}
       icon={<StatusDot variant={dotVariant} label={providerLabel} tooltip={providerLabel} />}
     />
+    </div>
+    </>
   ) : null;
 
   const jobStepper = (
@@ -181,7 +197,7 @@ export function Nav({ user }: { user: NavUser | null }) {
         tooltip="Next job (j)"
       />
       {currentIndex >= 0 && (
-        <span className="text-sm text-secondary ml-1 select-none whitespace-nowrap">
+        <span className="hidden sm:inline text-sm text-secondary ml-1 select-none whitespace-nowrap">
           {currentIndex + 1} of {totalJobs}
         </span>
       )}
@@ -190,12 +206,12 @@ export function Nav({ user }: { user: NavUser | null }) {
 
   const jobControls = jobWorkspaceState?.status ? (
     <HStack gap={1.5} className="items-center">
-      <span className="text-sm text-secondary whitespace-nowrap">Change Status:</span>
+      <span className="hidden md:inline text-sm text-secondary whitespace-nowrap">Change Status:</span>
       <Selector
         label="Change Status"
         isLabelHidden
         size="sm"
-        className="w-36"
+        className="w-32 md:w-36"
         startIcon={<JobStatusDot status={jobWorkspaceState.status} />}
         options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
         value={jobWorkspaceState.status}
@@ -226,7 +242,28 @@ export function Nav({ user }: { user: NavUser | null }) {
           isJobPage && user ? undefined : user ? (
             <HStack gap={3} className="items-center">
               {!isSubPage && (
-                <HStack gap={2} className="items-center mr-2">
+                // Phone: Add Job plus a menu for the rest, so the bar fits one row.
+                <HStack gap={1} className="items-center md:hidden">
+                  <Button label="Add Job" variant="primary" size="sm" href="/jobs?add=1" />
+                  <MoreMenu
+                    size="sm"
+                    items={[
+                      {
+                        label: actionState.checking ? "Checking…" : "Check closed",
+                        onClick: () => window.dispatchEvent(new CustomEvent("jobs-action-check-closed")),
+                        isDisabled: actionState.checking,
+                      },
+                      {
+                        label: actionState.importing ? "Importing…" : "Import from Google Sheet",
+                        onClick: () => window.dispatchEvent(new CustomEvent("jobs-action-import")),
+                        isDisabled: actionState.importing,
+                      },
+                    ]}
+                  />
+                </HStack>
+              )}
+              {!isSubPage && (
+                <HStack gap={2} className="items-center mr-2 hidden md:flex">
                   <Button
                     label={actionState.checking ? "Checking…" : "Check closed"}
                     variant="ghost"

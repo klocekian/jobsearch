@@ -34,6 +34,17 @@ type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "mat
 // are refetched right after mutations (restore, confirm, import, status checks).
 const NO_STORE: RequestInit = { cache: "no-store" };
 
+// The card list a phone gets has no column headers to click, so sorting is a menu.
+const MOBILE_SORT_OPTIONS = [
+  { value: "created_at:desc", label: "Newest first" },
+  { value: "created_at:asc", label: "Oldest first" },
+  { value: "company:asc", label: "Company A–Z" },
+  { value: "status:asc", label: "Status" },
+  { value: "fitness_score:desc", label: "Best fit" },
+  { value: "match_score:desc", label: "Best ATS match" },
+  { value: "applied_at:desc", label: "Recently applied" },
+];
+
 interface JobsListProps {
   /** The page's full list, newest first (null until it loads) — the default view. */
   allJobs: JobRow[] | null;
@@ -399,7 +410,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
               value={search}
               onChange={setSearch}
               placeholder="Search jobs…"
-              className="w-48"
+              className="w-full md:w-48"
             />
             <Selector
               label="Status filter"
@@ -410,6 +421,20 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
               placeholder="All statuses"
               className="w-36"
             />
+            {isMobile && (
+              <Selector
+                label="Sort"
+                isLabelHidden
+                options={MOBILE_SORT_OPTIONS}
+                value={`${sortKey}:${sortOrder}`}
+                onChange={(v) => {
+                  const [key, order] = (v as string).split(":");
+                  setSortKey(key as SortKey);
+                  setSortOrder(order as "asc" | "desc");
+                }}
+                className="w-40"
+              />
+            )}
             <label className="flex cursor-pointer items-center gap-1.5 text-sm select-none">
               <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
               <span className={starredOnly ? "text-amber-700 dark:text-amber-400 font-medium" : "text-secondary"}>★ Starred</span>
@@ -485,6 +510,48 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
             <Text type="supporting">Add a job manually, import from your Google Sheet, or paste a job posting URL.</Text>
           </Stack>
         ) : (
+          isMobile ? (
+            // A phone gets a card per job instead of the table: company and
+            // title stack so neither truncates, and status stays one tap away.
+            <ul className="divide-y divide-border/60">
+              {jobs.map((job) => (
+                <li key={job.id} className="flex items-start gap-2 py-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleStar(job)}
+                    aria-label={job.is_starred ? "Unstar" : "Star"}
+                    className={`-ml-1 p-1 text-lg leading-none transition ${job.is_starred ? "text-amber-600 dark:text-amber-400" : "text-disabled"}`}
+                  >
+                    {job.is_starred ? "★" : "☆"}
+                  </button>
+                  <Link href={`/jobs/${job.id}`} className="min-w-0 flex-1">
+                    <span className="block font-medium text-primary break-words">{job.company || "—"}</span>
+                    <span className="block text-sm text-secondary break-words">{job.title || "—"}</span>
+                    {(job.location || formatSalary(job) || job.fitness_score != null || job.match_score != null) && (
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-secondary">
+                        {job.location && <span>{job.location}</span>}
+                        {formatSalary(job) && <span>{formatSalary(job)}</span>}
+                        {job.fitness_score != null && (
+                          <Badge variant={BAND_VARIANTS[bandForScore(job.fitness_score)] ?? "neutral"} label={`Fit ${job.fitness_score}/10`} />
+                        )}
+                        {job.match_score != null && <Badge variant="neutral" label={`ATS ${job.match_score}%`} />}
+                      </span>
+                    )}
+                  </Link>
+                  <Selector
+                    label="Status"
+                    isLabelHidden
+                    size="sm"
+                    className="w-32 shrink-0"
+                    startIcon={<JobStatusDot status={job.status} />}
+                    options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
+                    value={job.status}
+                    onChange={(v) => changeStatus(job, v)}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
           <div className="sticky-table-header">
             <Table
               data={jobs as (JobRow & Record<string, unknown>)[]}
@@ -494,6 +561,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
               plugins={{ sortable: sortablePlugin }}
             />
           </div>
+          )
         )}
 
         <Text type="supporting" display="block" className="mt-3 shrink-0">{jobs.length} job{jobs.length !== 1 ? "s" : ""}</Text>

@@ -113,3 +113,16 @@ body {
     --tw-prose-td-borders: var(--color-border);
   }
 }
+
+/* iOS Safari zooms the page into any focused field under 16px, and leaves it
+   zoomed. The design system's inputs are 12–14px, so on iOS touch devices lift
+   them to 16px. (-webkit-touch-callout is only supported by iOS WebKit.) */
+@supports (-webkit-touch-callout: none) {
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+}

@@ -63,12 +63,18 @@ export function FitnessTab({ job, fitness, withAi, onWithAiChange, onEditProfile
       </div>
 
       {missingDocs && missingDocs.length > 0 && (
-        <Banner
-          status="warning"
-          title={`Add your ${missingDocs.join(" and ")} to ground the fitness check.`}
-          description="The AI check won't run without both; the rule-based check scores against your default resume instead."
-          endContent={<Button label="Open Tools › Profile" variant="secondary" size="sm" onClick={onEditProfile} />}
-        />
+        <>
+          <Banner
+            status="warning"
+            title={`Add your ${missingDocs.join(" and ")} to ground the fitness check.`}
+            description="The AI check won't run without both; the rule-based check scores against your default resume instead."
+            // On a phone the button beside the text squeezes it into a sliver; it goes below instead.
+            endContent={<div className="hidden md:block"><Button label="Open Tools › Profile" variant="secondary" size="sm" onClick={onEditProfile} /></div>}
+          />
+          <div className="md:hidden">
+            <Button label="Open Tools › Profile" variant="secondary" size="sm" onClick={onEditProfile} />
+          </div>
+        </>
       )}
 
       <div className="py-2">

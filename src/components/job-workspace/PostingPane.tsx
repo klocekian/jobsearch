@@ -30,7 +30,7 @@ export function PostingPane({ tab, job, report, paste, onSavePaste }: PostingPan
           <AstryxLink href={job.url} isExternalLink>Open in new tab</AstryxLink>
           <Text type="supporting">Many sites block embedding — use the link above if the form doesn&apos;t load below.</Text>
         </div>
-        <iframe src={job.url} className="flex-1 w-full rounded-lg border border-border" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
+        <iframe src={job.url} className="min-h-[70dvh] flex-1 w-full rounded-lg border border-border md:min-h-0" title="Application" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" />
       </div>
     ) : (
       <Banner status="info" title="No URL saved for this job. Add one to open the application here." />
