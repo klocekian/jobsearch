@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getJob } from "@/lib/db/jobs";
 import { getSubmission, updateSubmission, deleteSubmission, SUBMISSION_FORMATS } from "@/lib/db/submissions";
-import { pdfBytes } from "@/lib/pdf-attachment";
+import { MAX_CONTENT_CHARS, pdfBytes } from "@/lib/pdf-attachment";
 import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
@@ -31,6 +31,12 @@ export const GET = withUser<Params>(async (request, userId, ctx) => {
         "Content-Type": mime,
         "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${safeName}.${submission.format}"`,
         "Cache-Control": "private, no-store",
+        // The user's own upload, served from the app's origin: never sniff it
+        // into something executable. Text also gets a sandbox in case a browser
+        // renders it as a page; PDFs open in the browser's isolated viewer, which
+        // a sandbox policy can stop from loading.
+        "X-Content-Type-Options": "nosniff",
+        ...(submission.format === "pdf" ? {} : { "Content-Security-Policy": "sandbox" }),
       },
     });
   }
@@ -46,7 +52,7 @@ const UpdateSchema = z.object({
   label: z.string().max(500).optional(),
   format: z.enum(SUBMISSION_FORMATS).optional(),
   /** Text, or base64 when the format is pdf. */
-  content: z.string().optional(),
+  content: z.string().max(MAX_CONTENT_CHARS).optional(),
 });
 
 export const PATCH = withUser<Params>(async (request, userId, ctx) => {

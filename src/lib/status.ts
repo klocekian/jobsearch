@@ -19,13 +19,13 @@ export function statusLabel(status: string): string {
   return STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
 }
 
+/** Closing statuses. Entering one remembers the live status it left, so the job can be restored. */
+export const TERMINAL_STATUSES: ReadonlySet<string> = new Set(["rejected", "stale", "declined", "withdrawn", "abandoned", "closed"]);
+
 /**
  * The forward pipeline, in order. Every other status is terminal: it ends a
  * job's run, and previous_status records the stage it stopped at.
  */
-/** Closing statuses. Entering one remembers the live status it left, so the job can be restored. */
-export const TERMINAL_STATUSES: ReadonlySet<string> = new Set(["rejected", "stale", "declined", "withdrawn", "abandoned", "closed"]);
-
 export const PIPELINE_STATUSES: readonly string[] = ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer", "accepted"];
 
 /** Statuses that mean an application went in. */
