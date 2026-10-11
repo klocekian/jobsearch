@@ -172,6 +172,14 @@ export async function getDb(): Promise<Client> {
       last_used_at  TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      user_id       INTEGER NOT NULL,
+      bucket        TEXT NOT NULL,
+      window_start  INTEGER NOT NULL,
+      count         INTEGER NOT NULL,
+      PRIMARY KEY (user_id, bucket, window_start)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);

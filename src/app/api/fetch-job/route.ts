@@ -3,7 +3,8 @@ import { z } from "zod";
 import { htmlToText } from "@/lib/html-text";
 import { fetchPublicPage, findJobPostingJsonLd } from "@/lib/page-fetch";
 import { withUser } from "@/lib/api-auth";
-import { aiErrorResponse, parseBody } from "@/lib/api-response";
+import { aiErrorResponse, parseBody, rateLimitedResponse } from "@/lib/api-response";
+import { spend } from "@/lib/rate-limit";
 import { extractJobPosting } from "@/lib/job-extraction";
 
 // Fetch a job posting by URL and extract company / title / description. Runs
@@ -27,6 +28,12 @@ export const POST = withUser(async (request, userId) => {
   const body = await parseBody(request, RequestSchema);
   if (body.error) return body.error;
   const { url } = body.data;
+
+  try {
+    await spend(userId, "fetch");
+  } catch (err) {
+    return rateLimitedResponse(err);
+  }
 
   let html: string;
   try {

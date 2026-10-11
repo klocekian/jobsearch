@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AIError, aiErrorStatus } from "@/lib/ai";
+import { RateLimitError } from "@/lib/rate-limit";
 
 /** Parse a JSON body against a schema; on failure, the 400 to send back instead. */
 export async function parseBody<S extends z.ZodType>(
@@ -27,4 +28,13 @@ export function textStreamResponse(stream: ReadableStream<Uint8Array>): Response
   return new Response(stream, {
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache, no-transform" },
   });
+}
+
+/** 429 with Retry-After for a used-up allowance; rethrows anything else. */
+export function rateLimitedResponse(err: unknown): NextResponse {
+  if (!(err instanceof RateLimitError)) throw err;
+  return NextResponse.json(
+    { error: err.message, code: "rate_limited" },
+    { status: 429, headers: { "Retry-After": String(err.retryAfterSeconds) } },
+  );
 }

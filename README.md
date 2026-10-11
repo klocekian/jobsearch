@@ -61,6 +61,10 @@ Users normally connect their own AI provider under Profile → AI. The server's 
 emails listed in `SERVER_AI_EMAILS` (comma-separated) may use them. Leave it unset locally and
 every signed-in user gets the fallback.
 
+Each user gets an hourly allowance of AI calls (60) and outside page fetches (200; a bulk
+"check closed" costs one per job it checks). Past it, those routes answer 429 with a
+`Retry-After`. Override with `RATE_LIMIT_AI_PER_HOUR` / `RATE_LIMIT_FETCH_PER_HOUR`.
+
 ```
 src/lib/analysis/
   types.ts          data model (MatchReport and friends)

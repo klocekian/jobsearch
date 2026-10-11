@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { confirmClosedJobs, getJob, listRestorableJobs, restoreClosedJobs } from "@/lib/db/jobs";
 import { withUser } from "@/lib/api-auth";
+import { rateLimitedResponse } from "@/lib/api-response";
 import { checkAndCloseJob, checkActiveJobs } from "@/lib/services/jobs";
 
 export const runtime = "nodejs";
@@ -42,7 +43,12 @@ export const POST = withUser(async (request, userId) => {
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
-    const { result } = await checkAndCloseJob(job);
+    let result;
+    try {
+      ({ result } = await checkAndCloseJob(job));
+    } catch (err) {
+      return rateLimitedResponse(err);
+    }
     return NextResponse.json({
       checked: 1,
       closed: result.status === "closed" ? 1 : 0,
@@ -51,7 +57,12 @@ export const POST = withUser(async (request, userId) => {
     });
   }
 
-  const checked = await checkActiveJobs(userId);
+  let checked;
+  try {
+    checked = await checkActiveJobs(userId);
+  } catch (err) {
+    return rateLimitedResponse(err);
+  }
   const closed = checked.filter((c) => c.result.status === "closed");
   return NextResponse.json({
     checked: checked.length,
