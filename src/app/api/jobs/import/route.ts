@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchPublicPage } from "@/lib/page-fetch";
+import { rateLimitedResponse } from "@/lib/api-response";
+import { spend } from "@/lib/rate-limit";
 import { createJob, listJobs } from "@/lib/db/jobs";
 import { withUser } from "@/lib/api-auth";
 
@@ -106,6 +108,11 @@ export const POST = withUser(async (req, userId) => {
       const exportUrl = sheetExportUrl(parsed.data.sheetUrl);
       if (!exportUrl) {
         return NextResponse.json({ error: "That isn't a Google Sheets URL or ID." }, { status: 400 });
+      }
+      try {
+        await spend(userId, "fetch");
+      } catch (err) {
+        return rateLimitedResponse(err);
       }
       // Google answers the export URL with a redirect to googleusercontent.com.
       const page = await fetchPublicPage(exportUrl, { timeoutMs: 15_000, maxBytes: MAX_CSV_BYTES, accept: "text/csv" });

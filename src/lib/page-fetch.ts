@@ -1,10 +1,16 @@
+import type { LookupAddress, LookupOptions } from "node:dns";
 import { lookup } from "node:dns/promises";
+import http, { type IncomingMessage } from "node:http";
+import https from "node:https";
 import net from "node:net";
+import zlib from "node:zlib";
 
 // Fetching URLs that users hand us: job postings, careers pages, shared sheets.
 // Every hop must resolve to a public address — the first URL and each redirect
 // it leads to — so a public link can't bounce the server onto its own network
-// or a cloud metadata endpoint.
+// or a cloud metadata endpoint. Each request connects to the exact addresses
+// that were checked; the host is never looked up a second time, so a DNS answer
+// that changes between the check and the connection can't slip past it.
 
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -51,8 +57,13 @@ function isBlockedIp(ip: string): boolean {
   return false;
 }
 
-/** Parse the URL and confirm it's http(s) and every address its host resolves to is public. */
-export async function assertPublicUrl(raw: string | URL): Promise<URL> {
+/** A URL that passed the check, with the addresses its host resolved to. */
+interface CheckedUrl {
+  url: URL;
+  addresses: LookupAddress[];
+}
+
+async function checkUrl(raw: string | URL): Promise<CheckedUrl> {
   let url: URL;
   try {
     url = new URL(raw);
@@ -65,15 +76,89 @@ export async function assertPublicUrl(raw: string | URL): Promise<URL> {
   const host = url.hostname.replace(/^\[|\]$/g, ""); // strip IPv6 brackets
   if (host === "localhost" || host.endsWith(".localhost")) throw new UnsafeUrlError("That host is not allowed.");
 
-  const addresses = net.isIP(host)
-    ? [{ address: host }]
+  const family = net.isIP(host);
+  const addresses: LookupAddress[] = family
+    ? [{ address: host, family }]
     : await lookup(host, { all: true }).catch(() => {
         throw new UnsafeUrlError("Couldn't resolve that host.");
       });
   if (addresses.length === 0) throw new UnsafeUrlError("Couldn't resolve that host.");
   if (addresses.some((a) => isBlockedIp(a.address))) throw new UnsafeUrlError("That host is not allowed.");
-  return url;
+  return { url, addresses };
 }
+
+/** Parse the URL and confirm it's http(s) and every address its host resolves to is public. */
+export async function assertPublicUrl(raw: string | URL): Promise<URL> {
+  return (await checkUrl(raw)).url;
+}
+
+/** One HTTP exchange, before the body is read. */
+export interface Hop {
+  status: number;
+  location: string | null;
+  /** The decoded body, cut off at maxBytes. */
+  read(maxBytes: number): Promise<Buffer>;
+  discard(): void;
+}
+
+/** Sends one GET to `url`, connecting only to `addresses`. Swappable in tests. */
+export type Transport = (
+  url: URL,
+  addresses: LookupAddress[],
+  init: { headers: Record<string, string>; signal: AbortSignal },
+) => Promise<Hop>;
+
+/** A dns.lookup stand-in that answers with the addresses already checked. */
+function pinnedLookup(addresses: LookupAddress[]) {
+  return (
+    _host: string,
+    options: LookupOptions,
+    callback: (err: NodeJS.ErrnoException | null, address: string | LookupAddress[], family?: number) => void,
+  ) => {
+    if (options.all) callback(null, addresses);
+    else callback(null, addresses[0].address, addresses[0].family);
+  };
+}
+
+function readCapped(res: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  const encoding = String(res.headers["content-encoding"] ?? "").toLowerCase();
+  const body =
+    encoding === "gzip" || encoding === "x-gzip" ? res.pipe(zlib.createGunzip())
+    : encoding === "br" ? res.pipe(zlib.createBrotliDecompress())
+    : encoding === "deflate" ? res.pipe(zlib.createInflate())
+    : res;
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    body.on("data", (chunk: Buffer) => {
+      chunks.push(chunk);
+      size += chunk.length;
+      if (size >= maxBytes) {
+        resolve(Buffer.concat(chunks).subarray(0, maxBytes));
+        res.destroy();
+      }
+    });
+    body.on("end", () => resolve(Buffer.concat(chunks)));
+    body.on("error", reject);
+  });
+}
+
+/** The real transport: node:http(s) with the connection pinned to the checked addresses. */
+export const httpTransport: Transport = (url, addresses, { headers, signal }) =>
+  new Promise((resolve, reject) => {
+    const client = url.protocol === "https:" ? https : http;
+    const req = client.request(url, { method: "GET", headers, signal, lookup: pinnedLookup(addresses) }, (res) => {
+      const location = res.headers.location;
+      resolve({
+        status: res.statusCode ?? 0,
+        location: typeof location === "string" ? location : null,
+        read: (maxBytes) => readCapped(res, maxBytes),
+        discard: () => res.destroy(),
+      });
+    });
+    req.on("error", reject);
+    req.end();
+  });
 
 export interface FetchedPage {
   status: number;
@@ -92,38 +177,38 @@ export interface FetchedPage {
 export async function fetchPublicPage(
   raw: string,
   opts: { timeoutMs: number; maxBytes: number; accept?: string },
+  transport: Transport = httpTransport,
 ): Promise<FetchedPage> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
+  const headers = {
+    "User-Agent": BROWSER_UA,
+    Accept: opts.accept ?? "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+  };
   try {
-    let url = await assertPublicUrl(raw);
+    let target = await checkUrl(raw);
     for (let hop = 0; ; hop++) {
-      const res = await fetch(url, {
-        redirect: "manual",
-        signal: controller.signal,
-        headers: {
-          "User-Agent": BROWSER_UA,
-          Accept: opts.accept ?? "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-      });
-      const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
-      if (location) {
+      const res = await transport(target.url, target.addresses, { headers, signal: controller.signal });
+      if (res.status >= 300 && res.status < 400 && res.location) {
+        res.discard();
         if (hop >= MAX_REDIRECTS) throw new Error("Too many redirects.");
-        await res.body?.cancel();
-        url = await assertPublicUrl(new URL(location, url));
+        target = await checkUrl(new URL(res.location, target.url));
         continue;
       }
-      if (!res.ok) {
-        await res.body?.cancel();
-        return { status: res.status, ok: false, finalUrl: url.href, body: "" };
+      const finalUrl = target.url.href;
+      if (res.status < 200 || res.status >= 300) {
+        res.discard();
+        return { status: res.status, ok: false, finalUrl, body: "" };
       }
-      const buf = await res.arrayBuffer();
-      const bytes = buf.byteLength > opts.maxBytes ? buf.slice(0, opts.maxBytes) : buf;
-      return { status: res.status, ok: true, finalUrl: url.href, body: new TextDecoder("utf-8").decode(bytes) };
+      const bytes = await res.read(opts.maxBytes);
+      return { status: res.status, ok: true, finalUrl, body: new TextDecoder("utf-8").decode(bytes) };
     }
   } catch (err: unknown) {
-    if (err instanceof Error && err.name === "AbortError") throw new Error("The site took too long to respond.");
+    if (err instanceof Error && (err.name === "AbortError" || controller.signal.aborted)) {
+      throw new Error("The site took too long to respond.");
+    }
     throw err;
   } finally {
     clearTimeout(timer);

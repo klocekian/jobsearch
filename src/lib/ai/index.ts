@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { AI_PROVIDERS } from "./types";
 import { AIError } from "./errors";
+import { RateLimitError, spend } from "@/lib/rate-limit";
 import { claudeAdapter } from "./providers/claude";
 import { geminiAdapter } from "./providers/gemini";
 import { grokAdapter, mistralAdapter } from "./providers/openai-compatible";
@@ -115,6 +116,10 @@ export async function resolveAICredentials(userId: number | null): Promise<Resol
 
 async function prepare<O extends GenerateTextOptions>(userId: number | null, options: O) {
   const creds = await resolveAICredentials(userId);
+  // Counted only once there's a provider to call; "connect a provider" isn't a request.
+  await spend(userId, "ai").catch((err) => {
+    throw err instanceof RateLimitError ? new AIError("rate_limit", err.message, creds.provider) : err;
+  });
   return {
     adapter: ADAPTERS[creds.provider],
     creds,
