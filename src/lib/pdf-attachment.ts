@@ -4,6 +4,9 @@
 /** Upload cap. Base64 adds a third, and Vercel caps request bodies at 4.5 MB. */
 export const MAX_PDF_BYTES = 3 * 1024 * 1024;
 
+/** The longest submission content a request may carry: a full-size PDF as base64. */
+export const MAX_CONTENT_CHARS = 4_200_000;
+
 /** The PDF's bytes; throws unless `base64` decodes to a PDF within the cap. */
 export function pdfBytes(base64: string): Buffer {
   const bytes = Buffer.from(base64, "base64");

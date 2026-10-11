@@ -88,6 +88,7 @@ describe("API", () => {
     const inline = await app.req("GET", `${sub}?inline=1`);
     assert.equal(inline.headers.get("content-type"), "application/pdf");
     assert.match(inline.headers.get("content-disposition"), /^inline/);
+    assert.equal(inline.headers.get("x-content-type-options"), "nosniff");
     assert.ok(inline.text.startsWith("%PDF-"));
     const { submissions } = (await app.req("GET", `/api/jobs/${jobId}`)).data;
     assert.equal(submissions.find((s) => s.id === created.data.submission.id).content, "");
@@ -98,6 +99,21 @@ describe("API", () => {
     assert.equal((await app.req("PATCH", sub, { body: { format: "md" } })).status, 400);
     const toText = await app.req("PATCH", sub, { body: { format: "md", content: "# Resume" } });
     assert.deepEqual([toText.status, toText.data.submission.format, toText.data.submission.content], [200, "md", "# Resume"]);
+
+    // Text served from the app's origin can't be sniffed or run as a page.
+    const text = await app.req("GET", `${sub}?inline=1`);
+    assert.deepEqual([text.headers.get("x-content-type-options"), text.headers.get("content-security-policy")], ["nosniff", "sandbox"]);
+  });
+
+  it("submissions accept only txt, md and pdf, within the size cap", async () => {
+    const post = (body) => app.req("POST", `/api/jobs/${jobId}/submissions`, { body });
+    assert.equal((await post({ format: "html", content: "<script>alert(1)</script>" })).status, 400);
+    assert.equal((await post({ format: "md", content: "x".repeat(4_200_001) })).status, 400);
+    const ok = await post({ format: "md", content: "# Notes" });
+    assert.equal(ok.status, 201);
+    const sub = `/api/jobs/${jobId}/submissions/${ok.data.submission.id}`;
+    assert.equal((await app.req("PATCH", sub, { body: { content: "x".repeat(4_200_001) } })).status, 400);
+    assert.equal((await app.req("PATCH", sub, { body: { format: "exe" } })).status, 400);
   });
 });
 

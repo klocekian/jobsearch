@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getJob } from "@/lib/db/jobs";
-import { createSubmission } from "@/lib/db/submissions";
+import { createSubmission, SUBMISSION_FORMATS } from "@/lib/db/submissions";
 import { withUser } from "@/lib/api-auth";
 import { parseBody } from "@/lib/api-response";
-import { pdfBytes } from "@/lib/pdf-attachment";
+import { MAX_CONTENT_CHARS, pdfBytes } from "@/lib/pdf-attachment";
 
 export const runtime = "nodejs";
 
@@ -13,9 +13,8 @@ type Params = { params: Promise<{ id: string }> };
 const SubmissionSchema = z.object({
   type: z.string().max(50).default("other"),
   label: z.string().max(500).default("Untitled"),
-  format: z.string().max(10).default("txt"),
-  // Long, but not unbounded: room for a 3 MB PDF as base64.
-  content: z.string().max(4_200_000).default(""),
+  format: z.enum(SUBMISSION_FORMATS).default("txt"),
+  content: z.string().max(MAX_CONTENT_CHARS).default(""),
 });
 
 export const POST = withUser<Params>(async (request, userId, ctx) => {
