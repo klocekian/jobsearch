@@ -19,6 +19,7 @@ import type { MatchReport } from "@/lib/analysis/types";
 import { FITNESS_SYSTEM_PROMPT, buildFitnessUserMessage } from "@/lib/fitness/prompt";
 import { normalizeFitnessPayload } from "@/lib/fitness/normalize";
 import { generateStructured } from "@/lib/ai";
+import { spend } from "@/lib/rate-limit";
 
 // The job rules both front doors share: the API routes (the app and the
 // extension) and the MCP tools. Callers load the job with the user's id first
@@ -164,6 +165,11 @@ export async function editJob(
  * gone moves to "closed", remembering its status so "undo" can restore it.
  */
 export async function checkAndCloseJob(job: JobRow): Promise<{ result: JobCheckResult; closed: boolean }> {
+  await spend(job.user_id, "fetch");
+  return checkAndClose(job);
+}
+
+async function checkAndClose(job: JobRow): Promise<{ result: JobCheckResult; closed: boolean }> {
   const result = await checkJobStatus(job);
   const closed = result.status === "closed" && ACTIVE_STATUSES.has(job.status);
   if (closed) await updateJob(job.id, { status: "closed", previous_status: job.status, auto_closed: 1 });
@@ -177,11 +183,12 @@ export async function checkActiveJobs(
 ): Promise<{ job: JobRow; result: JobCheckResult; closed: boolean }[]> {
   const jobs = await listJobs(userId, { sort: "created_at", order: "desc" });
   const toCheck = jobs.filter((j) => j.url && ACTIVE_STATUSES.has(j.status)).slice(0, limit);
+  await spend(userId, "fetch", toCheck.length);
   const checked: { job: JobRow; result: JobCheckResult; closed: boolean }[] = [];
   const CHUNK_SIZE = 5;
   for (let i = 0; i < toCheck.length; i += CHUNK_SIZE) {
     const chunk = toCheck.slice(i, i + CHUNK_SIZE);
-    checked.push(...(await Promise.all(chunk.map(async (job) => ({ job, ...(await checkAndCloseJob(job)) })))));
+    checked.push(...(await Promise.all(chunk.map(async (job) => ({ job, ...(await checkAndClose(job)) })))));
   }
   return checked;
 }
