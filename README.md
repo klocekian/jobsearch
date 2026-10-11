@@ -39,10 +39,13 @@ Plus two more tabs:
 pnpm typecheck && pnpm lint
 pnpm test:unit     # AI layer against faked provider responses (no keys needed)
 pnpm build && pnpm test:http   # API + MCP against `next start` on a throwaway SQLite file
+pnpm test:e2e      # the built app in headless Chrome (needs Google Chrome installed)
 ```
 
 `tests/http` covers sign-in and per-user ownership on every route, the shared job rules through
-both the API and the MCP endpoint, and the server-AI-key allowlist. CI
+both the API and the MCP endpoint, and the server-AI-key allowlist. `tests/e2e` drives the
+pages in a browser: no render or hydration errors, onboarding, list sort, the auto-closed banner,
+status changes, a fitness run, the delete dialog and profile fields. CI
 (`.github/workflows/ci.yml`) runs all of it on every pull request.
 
 ## Architecture

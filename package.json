@@ -9,9 +9,10 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm test:unit && pnpm test:http",
+    "test": "pnpm test:unit && pnpm test:http && pnpm test:e2e",
     "test:unit": "tsx --tsconfig tsconfig.json --test 'tests/unit/*.test.mts'",
     "test:http": "node --test --test-concurrency=1 'tests/http/*.test.mjs'",
+    "test:e2e": "node --test --test-concurrency=1 'tests/e2e/*.test.mjs'",
     "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
     "mcp": "tsx --tsconfig tsconfig.json src/mcp/stdio.mts"
   },
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "playwright-core": "1.64.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"

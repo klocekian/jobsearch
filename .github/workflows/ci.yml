@@ -41,3 +41,15 @@ jobs:
       # Runs the built app with `next start` against throwaway SQLite files.
       - name: HTTP tests
         run: pnpm test:http
+
+      # The built app in headless Chrome (preinstalled on GitHub's Ubuntu runners).
+      - name: Browser tests
+        run: pnpm test:e2e
+
+      - name: Upload browser-test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: tests/e2e/.artifacts/
+          if-no-files-found: ignore
