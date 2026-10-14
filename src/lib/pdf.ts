@@ -1,6 +1,5 @@
-// Client-side PDF text extraction using pdfjs-dist.
-// Runs entirely in the browser so resume files never leave the device —
-// consistent with the privacy stance in the product spec.
+// PDF text extraction using pdfjs-dist. Uploaded resumes are processed in the
+// browser; the buffer entry point also lets tests inspect generated PDFs in Node.
 //
 // Two-column resumes (e.g. LinkedIn exports with a sidebar) are common and
 // break naive y-grouping: a sidebar item and a main-column item at the same
@@ -20,17 +19,26 @@ export interface PdfExtractResult {
 }
 
 export async function extractPdfText(file: File): Promise<PdfExtractResult> {
-  // Dynamic import keeps pdfjs out of the server bundle and off the initial load.
-  const pdfjs = await import("pdfjs-dist");
+  return extractPdfTextFromBuffer(await file.arrayBuffer());
+}
 
-  // Resolve the worker via a bundler-friendly URL (Turbopack/webpack rewrite this).
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url
-  ).href;
+export async function extractPdfTextFromBuffer(data: ArrayBuffer | Uint8Array): Promise<PdfExtractResult> {
+  const isNode = typeof window === "undefined";
+  // Dynamic imports keep pdfjs off the initial browser load. Node uses the
+  // legacy build, which disables real workers in Node.
+  const pdfjs = isNode
+    ? await import("pdfjs-dist/legacy/build/pdf.mjs")
+    : await import("pdfjs-dist");
 
-  const buffer = await file.arrayBuffer();
-  const loadingTask = pdfjs.getDocument({ data: buffer });
+  if (!isNode) {
+    // Turbopack/webpack rewrite this URL for the browser worker.
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).href;
+  }
+
+  const loadingTask = pdfjs.getDocument({ data });
   const doc = await loadingTask.promise;
   const pages = doc.numPages;
 
