@@ -64,6 +64,26 @@ describe("PDF text extraction", () => {
     }
   });
 
+  for (const template of ["classic", "lucid"] as const) {
+    it(`keeps consecutive bulletless experience entries on separate lines in ${template}`, { todo: true }, async () => {
+      const bulletless: ResumeData = {
+        ...resume,
+        linkedin: "",
+        github: "",
+        education: [],
+        experience: [
+          { role: "IT Manager", company: "GREENSKIES CLEAN ENERGY", dates: "July 2018 – June 2023", bullets: [] },
+          { role: "IT Administrator", company: "CLEAN FOCUS RENEWABLES", dates: "Oct 2014 – July 2018", bullets: [] },
+        ],
+      };
+      const doc = await buildResumeDoc(bulletless, { template });
+      const { rawText } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+      const lines = rawText.split("\n");
+      assert.ok(lines.some((line) => line.includes("IT Manager, GREENSKIES CLEAN ENERGY") && !line.includes("IT Administrator")), `${template}: ${rawText}`);
+      assert.ok(lines.some((line) => line.includes("IT Administrator, CLEAN FOCUS RENEWABLES") && !line.includes("IT Manager")), `${template}: ${rawText}`);
+    });
+  }
+
   it("round-trips a generated resume from a buffer and through the File wrapper", async () => {
     const doc = await buildResumeDoc(resume);
     const buffer = doc.output("arraybuffer");
