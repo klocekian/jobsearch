@@ -8,8 +8,11 @@ import { EMAIL_RE, PHONE_RE } from "./text";
 const SECTION_HEADINGS = new Set([
   "summary", "profile", "objective", "experience", "work experience",
   "professional experience", "education", "skills", "technical skills",
-  "projects", "certifications",
+  "core competencies", "projects", "certifications",
 ]);
+const GLUED_SECTION_HEADINGS = new Set(
+  [...SECTION_HEADINGS].filter((section) => section.includes(" ")).map((section) => section.replace(/ /g, ""))
+);
 const CONTACT_LINES = 8;
 const MIN_LETTERS = 40;
 const LONG_UNSPACED_WORD = 32;
@@ -31,7 +34,8 @@ export function checkParseFidelity(extractedText: string, expected?: string): Ch
   const words = extractedText.match(/\S+/g) ?? [];
   const gluedWords = words.some((word) => {
     const bare = word.replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, "");
-    return /^[A-Za-z]+$/.test(bare) && bare.length >= LONG_UNSPACED_WORD;
+    return /^[A-Za-z]+$/.test(bare) &&
+      (bare.length >= LONG_UNSPACED_WORD || GLUED_SECTION_HEADINGS.has(bare.toLowerCase()));
   });
   items.push(gluedWords
     ? { status: "warning", message: "Some words appear joined without spaces. Check the extracted resume text for missing word breaks." }

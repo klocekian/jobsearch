@@ -31,6 +31,15 @@ describe("parse fidelity", () => {
     assert.match(warnings(clean.replace("Builds reliable software for complex systems", "Buildsreliablesoftwareforcomplexsystems,"))[0], /joined without spaces/);
   });
 
+  it("flags multiword section headings glued into one word", () => {
+    for (const glued of ["CORECOMPETENCIES", "PROFESSIONALEXPERIENCE", "TECHNICALSKILLS", "WORKEXPERIENCE"]) {
+      const text = clean.replace("Experience\n", `Enterprise Integration ${glued} GREENSKIES CLEAN ENERGY\nExperience\n`);
+      assert.match(warnings(text)[0], /joined without spaces/, glued);
+    }
+    assert.deepEqual(warnings(clean.replace("Experience\n", "Enterprise Integration PROFESSIONAL EXPERIENCE GREENSKIES CLEAN ENERGY\nExperience\n")), []);
+    assert.deepEqual(warnings(clean.replace("Experience\n", "Worked on corecompetenciesbased tools\nExperience\n")), []);
+  });
+
   it("finds letter-spaced headings in the raw text", () => {
     assert.match(warnings(clean.replace("Summary", "S U M M A R Y"))[0], /spaces between its letters/);
   });
