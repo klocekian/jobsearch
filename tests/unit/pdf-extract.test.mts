@@ -43,7 +43,7 @@ describe("PDF text extraction", () => {
 
     const classicIssues = checkParseFidelity(classicText.rawText).filter((item) => item.status !== "pass");
     assert.equal(classicIssues.length, 1, JSON.stringify(classicIssues));
-    assert.match(classicIssues[0].message, /spaces between its letters/);
+    assert.match(classicIssues[0].message, /corrected them in the saved text/);
 
     const lucidIssues = checkParseFidelity(lucidText.rawText).filter((item) => item.status !== "pass");
     assert.deepEqual(lucidIssues, []);
