@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { parseResume } from "@/lib/resume/parse";
 import { resumeToMarkdown } from "@/lib/resume/markdown";
 import type { ResumeData } from "@/lib/resume/types";
@@ -8,7 +8,7 @@ import type { ResumeRow } from "@/lib/db/resumes";
 import { downloadResumePdf } from "@/lib/pdf/resume";
 import { documentFileBase } from "@/lib/pdf/shared";
 import { downloadText } from "@/lib/download";
-import { isResumeData, loadRewriteState, saveRewriteState } from "@/lib/storage";
+import { isResumeData, loadResumePdfTemplate, loadRewriteState, saveResumePdfTemplate, saveRewriteState, type ResumePdfTemplate } from "@/lib/storage";
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { RewriteEditor } from "./RewriteEditor";
 import { DownloadMenu } from "./DownloadMenu";
@@ -79,6 +79,15 @@ export function ResumeView({
 
   const [gen, setGen] = useState<Status>({ kind: "idle" });
   const [exporting, setExporting] = useState<Status>({ kind: "idle" });
+  const [pdfTemplate, setPdfTemplate] = useState<ResumePdfTemplate>("classic");
+  useEffect(() => {
+    const stored = loadResumePdfTemplate();
+    queueMicrotask(() => setPdfTemplate(stored));
+  }, []);
+  const changePdfTemplate = (template: ResumePdfTemplate) => {
+    setPdfTemplate(template);
+    saveResumePdfTemplate(template);
+  };
   const [saving, setSaving] = useState<Status>({ kind: "idle" });
   // Read until Edit (or Generate). Changes still persist as they're made, so a
   // tab switch loses nothing; Cancel puts back what was there at Edit.
@@ -169,7 +178,7 @@ export function ResumeView({
     setExporting({ kind: "loading" });
     try {
       const data = await structured();
-      if (format === "pdf") await downloadResumePdf(data, company);
+      if (format === "pdf") await downloadResumePdf(data, company, pdfTemplate);
       else downloadText(`${documentFileBase("Resume", data.name, company)}.md`, resumeToMarkdown(data));
       setExporting({ kind: "idle" });
     } catch (err: unknown) {
@@ -239,6 +248,8 @@ export function ResumeView({
             <DownloadMenu
               onPdf={() => download("pdf")}
               onMarkdown={() => download("md")}
+              template={pdfTemplate}
+              onTemplateChange={changePdfTemplate}
               busy={exporting.kind === "loading"}
             />
           )}
