@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildResumeDoc } from "@/lib/pdf/resume";
 import { extractPdfText, extractPdfTextFromBuffer } from "@/lib/pdf";
+import { readResumeFile } from "@/lib/extract";
 import type { ResumeData } from "@/lib/resume/types";
 
 const resume: ResumeData = {
@@ -31,9 +32,17 @@ describe("PDF text extraction", () => {
     const extracted = await extractPdfTextFromBuffer(new Uint8Array(buffer.slice(0)));
     assert.equal(extracted.pages, 1);
     assertResumeText(extracted.text);
+    assert.ok(extracted.rawText.includes("ada@example.com"));
 
     const file = new File([buffer], "resume.pdf", { type: "application/pdf" });
     const fromFile = await extractPdfText(file);
     assert.deepEqual(fromFile, extracted);
+
+    const uploaded = await readResumeFile(file);
+    assert.equal(uploaded.text, extracted.text);
+    assert.ok(uploaded.fidelity?.length, "PDF uploads include fidelity diagnostics");
+
+    const plain = await readResumeFile(new File(["Plain resume"], "resume.txt", { type: "text/plain" }));
+    assert.equal(plain.fidelity, undefined, "text uploads do not get PDF diagnostics");
   });
 });

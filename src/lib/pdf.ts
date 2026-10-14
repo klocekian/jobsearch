@@ -15,6 +15,8 @@ interface TextItemLike {
 
 export interface PdfExtractResult {
   text: string;
+  /** Text before page-break stitching and letter-spacing normalization. */
+  rawText: string;
   pages: number;
 }
 
@@ -52,7 +54,8 @@ export async function extractPdfTextFromBuffer(data: ArrayBuffer | Uint8Array): 
   }
   await loadingTask.destroy();
 
-  return { text: collapseLetterSpacing(stitchPageBreaks(pageTexts.join("\n\n").trim())), pages };
+  const rawText = pageTexts.join("\n\n").trim();
+  return { text: collapseLetterSpacing(stitchPageBreaks(rawText)), rawText, pages };
 }
 
 /**
