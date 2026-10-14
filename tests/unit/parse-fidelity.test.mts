@@ -41,7 +41,7 @@ describe("parse fidelity", () => {
   });
 
   it("finds letter-spaced headings in the raw text", () => {
-    assert.match(warnings(clean.replace("Summary", "S U M M A R Y"))[0], /spaces between its letters/);
+    assert.match(warnings(clean.replace("Summary", "S U M M A R Y"))[0], /corrected them in the saved text/);
   });
 
   it("flags ligatures", () => {

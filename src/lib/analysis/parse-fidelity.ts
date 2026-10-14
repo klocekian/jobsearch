@@ -43,7 +43,7 @@ export function checkParseFidelity(extractedText: string, expected?: string): Ch
 
   const trackedHeading = lines.some((line) => heading(line) !== null && despaceHeadings(line) !== line);
   items.push(trackedHeading
-    ? { status: "warning", message: "A section heading has spaces between its letters. Some ATS may miss that heading." }
+    ? { status: "warning", message: "Section headings in this PDF are letter-spaced. We corrected them in the saved text, but some parsers read the original as separate letters." }
     : { status: "pass", message: "Section headings are not letter-spaced." });
 
   items.push(/[\uFB00-\uFB06]/u.test(extractedText)
