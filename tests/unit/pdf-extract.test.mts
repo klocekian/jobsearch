@@ -77,10 +77,10 @@ describe("PDF text extraction", () => {
         ],
       };
       const doc = await buildResumeDoc(bulletless, { template });
-      const { rawText } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
-      const lines = rawText.split("\n");
-      assert.ok(lines.some((line) => line.includes("IT Manager, GREENSKIES CLEAN ENERGY") && !line.includes("IT Administrator")), `${template}: ${rawText}`);
-      assert.ok(lines.some((line) => line.includes("IT Administrator, CLEAN FOCUS RENEWABLES") && !line.includes("IT Manager")), `${template}: ${rawText}`);
+      const { text } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+      const lines = text.split("\n");
+      assert.ok(lines.some((line) => line.includes("IT Manager, GREENSKIES CLEAN ENERGY") && !line.includes("IT Administrator")), `${template}: ${text}`);
+      assert.ok(lines.some((line) => line.includes("IT Administrator, CLEAN FOCUS RENEWABLES") && !line.includes("IT Manager")), `${template}: ${text}`);
     });
   }
 
@@ -109,10 +109,10 @@ describe("PDF text extraction", () => {
     doc.text("Second paragraph starts", 56, 158);
     doc.text("and continues", 56, 172);
     doc.text("EXPERIENCE", 56, 202);
-    const { rawText } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
-    assert.match(rawText, /SUMMARY\n(?:\n)?First paragraph wraps across the page/);
-    assert.match(rawText, /across the page\n\nSecond paragraph starts and continues/);
-    assert.match(rawText, /and continues\n(?:\n)?EXPERIENCE/);
+    const { text } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+    assert.match(text, /SUMMARY\n(?:\n)?First paragraph wraps across the page/);
+    assert.match(text, /across the page\n\nSecond paragraph starts and continues/);
+    assert.match(text, /and continues\n(?:\n)?EXPERIENCE/);
   });
 
   it("stitches a bullet across PDF pages", async () => {

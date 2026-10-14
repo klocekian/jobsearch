@@ -55,42 +55,30 @@ export async function extractPdfTextFromBuffer(data: ArrayBuffer | Uint8Array): 
   await loadingTask.destroy();
 
   const rawText = pageTexts.join("\n\n").trim();
-  return { text: collapseLetterSpacing(stitchPageBreaks(rawText)), rawText, pages };
+  return { text: collapseLetterSpacing(stitchPageBreaks(pageTexts).trim()), rawText, pages };
 }
 
 /**
- * Rejoin a bullet/paragraph that was split by a page break: pages are joined
- * with a blank line, so a sentence continuing across pages ends up on two
- * logical lines. Drop the blank (and join) when the line before it does not end
- * a sentence and the next line is not a heading or new bullet.
+ * Rejoin a bullet/paragraph only across actual page boundaries. Blank lines
+ * within a page mark paragraph breaks and must survive in the saved text.
  */
-function stitchPageBreaks(text: string): string {
-  const lines = text.split("\n");
-  const out: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim() === "") {
-      let j = i + 1;
-      while (j < lines.length && lines[j].trim() === "") j++;
-      const prev = out[out.length - 1] ?? "";
-      const next = lines[j] ?? "";
-      const canStitch =
-        prev !== "" &&
-        next !== "" &&
-        !ENDS_SENTENCE.test(prev) &&
-        !isHeadingLine(prev) &&
-        !isHeadingLine(next) &&
-        !BULLET_RE.test(next);
-      if (canStitch) {
-        out[out.length - 1] = prev + (prev.endsWith("-") ? "" : " ") + next;
-        i = j; // consume the joined line
-        continue;
-      }
-      out.push("");
-    } else {
-      out.push(lines[i]);
-    }
+function stitchPageBreaks(pageTexts: string[]): string {
+  let out = pageTexts[0] ?? "";
+  for (const nextPage of pageTexts.slice(1)) {
+    const prev = out.split("\n").at(-1) ?? "";
+    const next = nextPage.split("\n")[0] ?? "";
+    const canStitch =
+      prev !== "" &&
+      next !== "" &&
+      !ENDS_SENTENCE.test(prev) &&
+      !isHeadingLine(prev) &&
+      !isHeadingLine(next) &&
+      !BULLET_RE.test(next);
+    out += canStitch
+      ? (prev.endsWith("-") ? "" : " ") + nextPage
+      : "\n\n" + nextPage;
   }
-  return out.join("\n");
+  return out;
 }
 
 /**
