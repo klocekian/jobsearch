@@ -65,7 +65,7 @@ describe("PDF text extraction", () => {
   });
 
   for (const template of ["classic", "lucid"] as const) {
-    it(`keeps consecutive bulletless experience entries on separate lines in ${template}`, { todo: true }, async () => {
+    it(`keeps consecutive bulletless experience entries on separate lines in ${template}`, async () => {
       const bulletless: ResumeData = {
         ...resume,
         linkedin: "",
@@ -83,6 +83,66 @@ describe("PDF text extraction", () => {
       assert.ok(lines.some((line) => line.includes("IT Administrator, CLEAN FOCUS RENEWABLES") && !line.includes("IT Manager")), `${template}: ${rawText}`);
     });
   }
+
+  for (const template of ["classic", "lucid"] as const) {
+    it(`joins long wrapped bullets without joining separate bullets in ${template}`, async () => {
+      const longBullet = "Coordinated reliable systems across multiple teams with careful planning and clear communication for customers and colleagues while improving delivery and maintaining a consistent experience for every customer.";
+      const doc = await buildResumeDoc({
+        ...resume,
+        experience: [{ role: "Engineer", company: "Analytical Engines", dates: "2020–2026", bullets: [longBullet, longBullet] }],
+      }, { template });
+      const { rawText } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+      const bulletLines = rawText.split("\n").filter((line) => line.startsWith("•"));
+      assert.equal(bulletLines.length, 2, `${template}: ${rawText}`);
+      for (const line of bulletLines) {
+        assert.ok(line.includes("Coordinated reliable systems") && line.includes("every customer."), `${template}: ${rawText}`);
+      }
+    });
+  }
+
+  it("keeps paragraph gaps and section headings separate", async () => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    doc.text("SUMMARY", 56, 100);
+    doc.text("First paragraph wraps", 56, 119);
+    doc.text("across the page", 56, 133);
+    doc.text("Second paragraph starts", 56, 158);
+    doc.text("and continues", 56, 172);
+    doc.text("EXPERIENCE", 56, 202);
+    const { rawText } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+    assert.match(rawText, /SUMMARY\n(?:\n)?First paragraph wraps across the page/);
+    assert.match(rawText, /across the page\n\nSecond paragraph starts and continues/);
+    assert.match(rawText, /and continues\n(?:\n)?EXPERIENCE/);
+  });
+
+  it("stitches a bullet across PDF pages", async () => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    doc.text("• Coordinated the migration with careful planning", 56, 100);
+    doc.text("and shared progress with every team", 56, 114);
+    doc.addPage();
+    doc.text("while preserving reliable delivery", 56, 100);
+    doc.text("for customers and colleagues.", 56, 114);
+    const extracted = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+    assert.equal(extracted.pages, 2);
+    assert.match(extracted.rawText, /every team\n\nwhile preserving/);
+    assert.match(extracted.text, /• Coordinated the migration with careful planning and shared progress with every team while preserving reliable delivery for customers and colleagues\./);
+  });
+
+  it("extracts a multi-page generated resume with long wrapped bullets", async () => {
+    const bullets = Array.from({ length: 16 }, (_, i) => `Project ${i + 1} coordinated reliable systems across multiple teams with careful planning and clear communication for customers and colleagues while improving delivery and maintaining a consistent experience for every customer.`);
+    const doc = await buildResumeDoc({
+      ...resume,
+      experience: [{ role: "Engineer", company: "Analytical Engines", dates: "2020–2026", bullets }],
+    }, { template: "lucid" });
+    const extracted = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+    assert.ok(extracted.pages >= 2, `expected multiple pages, got ${extracted.pages}`);
+    for (let i = 1; i <= bullets.length; i++) {
+      const matching = extracted.text.split("\n").filter((line) => line.includes(`Project ${i} coordinated`));
+      assert.equal(matching.length, 1, `Project ${i}: ${extracted.text}`);
+      assert.ok(matching[0].includes("every customer."), `Project ${i}: ${extracted.text}`);
+    }
+  });
 
   it("round-trips a generated resume from a buffer and through the File wrapper", async () => {
     const doc = await buildResumeDoc(resume);

@@ -248,6 +248,10 @@ function isHeadingLine(text: string): boolean {
  */
 function reflowLines(lines: VLine[], typical: number, applyHeader: boolean): string {
   const texts = lines.map(lineText);
+  const gaps = lines.slice(1).map((line, i) => lines[i].y - line.y);
+  // The page-wide median can be dominated by entry and section spacing on a
+  // short resume. Use the lower half of gaps to estimate ordinary line spacing.
+  const ordinary = median(gaps.filter((gap) => gap <= typical)) || typical;
   // Only the document header (page 1, before the first heading) is protected;
   // on later pages there is no header, so content must reflow normally.
   const firstHeading = applyHeader ? texts.findIndex((t) => isHeadingLine(t)) : -1;
@@ -257,7 +261,7 @@ function reflowLines(lines: VLine[], typical: number, applyHeader: boolean): str
   for (let i = 0; i < lines.length; i++) {
     const t = texts[i];
     if (!t) continue;
-    const bigGap = i > 0 && lines[i - 1].y - lines[i].y > typical * 1.6;
+    const bigGap = i > 0 && lines[i - 1].y - lines[i].y > ordinary * 1.25;
     const inHeader = firstHeading >= 0 && i < firstHeading;
     const newLine =
       cur === "" ||
