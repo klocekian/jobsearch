@@ -9,6 +9,7 @@ import { buildResumeDoc } from "@/lib/pdf/resume";
 import { documentFileBase } from "@/lib/pdf/shared";
 import { checkParseFidelity } from "@/lib/analysis/parse-fidelity";
 import { readyToApply } from "@/lib/analysis/ready-to-apply";
+import { bandForScore } from "@/lib/fitness/schema";
 import { downloadText } from "@/lib/download";
 import { isResumeData, loadResumePdfTemplate, loadRewriteState, saveResumePdfTemplate, saveRewriteState, type ResumePdfTemplate } from "@/lib/storage";
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
@@ -20,6 +21,7 @@ import { apiFetch, apiSend, errorMessage, readTextStream } from "@/lib/api-clien
 import type { AiDetection, CheckItem } from "@/lib/analysis/types";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
+import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { useConfirm } from "@/hooks/useConfirm";
 
@@ -89,6 +91,11 @@ export function ResumeView({
   const pendingPdf = useRef<{ doc: Awaited<ReturnType<typeof buildResumeDoc>>; filename: string } | null>(null);
   const [confirmPdf, setConfirmPdf] = useState(false);
   const ready = readyToApply(pdfChecks, { fitness: fitnessScore, match: matchScore, aiBand: aiDetection?.band });
+  const fitnessBand = ready.fitness === null ? null : bandForScore(ready.fitness);
+  const pdfVariant: BadgeVariant = ready.parseStatus === "pass" ? "success" : ready.parseStatus === "warning" ? "warning" : ready.parseStatus === "fail" ? "error" : "neutral";
+  const fitnessVariant: BadgeVariant = fitnessBand === null ? "neutral" : fitnessBand === "target" || fitnessBand === "priority target" ? "success" : fitnessBand === "practice" ? "warning" : "error";
+  const matchVariant: BadgeVariant = ready.match === null ? "neutral" : ready.match >= 90 ? "success" : ready.match >= 80 ? "warning" : "error";
+  const aiVariant: BadgeVariant = ready.aiBand === "low" ? "success" : ready.aiBand === "moderate" ? "warning" : ready.aiBand === "high" ? "error" : "neutral";
   const clearPdfCheck = () => {
     setPdfChecks(null);
     pendingPdf.current = null;
@@ -294,18 +301,20 @@ export function ResumeView({
       {exporting.kind === "error" && (
         <Banner status="error" title={exporting.message ?? "An error occurred."} className="text-sm" />
       )}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground" aria-label="Ready to apply status">
-        <span className="font-semibold text-foreground">Ready to apply</span>
-        <span>PDF check: {ready.parseStatus === "unchecked" ? "not checked" : ready.parseStatus === "pass" ? "passed" : ready.parseStatus === "fail" ? `${ready.failures} issue${ready.failures === 1 ? "" : "s"}` : `${ready.warnings} warning${ready.warnings === 1 ? "" : "s"}`}</span>
-        <span>Fitness (last analysis): {ready.fitness === null ? "not checked" : `${ready.fitness}/100`}</span>
-        <span>Match (last analysis): {ready.match === null ? "not checked" : `${ready.match}/100`}</span>
-        <span>AI signal (last analysis): {ready.aiBand ?? "not checked"}</span>
+      <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm" aria-label="Ready to apply status">
+        <h3 className="mb-2 font-semibold text-foreground">Ready to apply</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={pdfVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`PDF check: ${ready.parseStatus === "unchecked" ? "not checked" : ready.parseStatus === "pass" ? "passed" : ready.parseStatus === "fail" ? `${ready.failures} issue${ready.failures === 1 ? "" : "s"}` : `${ready.warnings} warning${ready.warnings === 1 ? "" : "s"}`}`} />
+          <Badge variant={fitnessVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`Fitness (last analysis): ${ready.fitness === null ? "not checked" : `${ready.fitness}/100`}`} />
+          <Badge variant={matchVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`Match (last analysis): ${ready.match === null ? "not checked" : `${ready.match}/100`}`} />
+          <Badge variant={aiVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`AI signal (last analysis): ${ready.aiBand ?? "not checked"}`} />
+        </div>
+        {pdfChecks?.some((item) => item.status === "warning") && (
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-700 dark:text-amber-400">
+            {pdfChecks.filter((item) => item.status === "warning").map((item) => <li key={item.message}>{item.message}</li>)}
+          </ul>
+        )}
       </div>
-      {pdfChecks?.some((item) => item.status === "warning") && (
-        <ul className="list-disc space-y-1 pl-5 text-xs text-amber-700 dark:text-amber-400">
-          {pdfChecks.filter((item) => item.status === "warning").map((item) => <li key={item.message}>{item.message}</li>)}
-        </ul>
-      )}
       {confirmPdf && (
         <Banner
           status="warning"
