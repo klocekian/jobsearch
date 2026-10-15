@@ -49,6 +49,7 @@ interface ResumeViewProps {
 }
 
 type Status = { kind: "idle" | "loading" | "error"; message?: string };
+const READY_BADGE_CLASS = "!h-auto !min-h-7 !py-1 !text-sm";
 
 export function ResumeView({
   jobId,
@@ -304,10 +305,10 @@ export function ResumeView({
       <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm" aria-label="Ready to apply status">
         <h3 className="mb-2 font-semibold text-foreground">Ready to apply</h3>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={pdfVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`PDF check: ${ready.parseStatus === "unchecked" ? "not checked" : ready.parseStatus === "pass" ? "passed" : ready.parseStatus === "fail" ? `${ready.failures} issue${ready.failures === 1 ? "" : "s"}` : `${ready.warnings} warning${ready.warnings === 1 ? "" : "s"}`}`} />
-          <Badge variant={fitnessVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`Fitness (last analysis): ${ready.fitness === null ? "not checked" : `${ready.fitness}/100`}`} />
-          <Badge variant={matchVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`Match (last analysis): ${ready.match === null ? "not checked" : `${ready.match}/100`}`} />
-          <Badge variant={aiVariant} className="!h-auto !min-h-7 !py-1 !text-sm" label={`AI signal (last analysis): ${ready.aiBand ?? "not checked"}`} />
+          <Badge variant={pdfVariant} className={READY_BADGE_CLASS} label={`PDF check: ${ready.parseStatus === "unchecked" ? "not checked" : ready.parseStatus === "pass" ? "passed" : ready.parseStatus === "fail" ? `${ready.failures} issue${ready.failures === 1 ? "" : "s"}` : `${ready.warnings} warning${ready.warnings === 1 ? "" : "s"}`}`} />
+          <Badge variant={fitnessVariant} className={READY_BADGE_CLASS} label={`Fitness (last analysis): ${ready.fitness === null ? "not checked" : `${ready.fitness}/10`}`} />
+          <Badge variant={matchVariant} className={READY_BADGE_CLASS} label={`Match (last analysis): ${ready.match === null ? "not checked" : `${ready.match}/100`}`} />
+          <Badge variant={aiVariant} className={READY_BADGE_CLASS} label={`AI signal (last analysis): ${ready.aiBand ?? "not checked"}`} />
         </div>
         {pdfChecks?.some((item) => item.status === "warning") && (
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-700 dark:text-amber-400">
