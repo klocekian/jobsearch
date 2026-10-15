@@ -14,6 +14,7 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Banner } from "@astryxdesign/core/Banner";
 import { readResumeFile } from "@/lib/extract";
+import type { CheckItem } from "@/lib/analysis/types";
 import { formatDate } from "@/lib/format";
 import { apiSend, errorMessage } from "@/lib/api-client";
 import { useResumes } from "@/hooks/useResumes";
@@ -42,6 +43,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   const [newContent, setNewContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  const [fidelityWarnings, setFidelityWarnings] = useState<CheckItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
   const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes" | "candidate">("account");
@@ -53,8 +55,10 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   ) => {
     if (!file) return;
     setResumeError(null);
+    setFidelityWarnings([]);
     try {
-      const { text, name } = await readResumeFile(file);
+      const { text, name, fidelity } = await readResumeFile(file);
+      setFidelityWarnings(fidelity?.filter((item) => item.status !== "pass") ?? []);
       setContent(text);
       if (setName && !newName) setName(name);
     } catch (err) {
@@ -211,6 +215,16 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
             <div className="mb-4">
               <Banner status="error" title={resumeError} isDismissable onDismiss={() => setResumeError(null)} />
             </div>
+          )}
+          {fidelityWarnings.length > 0 && (
+            <Banner
+              status="warning"
+              title="PDF text extraction warnings"
+              description={<ul className="list-disc pl-5">{fidelityWarnings.map((item) => <li key={item.message}>{item.message}</li>)}</ul>}
+              isDismissable
+              onDismiss={() => setFidelityWarnings([])}
+              className="mb-4"
+            />
           )}
 
           {adding && (

@@ -342,6 +342,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
                   jobTitle={job.title}
                   missingSkills={analyzed?.report.highlights.missing ?? []}
                   aiDetection={aiDetection.data}
+                  fitnessScore={fitness.saved?.score}
+                  matchScore={analyzed?.report.score}
                   materials={materials}
                   onMaterialsChange={setMaterials}
                   onSaved={onResumeSaved}

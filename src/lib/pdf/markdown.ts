@@ -2,7 +2,7 @@
 // paragraphs in the visual language defined in shared.ts.
 
 import type { jsPDF } from "jspdf";
-import { PdfBuilder, THEME, documentFileBase, stripMarkdown } from "./shared";
+import { PdfBuilder, THEMES, documentFileBase, stripMarkdown } from "./shared";
 
 /** Build the PDF document (no download — testable in any runtime). */
 export async function buildMarkdownDoc(title: string, markdown: string): Promise<jsPDF> {
@@ -10,7 +10,7 @@ export async function buildMarkdownDoc(title: string, markdown: string): Promise
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const b = new PdfBuilder(doc);
 
-  b.paragraph(title, { size: 20, style: "bold", color: THEME.strong, gapAfter: 4 });
+  b.paragraph(title, { size: 20, style: "bold", color: THEMES.classic.strong, gapAfter: 4 });
   b.rule();
   b.space(8);
 
@@ -29,7 +29,7 @@ export async function buildMarkdownDoc(title: string, markdown: string): Promise
     } else if (heading) {
       flush();
       if (heading[1].length <= 2) b.sectionHeading(stripMarkdown(heading[2]));
-      else b.paragraph(stripMarkdown(heading[2]), { size: 11, style: "bold", color: THEME.strong, gapAfter: 4 });
+      else b.paragraph(stripMarkdown(heading[2]), { size: 11, style: "bold", color: THEMES.classic.strong, gapAfter: 4 });
     } else if (bullet) {
       flush();
       b.bullet(stripMarkdown(bullet[1]));
