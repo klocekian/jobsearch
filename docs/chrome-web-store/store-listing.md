@@ -13,9 +13,7 @@ Job Search Clipper
 
 ## Summary (up to 132 characters)
 
-The dashboard takes this from `description` in the manifest. The current text says "local job
-tracker", which is wrong for the store build: it saves to jobs.fieldlines.org. Change the
-manifest `description` to this before you package (114 characters):
+The dashboard takes this from `description` in the manifest, which already says (114 characters):
 
 ```
 Save job postings from any site to your jobs.fieldlines.org tracker, and fill application forms from your profile.
@@ -67,7 +65,7 @@ All of these are in `docs/chrome-web-store/images/`.
 
 | Field | File | Notes |
 | --- | --- | --- |
-| Store icon (128×128) | `store-icon-128.png` | The art is 96×96 inside 16 px of transparent padding, as Google's guidelines ask. Upload this one, not `chrome-extension/icon128.png`, which runs edge to edge on a white square. |
+| Store icon (128×128) | `store-icon-128.png` | The art is 96×96 inside 16 px of transparent padding, as Google's guidelines ask. Upload this one rather than `chrome-extension/icon128.png`, which has no padding. |
 | Screenshot 1 (1280×800) | `01-clip.png` | Clipping a posting |
 | Screenshot 2 (1280×800) | `02-fill.png` | Filling an application |
 | Screenshot 3 (1280×800) | `03-tracker.png` | Where clips end up |
@@ -84,5 +82,5 @@ the store requires.
 | --- | --- |
 | Official URL | `https://jobs.fieldlines.org`. This only works if you verify the domain in Google Search Console with the same Google account. Otherwise leave it blank. |
 | Homepage URL | `https://jobs.fieldlines.org` |
-| Support URL | A support email or page, e.g. `mailto:` the contact address you use in the privacy policy |
+| Support URL | `mailto:stefan.klocek@gmail.com`, the address in the privacy policy, or a support page if you add one |
 | Mature content | No |

@@ -1,13 +1,12 @@
 # Privacy Policy: Job Search and Job Search Clipper
 
-> **Before publishing:** replace `[CONTACT EMAIL]` and `[OPERATOR NAME]` (you, or your
-> business name), and set the effective date. The policy must be on a public page.
-> `https://jobs.fieldlines.org/privacy` is the suggested address. See `README.md`, step 2.
+> Published at https://jobs.fieldlines.org/privacy from `src/app/privacy/page.tsx`. If you
+> change the policy, change it there, and keep this copy in step.
 
-**Effective date:** [DATE]
+**Effective date:** November 1, 2026
 
 This policy covers the Job Search web app at https://jobs.fieldlines.org (the "Service") and the
-Job Search Clipper Chrome extension (the "Extension"), both run by [OPERATOR NAME] ("we", "us").
+Job Search Clipper Chrome extension (the "Extension"), both run by Fieldlines ("we", "us").
 
 ## What we collect
 
@@ -75,7 +74,7 @@ is perfectly secure, but we take reasonable steps to protect yours.
 
 Your data stays in your account until you delete it. You can delete individual jobs and
 resumes, and disconnect AI providers and connected apps, at any time. To delete your whole
-account and everything in it, email [CONTACT EMAIL]. We'll do it within 30 days. Uninstalling the
+account and everything in it, email stefan.klocek@gmail.com. We'll do it within 30 days. Uninstalling the
 Extension removes its local settings.
 
 ## Children
@@ -95,4 +94,4 @@ also tell you in the Service.
 
 ## Contact
 
-[CONTACT EMAIL]
+stefan.klocek@gmail.com

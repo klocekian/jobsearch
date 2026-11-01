@@ -30,7 +30,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Auth gate — redirect to login if no session cookie
-  const publicPaths = ["/login", "/api/auth/", "/chrome-extension.zip", "/hero/", "/.well-known/", "/oauth/"];
+  const publicPaths = ["/login", "/privacy", "/api/auth/", "/chrome-extension.zip", "/hero/", "/.well-known/", "/oauth/"];
   if (pathname === "/" || publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }

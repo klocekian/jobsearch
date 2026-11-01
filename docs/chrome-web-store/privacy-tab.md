@@ -78,5 +78,4 @@ approved use. It is part of the feature, the user asks for it, and the privacy p
 https://jobs.fieldlines.org/privacy
 ```
 
-That page doesn't exist yet. See `privacy-policy.md` for the text, and step 2 of `README.md`
-for what has to change so the URL works.
+It is served by `src/app/privacy/page.tsx` and is reachable without signing in.

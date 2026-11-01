@@ -14,7 +14,8 @@
     "test:http": "node --test --test-concurrency=1 'tests/http/*.test.mjs'",
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/*.test.mjs'",
     "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
-    "mcp": "tsx --tsconfig tsconfig.json src/mcp/stdio.mts"
+    "mcp": "tsx --tsconfig tsconfig.json src/mcp/stdio.mts",
+    "package:extension": "bash scripts/package-extension.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
