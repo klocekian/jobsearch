@@ -560,6 +560,10 @@ export function LandingPage() {
               Download Chrome Extension
             </a>
             <span>·</span>
+            <a href="/privacy" className="hover:text-primary transition-colors">
+              Privacy
+            </a>
+            <span>·</span>
             <a href="/api/auth/login" className="hover:text-primary transition-colors">
               Sign in
             </a>

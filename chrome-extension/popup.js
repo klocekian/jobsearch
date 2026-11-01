@@ -102,6 +102,35 @@ function renderApiBase() {
 
 
 const $ = (id) => document.getElementById(id);
+
+// Company, title and status strings come from scraped job pages, and profile
+// values from the user. Escape anything interpolated into innerHTML.
+function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Shown wherever a request comes back 401. Without it a signed-out panel just
+// looks empty and Save fails with a bare "Not signed in."
+function signInHtml() {
+  return `Sign in to your tracker first: <a href="${esc(API_BASE)}" target="_blank" style="color:inherit;text-decoration:underline;font-weight:600">open ${esc(API_BASE.replace(/^https?:\/\//, ""))}</a>, sign in, then click ↻ above.`;
+}
+
+function showSignedOut() {
+  const box = $("signedOut");
+  if (!box) return;
+  box.innerHTML = signInHtml();
+  box.style.display = "block";
+}
+
+function hideSignedOut() {
+  const box = $("signedOut");
+  if (box) box.style.display = "none";
+}
 let pageData = null;
 let fullPostingText = "";
 
@@ -145,7 +174,7 @@ async function clipPage() {
       }
     }
   } catch (err) {
-    showStatus("error", err.message || "Failed to read the page.");
+    showStatus("error", esc(err.message || "Failed to read the page."));
     $("loading").style.display = "none";
   }
 }
@@ -158,6 +187,8 @@ async function loadRecentJobs() {
     const currentUrl = tab?.url ?? "";
 
     const res = await fetch(`${API_BASE}/api/jobs?sort=created_at&order=desc`, { credentials: "include" });
+    if (res.status === 401) { list.innerHTML = ""; showSignedOut(); return; }
+    hideSignedOut();
     if (!res.ok) return;
     const data = await res.json();
     const allJobs = data.jobs ?? [];
@@ -175,8 +206,8 @@ async function loadRecentJobs() {
       if (match) {
         matchHtml = `<div style="margin-bottom:10px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:12px">` +
           `<div style="font-size:10px;font-weight:600;color:#b91c1c;margin-bottom:3px">Already saved</div>` +
-          `<a href="${API_BASE}/jobs/${match.id}" target="_blank" style="color:#1e293b;text-decoration:none;font-weight:600">${match.company || "—"}</a> · ${match.title || "—"}` +
-          `<div style="margin-top:4px;font-size:10px;color:#64748b">Status: <strong>${match.status}</strong></div>` +
+          `<a href="${esc(API_BASE)}/jobs/${esc(match.id)}" target="_blank" style="color:#1e293b;text-decoration:none;font-weight:600">${esc(match.company || "—")}</a> · ${esc(match.title || "—")}` +
+          `<div style="margin-top:4px;font-size:10px;color:#64748b">Status: <strong>${esc(match.status)}</strong></div>` +
           `</div>`;
       }
     }
@@ -192,7 +223,7 @@ async function loadRecentJobs() {
       `<span id="recentCaret">${caret}</span> Recent clips` +
       `<span style="font-weight:400;color:#64748b">(${recent.length})</span></button>` +
       `<div id="recentList" style="display:${recentCollapsed ? "none" : "block"}">` +
-      recent.map((j) => `<a href="${API_BASE}/jobs/${j.id}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${j.company || "—"}</strong> · ${j.title || "—"}</a>`).join("") +
+      recent.map((j) => `<a href="${esc(API_BASE)}/jobs/${esc(j.id)}" target="_blank" style="display:block;padding:4px 0;font-size:12px;color:#475569;text-decoration:none;line-height:1.3;border-bottom:1px solid #f1f5f9"><strong style="color:#1e293b">${esc(j.company || "—")}</strong> · ${esc(j.title || "—")}</a>`).join("") +
       `</div>`;
 
     // innerHTML was just replaced, so the listener is attached fresh each load.
@@ -226,6 +257,7 @@ async function loadFillFields() {
   if (!container) return;
   try {
     const res = await fetch(`${API_BASE}/api/profile/autofill`, { credentials: "include" });
+    if (res.status === 401) { container.innerHTML = `<p style="font-size:12px;color:#b91c1c">${signInHtml()}</p>`; return; }
     if (!res.ok) { container.innerHTML = `<p style="font-size:12px;color:#b91c1c">Add a resume or fill in Application Fields on your Profile page.</p>`; return; }
     const data = await res.json();
     const keys = Object.keys(FILL_FIELD_LABELS);
@@ -235,9 +267,9 @@ async function loadFillFields() {
       if (value === true) value = "Yes";
       else if (value === false) value = "No";
       else value = value || "";
-      return `<div class="field-row" data-value="${String(value).replace(/"/g, "&quot;")}" title="Click to copy">` +
-        `<span class="field-label">${label}</span>` +
-        `<span class="field-value ${value ? "" : "empty"}">${value || "—"}</span>` +
+      return `<div class="field-row" data-value="${esc(value)}" title="Click to copy">` +
+        `<span class="field-label">${esc(label)}</span>` +
+        `<span class="field-value ${value ? "" : "empty"}">${esc(value || "—")}</span>` +
         `</div>`;
     }).join("");
     container.querySelectorAll(".field-row").forEach((row) => {
@@ -445,6 +477,12 @@ async function extractWithAI(data) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: data.text, url: data.url }),
     });
+    if (res.status === 401) {
+      showSignedOut();
+      $("extractBtn").textContent = "Re-extract with AI";
+      $("extractBtn").disabled = false;
+      return;
+    }
     if (!res.ok) {
       let msg = `AI extraction failed (${res.status}).`;
       try {
@@ -502,18 +540,24 @@ $("form").addEventListener("submit", async (e) => {
         source: "extension",
       }),
     });
+    if (res.status === 401) {
+      showStatus("error", signInHtml());
+      $("saveBtn").disabled = false;
+      $("saveBtn").textContent = "Save Job";
+      return;
+    }
     const data = await res.json();
     if (!res.ok) {
       const msg = typeof data?.error === "string" ? data.error : JSON.stringify(data?.error ?? data);
       throw new Error(msg.length > 200 ? "Validation failed — check the fields and try again." : msg);
     }
     const verb = data.merged ? "Updated existing job" : "Saved";
-    showStatus("success", `${verb}! <a href="${API_BASE}/jobs/${data.job.id}" target="_blank" style="color:inherit;text-decoration:underline">View job →</a>`);
+    showStatus("success", `${verb}! <a href="${esc(API_BASE)}/jobs/${esc(data.job.id)}" target="_blank" style="color:inherit;text-decoration:underline">View job →</a>`);
     $("form").style.display = "none";
     $("saveBtn").disabled = false;
     $("saveBtn").textContent = "Save Job";
   } catch (err) {
-    showStatus("error", err.message);
+    showStatus("error", esc(err.message));
     $("saveBtn").disabled = false;
     $("saveBtn").textContent = "Save Job";
   }
@@ -542,6 +586,7 @@ async function fillApplication() {
 
   try {
     const res = await fetch(`${API_BASE}/api/profile/autofill`, { credentials: "include" });
+    if (res.status === 401) { showStatus("error", signInHtml()); return; }
     if (!res.ok) throw new Error("No profile data — add a resume on the Profile page first.");
     const profileData = await res.json();
 
@@ -557,7 +602,7 @@ async function fillApplication() {
     const count = results?.[0]?.result ?? 0;
     showStatus("success", `Filled ${count} field${count !== 1 ? "s" : ""}. Review before submitting.`);
   } catch (err) {
-    showStatus("error", err.message || "Failed to fill form.");
+    showStatus("error", esc(err.message || "Failed to fill form."));
   } finally {
     fillBtn.disabled = false;
     fillBtn.textContent = "Fill application fields";

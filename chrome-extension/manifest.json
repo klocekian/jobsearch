@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Job Search Clipper",
-  "version": "1.1.2",
-  "description": "Capture job postings from any page and save them to your local job tracker.",
+  "version": "1.2.0",
+  "description": "Save job postings from any site to your jobs.fieldlines.org tracker, and fill application forms from your profile.",
   "permissions": [
     "activeTab",
     "scripting",
