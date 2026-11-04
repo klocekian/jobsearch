@@ -190,6 +190,12 @@ function writeKey(store: Store, key: string, value: string | null): void {
   } catch {}
 }
 
+export type ResumePdfTemplate = "classic" | "lucid";
+export const loadResumePdfTemplate = (): ResumePdfTemplate =>
+  readKey("local", "resumePdfTemplate") === "lucid" ? "lucid" : "classic";
+export const saveResumePdfTemplate = (template: ResumePdfTemplate): void =>
+  writeKey("local", "resumePdfTemplate", template);
+
 export const isOnboardingDone = (): boolean => readKey("local", "has_completed_onboarding_wizard_v1") === "true";
 export const markOnboardingDone = (): void => writeKey("local", "has_completed_onboarding_wizard_v1", "true");
 

@@ -3,7 +3,7 @@
 
 import type { jsPDF } from "jspdf";
 import type { Contact } from "../contact";
-import { PdfBuilder, documentFileBase } from "./shared";
+import { PdfBuilder, type PdfTheme, documentFileBase } from "./shared";
 
 export interface CoverPdfInput {
   contact: Contact;
@@ -14,12 +14,18 @@ export interface CoverPdfInput {
 }
 
 /** Build the cover-letter PDF document (no download — testable in any runtime). */
-export async function buildCoverLetterDoc(input: CoverPdfInput): Promise<jsPDF> {
+export async function buildCoverLetterDoc(input: CoverPdfInput, opts: { template?: PdfTheme } = {}): Promise<jsPDF> {
   const { jsPDF } = await import("jspdf");
   const { contact, body, date } = input;
 
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const b = new PdfBuilder(doc);
+  const b = new PdfBuilder(doc, opts.template ?? "classic");
+  doc.setProperties({
+    title: `${contact.name || "Your Name"} — Cover Letter`,
+    author: contact.name || "Your Name",
+    subject: "Cover Letter",
+    keywords: "cover letter",
+  });
 
   // Header: the candidate's NAME (not a section word), then contact line.
   b.header({
@@ -42,7 +48,7 @@ export async function buildCoverLetterDoc(input: CoverPdfInput): Promise<jsPDF> 
   return doc;
 }
 
-export async function downloadCoverLetterPdf(input: CoverPdfInput): Promise<void> {
-  const doc = await buildCoverLetterDoc(input);
+export async function downloadCoverLetterPdf(input: CoverPdfInput, template: PdfTheme = "classic"): Promise<void> {
+  const doc = await buildCoverLetterDoc(input, { template });
   doc.save(`${documentFileBase("Cover Letter", input.contact.name, input.company)}.pdf`);
 }

@@ -4,15 +4,22 @@
 
 import type { jsPDF } from "jspdf";
 import type { ResumeData } from "../resume/types";
-import { PdfBuilder, documentFileBase, stripMarkdown } from "./shared";
+import { PdfBuilder, type PdfTheme, documentFileBase, stripMarkdown } from "./shared";
 
 const md = stripMarkdown;
 
 /** Build the resume PDF document (no download — testable in any runtime). */
-export async function buildResumeDoc(data: ResumeData): Promise<jsPDF> {
+export async function buildResumeDoc(data: ResumeData, opts: { template?: PdfTheme } = {}): Promise<jsPDF> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const b = new PdfBuilder(doc);
+  const template = opts.template ?? "classic";
+  const b = new PdfBuilder(doc, template);
+  doc.setProperties({
+    title: `${md(data.name) || "Your Name"} — Resume`,
+    author: md(data.name) || "Your Name",
+    subject: md(data.headline) || "Resume",
+    keywords: md(data.headline) || "resume",
+  });
 
   b.header({
     name: md(data.name) || "Your Name",
@@ -66,7 +73,7 @@ export async function buildResumeDoc(data: ResumeData): Promise<jsPDF> {
   return doc;
 }
 
-export async function downloadResumePdf(data: ResumeData, company = ""): Promise<void> {
-  const doc = await buildResumeDoc(data);
+export async function downloadResumePdf(data: ResumeData, company = "", template: PdfTheme = "classic"): Promise<void> {
+  const doc = await buildResumeDoc(data, { template });
   doc.save(`${documentFileBase("Resume", data.name, company)}.pdf`);
 }

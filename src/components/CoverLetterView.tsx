@@ -5,7 +5,7 @@ import { extractContact, type Contact } from "@/lib/contact";
 import { downloadCoverLetterPdf } from "@/lib/pdf/cover-letter";
 import { documentFileBase } from "@/lib/pdf/shared";
 import { downloadText } from "@/lib/download";
-import { loadCoverLetter, saveCoverLetter } from "@/lib/storage";
+import { loadCoverLetter, loadResumePdfTemplate, saveCoverLetter, saveResumePdfTemplate, type ResumePdfTemplate } from "@/lib/storage";
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { DownloadMenu } from "./DownloadMenu";
 import { DocumentField } from "./DocumentField";
@@ -55,6 +55,15 @@ export function CoverLetterView({
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pdfTemplate, setPdfTemplate] = useState<ResumePdfTemplate>("classic");
+  useEffect(() => {
+    const stored = loadResumePdfTemplate();
+    queueMicrotask(() => setPdfTemplate(stored));
+  }, []);
+  const changePdfTemplate = (template: ResumePdfTemplate) => {
+    setPdfTemplate(template);
+    saveResumePdfTemplate(template);
+  };
   const restored = saved !== null && saved.letter.trim().length > 0;
 
   useEffect(() => {
@@ -96,7 +105,7 @@ export function CoverLetterView({
   };
 
   const downloadPdf = () =>
-    downloadCoverLetterPdf({ contact, body: letter, date, company });
+    downloadCoverLetterPdf({ contact, body: letter, date, company }, pdfTemplate);
 
   const downloadMarkdown = () => {
     const header = [contact.name, [contact.address, contact.phone, contact.email, contact.website].filter(Boolean).join(" · "), date]
@@ -119,7 +128,7 @@ export function CoverLetterView({
             onClick={generate}
             isDisabled={status === "loading" || !resumeText.trim() || !jobText.trim()}
           />
-          <DownloadMenu onPdf={downloadPdf} onMarkdown={downloadMarkdown} isDisabled={!letter.trim()} />
+          <DownloadMenu onPdf={downloadPdf} onMarkdown={downloadMarkdown} isDisabled={!letter.trim()} template={pdfTemplate} onTemplateChange={changePdfTemplate} />
         </div>
       </div>
 
@@ -175,7 +184,7 @@ export function CoverLetterView({
                   size="sm"
                   onClick={copy}
                 />
-                <DownloadMenu onPdf={downloadPdf} onMarkdown={downloadMarkdown} isDisabled={!letter.trim()} />
+                <DownloadMenu onPdf={downloadPdf} onMarkdown={downloadMarkdown} isDisabled={!letter.trim()} template={pdfTemplate} onTemplateChange={changePdfTemplate} />
               </div>
             </div>
             <div className="p-3">

@@ -18,14 +18,26 @@ export function stripMarkdown(text: string): string {
 
 type RGB = readonly [number, number, number];
 
-export const THEME = {
-  font: "helvetica",
-  margin: 56,
-  ink: [17, 24, 39] as RGB, // near-black for body
-  strong: [15, 23, 42] as RGB, // name / headings
-  muted: [100, 116, 139] as RGB, // contact line, dates
-  rule: [203, 213, 225] as RGB, // hairline dividers
+export const THEMES = {
+  classic: {
+    font: "helvetica",
+    margin: 56,
+    ink: [17, 24, 39] as RGB,
+    strong: [15, 23, 42] as RGB,
+    muted: [100, 116, 139] as RGB,
+    rule: [203, 213, 225] as RGB,
+  },
+  lucid: {
+    font: "helvetica",
+    margin: 56,
+    ink: [25, 35, 49] as RGB,
+    strong: [22, 75, 94] as RGB,
+    muted: [76, 96, 108] as RGB,
+    rule: [22, 75, 94] as RGB,
+  },
 };
+
+export type PdfTheme = keyof typeof THEMES;
 
 export interface HeaderInfo {
   name: string;
@@ -43,10 +55,15 @@ export class PdfBuilder {
   readonly pageH: number;
   readonly margin: number;
   readonly contentW: number;
+  private readonly theme: typeof THEMES.classic;
+  private readonly lucid: boolean;
   private y: number;
 
-  constructor(doc: jsPDF, margin: number = THEME.margin) {
+  constructor(doc: jsPDF, theme: PdfTheme = "classic") {
     this.doc = doc;
+    this.theme = THEMES[theme];
+    this.lucid = theme === "lucid";
+    const margin = this.theme.margin;
     this.margin = margin;
     this.pageW = doc.internal.pageSize.getWidth();
     this.pageH = doc.internal.pageSize.getHeight();
@@ -74,8 +91,8 @@ export class PdfBuilder {
     text: string,
     opts: { size?: number; style?: "normal" | "bold" | "italic"; color?: RGB; lineHeight?: number; gapAfter?: number } = {}
   ) {
-    const { size = 10.5, style = "normal", color = THEME.ink, lineHeight = 1.45, gapAfter = 0 } = opts;
-    this.doc.setFont(THEME.font, style);
+    const { size = 10.5, style = "normal", color = this.theme.ink, lineHeight = 1.45, gapAfter = 0 } = opts;
+    this.doc.setFont(this.theme.font, style);
     this.doc.setFontSize(size);
     this.color(color);
     const lh = size * lineHeight;
@@ -90,18 +107,34 @@ export class PdfBuilder {
   /** Name + optional headline + one contact line + divider rule. */
   header(info: HeaderInfo) {
     if (info.name) {
-      this.doc.setFont(THEME.font, "bold");
-      this.doc.setFontSize(23);
-      this.color(THEME.strong);
-      this.doc.text(info.name, this.margin, this.y);
-      this.y += 23 * 1.1;
+      if (this.lucid) {
+        const parts = info.name.trim().split(/\s+/);
+        const first = parts.shift() ?? "";
+        const last = parts.join(" ");
+        this.doc.setFont(this.theme.font, "bold"); // standard-font stand-in for SemiBold
+        this.doc.setFontSize(25);
+        this.color(this.theme.strong);
+        const firstWidth = this.doc.getTextWidth(first);
+        this.doc.text(first, this.margin, this.y);
+        if (last) {
+          this.doc.setFont(this.theme.font, "normal"); // standard-font stand-in for Light
+          this.doc.text(` ${last}`, this.margin + firstWidth, this.y);
+        }
+        this.y += 25 * 1.1;
+      } else {
+        this.doc.setFont(this.theme.font, "bold");
+        this.doc.setFontSize(23);
+        this.color(this.theme.strong);
+        this.doc.text(info.name, this.margin, this.y);
+        this.y += 23 * 1.1;
+      }
     }
     // Render text that wraps across the content width (headlines and contact
     // lines can get long; a single doc.text call would clip at the margin).
-    const renderWrapped = (text: string, size: number) => {
-      this.doc.setFont(THEME.font, "normal");
+    const renderWrapped = (text: string, size: number, accent = false) => {
+      this.doc.setFont(this.theme.font, accent ? "bold" : "normal");
       this.doc.setFontSize(size);
-      this.color(THEME.muted);
+      this.color(accent ? this.theme.strong : this.theme.muted);
       const lh = size * 1.4;
       for (const ln of this.doc.splitTextToSize(text, this.contentW) as string[]) {
         this.doc.text(ln, this.margin, this.y);
@@ -109,7 +142,7 @@ export class PdfBuilder {
       }
     };
     if (info.headline) {
-      renderWrapped(info.headline, 11.5);
+      renderWrapped(this.lucid ? info.headline.toUpperCase() : info.headline, this.lucid ? 10 : 11.5, this.lucid);
     }
     const renderContactLine = (parts: string[]) => {
       const items = parts.filter((d) => d && d.trim());
@@ -122,16 +155,17 @@ export class PdfBuilder {
       if (linkItems.length) {
         const size = 9.5;
         const sep = "   •   ";
-        this.doc.setFont(THEME.font, "normal");
+        this.doc.setFont(this.theme.font, "normal");
         this.doc.setFontSize(size);
-        this.color(THEME.muted);
+        this.color(this.theme.muted);
         let x = this.margin;
         linkItems.forEach((link, i) => {
           if (i > 0) {
             this.doc.text(sep, x, this.y);
             x += this.doc.getTextWidth(sep);
           }
-          const label = link.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+          const rawLabel = link.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+          const label = this.lucid ? rawLabel.replace(/^www\./, "") : rawLabel;
           const url = /^https?:\/\//i.test(link) ? link : `https://${link}`;
           const w = this.doc.getTextWidth(label);
           this.doc.textWithLink(label, x, this.y, { url });
@@ -149,7 +183,7 @@ export class PdfBuilder {
   rule(gapBefore = 0) {
     this.y += gapBefore;
     this.breakIfNeeded(2);
-    this.doc.setDrawColor(THEME.rule[0], THEME.rule[1], THEME.rule[2]);
+    this.doc.setDrawColor(this.theme.rule[0], this.theme.rule[1], this.theme.rule[2]);
     this.doc.setLineWidth(0.6);
     this.doc.line(this.margin, this.y, this.pageW - this.margin, this.y);
   }
@@ -159,10 +193,10 @@ export class PdfBuilder {
     this.space(14);
     const size = 10.5;
     this.breakIfNeeded(size * 1.6);
-    this.doc.setFont(THEME.font, "bold");
+    this.doc.setFont(this.theme.font, "bold");
     this.doc.setFontSize(size);
-    this.color(THEME.strong);
-    this.doc.setCharSpace(1.2);
+    this.color(this.theme.strong);
+    if (!this.lucid) this.doc.setCharSpace(1.2);
     this.doc.text(text.toUpperCase(), this.margin, this.y);
     this.doc.setCharSpace(0);
     this.y += 7;
@@ -174,21 +208,21 @@ export class PdfBuilder {
   entryHeader(title: string, dates: string, subtitle?: string) {
     const size = 11;
     this.breakIfNeeded(size * 1.5);
-    this.doc.setFont(THEME.font, "bold");
+    this.doc.setFont(this.theme.font, "bold");
     this.doc.setFontSize(size);
-    this.color(THEME.strong);
+    this.color(this.theme.strong);
     this.doc.text(title, this.margin, this.y);
     if (dates) {
-      this.doc.setFont(THEME.font, "normal");
+      this.doc.setFont(this.theme.font, "normal");
       this.doc.setFontSize(9.5);
-      this.color(THEME.muted);
+      this.color(this.theme.muted);
       this.doc.text(dates, this.pageW - this.margin, this.y, { align: "right" });
     }
     this.y += size * 1.35;
     if (subtitle) {
-      this.doc.setFont(THEME.font, "normal");
+      this.doc.setFont(this.theme.font, "normal");
       this.doc.setFontSize(10);
-      this.color(THEME.ink);
+      this.color(this.theme.ink);
       this.doc.text(subtitle, this.margin, this.y);
       this.y += 10 * 1.4;
     }
@@ -199,9 +233,9 @@ export class PdfBuilder {
     const size = 10;
     const indent = 13;
     const lh = size * 1.4;
-    this.doc.setFont(THEME.font, "normal");
+    this.doc.setFont(this.theme.font, "normal");
     this.doc.setFontSize(size);
-    this.color(THEME.ink);
+    this.color(this.theme.ink);
     const wrapped = this.doc.splitTextToSize(text, this.contentW - indent) as string[];
     wrapped.forEach((ln, i) => {
       this.breakIfNeeded(lh);
