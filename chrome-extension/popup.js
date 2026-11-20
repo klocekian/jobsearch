@@ -10,7 +10,7 @@
  * Stored per-browser in chrome.storage.local. Defaults to production, so an
  * existing install behaves exactly as before until someone changes it.
  */
-const DEFAULT_API_BASE = "https://jobs.fieldlines.org";
+const DEFAULT_API_BASE = "https://job.fieldlines.io";
 const DEFAULT_LOCAL_BASE = "http://localhost:3000";
 const API_BASE_KEY = "apiBase";
 const LAST_LOCAL_KEY = "apiBaseLastLocal";
