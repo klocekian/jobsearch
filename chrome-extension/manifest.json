@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Job Search Clipper",
   "version": "1.2.0",
-  "description": "Save job postings from any site to your jobs.fieldlines.org tracker, and fill application forms from your profile.",
+  "description": "Save job postings from any site to your job.fieldlines.io tracker, and fill application forms from your profile.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -10,7 +10,7 @@
     "storage"
   ],
   "host_permissions": [
-    "https://jobs.fieldlines.org/*",
+    "https://job.fieldlines.io/*",
     "http://localhost:3000/*",
     "https://*/*",
     "http://*/*"
