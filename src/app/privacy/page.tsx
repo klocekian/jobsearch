@@ -31,7 +31,7 @@ export default function PrivacyPage() {
       <p className="text-secondary">Effective {EFFECTIVE_DATE}</p>
 
       <p>
-        This policy covers the Job Search web app at https://jobs.fieldlines.org (the
+        This policy covers the Job Search web app at https://job.fieldlines.io (the
         &ldquo;Service&rdquo;) and the Job Search Clipper Chrome extension (the &ldquo;Extension&rdquo;),
         both run by {OPERATOR} (&ldquo;we&rdquo;, &ldquo;us&rdquo;).
       </p>

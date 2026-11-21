@@ -1,11 +1,11 @@
 # Privacy Policy: Job Search and Job Search Clipper
 
-> Published at https://jobs.fieldlines.org/privacy from `src/app/privacy/page.tsx`. If you
+> Published at https://job.fieldlines.io/privacy from `src/app/privacy/page.tsx`. If you
 > change the policy, change it there, and keep this copy in step.
 
 **Effective date:** November 1, 2026
 
-This policy covers the Job Search web app at https://jobs.fieldlines.org (the "Service") and the
+This policy covers the Job Search web app at https://job.fieldlines.io (the "Service") and the
 Job Search Clipper Chrome extension (the "Extension"), both run by Fieldlines ("we", "us").
 
 ## What we collect

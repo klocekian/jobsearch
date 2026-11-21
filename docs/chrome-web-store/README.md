@@ -25,7 +25,7 @@ These are in the app and extension already:
 
 ## 2. Deploy (required)
 
-Deploy the app, then check that https://jobs.fieldlines.org/privacy opens in a private window.
+Deploy the app, then check that https://job.fieldlines.io/privacy opens in a private window.
 The listing links to it, and the reviewer will open it.
 
 ## 3. Prepare the review account (required)
@@ -72,7 +72,7 @@ usually takes a few days to a couple of weeks, instead of hours. The justificati
 **Optional, to speed this up:** move `https://*/*` and `http://*/*` into
 `optional_host_permissions`, and call `chrome.permissions.request()` the first time someone
 clips a page on a site the extension can't reach yet. The install then asks only for
-jobs.fieldlines.org, which reviews faster and shows a milder install warning. It's a small code
+job.fieldlines.io, which reviews faster and shows a milder install warning. It's a small code
 change, but test it well: the request has to come straight from the button click.
 
 ## 7. After approval
