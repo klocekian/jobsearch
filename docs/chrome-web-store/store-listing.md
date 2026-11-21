@@ -16,13 +16,13 @@ Job Search Clipper
 The dashboard takes this from `description` in the manifest, which already says (114 characters):
 
 ```
-Save job postings from any site to your jobs.fieldlines.org tracker, and fill application forms from your profile.
+Save job postings from any site to your job.fieldlines.io tracker, and fill application forms from your profile.
 ```
 
 ## Description
 
 ```
-Job Search Clipper is the browser companion to the Job Search tracker at jobs.fieldlines.org. It saves job postings from any careers site into your tracker, and fills in application forms with the details you have already saved.
+Job Search Clipper is the browser companion to the Job Search tracker at job.fieldlines.io. It saves job postings from any careers site into your tracker, and fills in application forms with the details you have already saved.
 
 CLIP A POSTING
 Open a job posting on any careers page, job board or applicant tracking system. Open the side panel and click "Clip this page". The extension reads the posting and fills in:
@@ -44,11 +44,11 @@ Every saved value is also listed in the panel. Click one to copy it, for forms t
 
 PRIVATE BY DESIGN
 • The extension reads a page only when you click Clip or Fill. It never runs in the background on the sites you visit.
-• What you clip goes only to your own jobs.fieldlines.org account. Nothing is sold or shared for advertising.
+• What you clip goes only to your own job.fieldlines.io account. Nothing is sold or shared for advertising.
 • No analytics or tracking scripts.
 
 REQUIREMENTS
-You need a Job Search account. Sign in with Google at https://jobs.fieldlines.org, then open the extension.
+You need a Job Search account. Sign in with Google at https://job.fieldlines.io, then open the extension.
 ```
 
 ## Category
@@ -80,7 +80,7 @@ the store requires.
 
 | Field | Value |
 | --- | --- |
-| Official URL | `https://jobs.fieldlines.org`. This only works if you verify the domain in Google Search Console with the same Google account. Otherwise leave it blank. |
-| Homepage URL | `https://jobs.fieldlines.org` |
+| Official URL | `https://job.fieldlines.io`. This only works if you verify the domain in Google Search Console with the same Google account. Otherwise leave it blank. |
+| Homepage URL | `https://job.fieldlines.io` |
 | Support URL | `mailto:stefan.klocek@gmail.com`, the address in the privacy policy, or a support page if you add one |
 | Mature content | No |
