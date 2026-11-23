@@ -4,9 +4,13 @@
 // package is required.
 
 import { extractPdfText } from "./pdf";
+import { checkParseFidelity } from "./analysis/parse-fidelity";
+import type { CheckItem } from "./analysis/types";
 
 export interface ExtractedFile {
   text: string;
+  /** PDF text before extraction normalization; undefined for other formats. */
+  rawText?: string;
   /** Page count for PDFs; undefined for other formats. */
   pages?: number;
 }
@@ -44,9 +48,13 @@ export async function extractFileText(file: File): Promise<ExtractedFile> {
 }
 
 /** An uploaded resume's text plus its file name without the extension. */
-export async function readResumeFile(file: File): Promise<{ text: string; name: string }> {
-  const { text } = await extractFileText(file);
-  return { text, name: file.name.replace(/\.[^.]+$/, "") };
+export async function readResumeFile(file: File): Promise<{ text: string; name: string; fidelity?: CheckItem[] }> {
+  const { text, rawText } = await extractFileText(file);
+  return {
+    text,
+    name: file.name.replace(/\.[^.]+$/, ""),
+    ...(rawText === undefined ? {} : { fidelity: checkParseFidelity(rawText) }),
+  };
 }
 
 // --- DOCX (a ZIP of XML; we read word/document.xml and strip the markup) ---

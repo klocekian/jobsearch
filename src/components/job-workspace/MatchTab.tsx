@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import type { ResumeRow } from "@/lib/db/resumes";
 import { MatchReportView, type AiDetectionState } from "../MatchReportView";
+import { AtsPreview } from "../AtsPreview";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
 import { ResumePicker } from "./ResumePicker";
@@ -67,6 +68,7 @@ export function MatchTab({
       </div>
 
       {uploadError && <Banner status="error" title={uploadError} />}
+      {resumeText.trim() && <AtsPreview resumeText={resumeText} />}
 
       {analyzed ? (
         <MatchReportView

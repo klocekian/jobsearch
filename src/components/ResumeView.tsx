@@ -1,23 +1,27 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { parseResume } from "@/lib/resume/parse";
 import { resumeToMarkdown } from "@/lib/resume/markdown";
 import type { ResumeData } from "@/lib/resume/types";
 import type { ResumeRow } from "@/lib/db/resumes";
-import { downloadResumePdf } from "@/lib/pdf/resume";
+import { buildResumeDoc } from "@/lib/pdf/resume";
 import { documentFileBase } from "@/lib/pdf/shared";
+import { checkParseFidelity } from "@/lib/analysis/parse-fidelity";
+import { readyToApply } from "@/lib/analysis/ready-to-apply";
+import { bandForScore } from "@/lib/fitness/schema";
 import { downloadText } from "@/lib/download";
-import { isResumeData, loadRewriteState, saveRewriteState } from "@/lib/storage";
+import { isResumeData, loadResumePdfTemplate, loadRewriteState, saveResumePdfTemplate, saveRewriteState, type ResumePdfTemplate } from "@/lib/storage";
 import { ContextMaterialsPanel } from "./ContextMaterialsPanel";
 import { RewriteEditor } from "./RewriteEditor";
 import { DownloadMenu } from "./DownloadMenu";
 import { DOC_SURFACE, DocumentField } from "./DocumentField";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
 import { apiFetch, apiSend, errorMessage, readTextStream } from "@/lib/api-client";
-import type { AiDetection } from "@/lib/analysis/types";
+import type { AiDetection, CheckItem } from "@/lib/analysis/types";
 import { Button } from "@astryxdesign/core/Button";
 import { Banner } from "@astryxdesign/core/Banner";
+import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
 import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
 import { useConfirm } from "@/hooks/useConfirm";
 
@@ -34,6 +38,8 @@ interface ResumeViewProps {
   missingSkills: string[];
   /** AI-authorship tells detected, so the rewrite can target and remove them. */
   aiDetection: AiDetection | null;
+  fitnessScore?: number | null;
+  matchScore?: number | null;
   materials: ContextMaterial[];
   onMaterialsChange: (materials: ContextMaterial[]) => void;
   /** A resume was written: `resume` saved over, or a new one created. */
@@ -43,6 +49,7 @@ interface ResumeViewProps {
 }
 
 type Status = { kind: "idle" | "loading" | "error"; message?: string };
+const READY_BADGE_CLASS = "!h-auto !min-h-7 !py-1 !text-sm";
 
 export function ResumeView({
   jobId,
@@ -53,6 +60,8 @@ export function ResumeView({
   jobTitle,
   missingSkills,
   aiDetection,
+  fitnessScore,
+  matchScore,
   materials,
   onMaterialsChange,
   onSaved,
@@ -79,6 +88,30 @@ export function ResumeView({
 
   const [gen, setGen] = useState<Status>({ kind: "idle" });
   const [exporting, setExporting] = useState<Status>({ kind: "idle" });
+  const [pdfChecks, setPdfChecks] = useState<CheckItem[] | null>(null);
+  const pendingPdf = useRef<{ doc: Awaited<ReturnType<typeof buildResumeDoc>>; filename: string } | null>(null);
+  const [confirmPdf, setConfirmPdf] = useState(false);
+  const ready = readyToApply(pdfChecks, { fitness: fitnessScore, match: matchScore, aiBand: aiDetection?.band });
+  const fitnessBand = ready.fitness === null ? null : bandForScore(ready.fitness);
+  const pdfVariant: BadgeVariant = ready.parseStatus === "pass" ? "success" : ready.parseStatus === "warning" ? "warning" : ready.parseStatus === "fail" ? "error" : "neutral";
+  const fitnessVariant: BadgeVariant = fitnessBand === null ? "neutral" : fitnessBand === "target" || fitnessBand === "priority target" ? "success" : fitnessBand === "practice" ? "warning" : "error";
+  const matchVariant: BadgeVariant = ready.match === null ? "neutral" : ready.match >= 90 ? "success" : ready.match >= 80 ? "warning" : "error";
+  const aiVariant: BadgeVariant = ready.aiBand === "low" ? "success" : ready.aiBand === "moderate" ? "warning" : ready.aiBand === "high" ? "error" : "neutral";
+  const clearPdfCheck = () => {
+    setPdfChecks(null);
+    pendingPdf.current = null;
+    setConfirmPdf(false);
+  };
+  const [pdfTemplate, setPdfTemplate] = useState<ResumePdfTemplate>("classic");
+  useEffect(() => {
+    const stored = loadResumePdfTemplate();
+    queueMicrotask(() => setPdfTemplate(stored));
+  }, []);
+  const changePdfTemplate = (template: ResumePdfTemplate) => {
+    clearPdfCheck();
+    setPdfTemplate(template);
+    saveResumePdfTemplate(template);
+  };
   const [saving, setSaving] = useState<Status>({ kind: "idle" });
   // Read until Edit (or Generate). Changes still persist as they're made, so a
   // tab switch loses nothing; Cancel puts back what was there at Edit.
@@ -90,6 +123,9 @@ export function ResumeView({
 
   // Stable callback the editor calls on commit (accept / dismiss / blur).
   const persist = useCallback((nextResult: string, nextDismissed: string[]) => {
+    setPdfChecks(null);
+    pendingPdf.current = null;
+    setConfirmPdf(false);
     resultRef.current = nextResult;
     setResult(nextResult);
     setDismissed(nextDismissed);
@@ -169,8 +205,24 @@ export function ResumeView({
     setExporting({ kind: "loading" });
     try {
       const data = await structured();
-      if (format === "pdf") await downloadResumePdf(data, company);
-      else downloadText(`${documentFileBase("Resume", data.name, company)}.md`, resumeToMarkdown(data));
+      if (format === "pdf") {
+        clearPdfCheck();
+        const doc = await buildResumeDoc(data, { template: pdfTemplate });
+        // pdf.js remains outside the initial browser bundle.
+        const { extractPdfTextFromBuffer } = await import("@/lib/pdf");
+        const { rawText } = await extractPdfTextFromBuffer(doc.output("arraybuffer"));
+        const checks = checkParseFidelity(rawText);
+        setPdfChecks(checks);
+        const filename = `${documentFileBase("Resume", data.name, company)}.pdf`;
+        if (readyToApply(checks).needsConfirmation) {
+          pendingPdf.current = { doc, filename };
+          setConfirmPdf(true);
+        } else {
+          doc.save(filename);
+        }
+      } else {
+        downloadText(`${documentFileBase("Resume", data.name, company)}.md`, resumeToMarkdown(data));
+      }
       setExporting({ kind: "idle" });
     } catch (err: unknown) {
       setExporting({ kind: "error", message: err instanceof Error ? err.message : "Failed to build the file." });
@@ -239,6 +291,8 @@ export function ResumeView({
             <DownloadMenu
               onPdf={() => download("pdf")}
               onMarkdown={() => download("md")}
+              template={pdfTemplate}
+              onTemplateChange={changePdfTemplate}
               busy={exporting.kind === "loading"}
             />
           )}
@@ -247,6 +301,44 @@ export function ResumeView({
 
       {exporting.kind === "error" && (
         <Banner status="error" title={exporting.message ?? "An error occurred."} className="text-sm" />
+      )}
+      <div className="rounded-lg border border-border bg-surface px-4 py-3 text-sm" aria-label="Ready to apply status">
+        <h3 className="mb-2 font-semibold text-foreground">Ready to apply</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={pdfVariant} className={READY_BADGE_CLASS} label={`PDF check: ${ready.parseStatus === "unchecked" ? "not checked" : ready.parseStatus === "pass" ? "passed" : ready.parseStatus === "fail" ? `${ready.failures} issue${ready.failures === 1 ? "" : "s"}` : `${ready.warnings} warning${ready.warnings === 1 ? "" : "s"}`}`} />
+          <Badge variant={fitnessVariant} className={READY_BADGE_CLASS} label={`Fitness (last analysis): ${ready.fitness === null ? "not checked" : `${ready.fitness}/10`}`} />
+          <Badge variant={matchVariant} className={READY_BADGE_CLASS} label={`Match (last analysis): ${ready.match === null ? "not checked" : `${ready.match}/100`}`} />
+          <Badge variant={aiVariant} className={READY_BADGE_CLASS} label={`AI signal (last analysis): ${ready.aiBand ?? "not checked"}`} />
+        </div>
+        {pdfChecks?.some((item) => item.status === "warning") && (
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-700 dark:text-amber-400">
+            {pdfChecks.filter((item) => item.status === "warning").map((item) => <li key={item.message}>{item.message}</li>)}
+          </ul>
+        )}
+      </div>
+      {confirmPdf && (
+        <Banner
+          status="warning"
+          title="The PDF text check found a problem."
+          description={pdfChecks?.filter((item) => item.status === "fail").map((item) => item.message).join(" ")}
+          endContent={
+            <div className="flex gap-2">
+              <Button label="Download anyway" variant="primary" size="sm" onClick={() => {
+                try {
+                  pendingPdf.current?.doc.save(pendingPdf.current.filename);
+                  pendingPdf.current = null;
+                  setConfirmPdf(false);
+                } catch (err: unknown) {
+                  setExporting({ kind: "error", message: err instanceof Error ? err.message : "Failed to save the file." });
+                }
+              }} />
+              <Button label="Cancel" variant="secondary" size="sm" onClick={() => {
+                pendingPdf.current = null;
+                setConfirmPdf(false);
+              }} />
+            </div>
+          }
+        />
       )}
       {saving.kind === "error" && (
         <Banner status="error" title={saving.message ?? "Could not save the resume."} className="text-sm" />

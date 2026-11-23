@@ -28,8 +28,8 @@ function degreeLevel(text: string): number {
 // PDFs often render section headings with letter-spacing (tracking), which text
 // extraction returns as "S U M M A R Y" / "E X P E R I E N C E". Collapse any
 // run of 3+ single letters separated by single spaces so heading detection sees
-// the real word. Used only for the structural section checks.
-function despaceHeadings(text: string): string {
+// the real word. Shared with PDF parse-fidelity diagnostics.
+export function despaceHeadings(text: string): string {
   return text.replace(/\b(?:[A-Za-z] ){2,}[A-Za-z]\b/g, (m) => m.replace(/ /g, ""));
 }
 
