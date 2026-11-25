@@ -2,7 +2,7 @@
 
 import { useConfirm } from "@/hooks/useConfirm";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import type { ContextMaterial } from "@/lib/context";
 import type { ResumeRow } from "@/lib/db/resumes";
@@ -42,6 +42,8 @@ type ToolsSubTab = "profile" | "resume" | "cover";
 
 export function JobWorkspace({ jobId }: { jobId: number }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedView = searchParams.get("view");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const { job, setJob, submissions, loading, refetch: fetchJob, updateJob } = useJob(jobId);
   const { savedResumes, setSavedResumes, resumeText, setResumeText } = useSavedResumes(job);
@@ -56,11 +58,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [analyzing, setAnalyzing] = useState(false);
 
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
-  const [rightTab, setRightTab] = useState<RightTab>("profile");
+  const [rightTab, setRightTab] = useState<RightTab>(requestedView === "prepare" ? "tools" : requestedView === "application" ? "application" : "profile");
   const [appSubTab, setAppSubTab] = useState<AppSubTab>("notes");
-  const [toolsSubTab, setToolsSubTab] = useState<ToolsSubTab>("profile");
+  const [toolsSubTab, setToolsSubTab] = useState<ToolsSubTab>(requestedView === "prepare" ? "resume" : "profile");
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
+  const [mobilePane, setMobilePane] = useState<MobilePane>(requestedView ? "analysis" : "posting");
   const { splitPct, containerRef, onDragStart } = useSplitPane();
   // The nav right-aligns the job controls to the left column's edge, where the card begins.
   useEffect(() => {

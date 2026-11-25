@@ -8,6 +8,26 @@ This implements the analysis modules of the product spec in
 `.context/attachments/.../pasted_text...txt`, and the report UI mirrors the reference
 Jobscan Match Reports.
 
+## Search workspace
+
+Signed-in users start at `/jobs`, organized around **Explore → Prepare → Applications**.
+These three views use custom CSS and native controls, independent of Astryx components.
+Explore collects saved and in-preparation roles, with search, shortlist, and fit sorting.
+Prepare holds reusable resumes, editable search direction, feedback, and learning notes.
+Its recurring skill signals use the existing curated vocabulary and link back to the
+saved postings where they appear. Applications groups preparation, waiting, conversations,
+and ended applications; it does not infer feedback from a lack of response.
+
+The full tracker, imports, posting-status checks, and archive remain at
+`/jobs?view=tracker`. Job-specific analysis and writing tools, account settings, and
+job capture retain their existing UI for this first iteration. Links from the new
+workspace open the relevant job preparation or application tab directly.
+
+Preparation notes are stored per authenticated user through `/api/search-plan`.
+“Save as new version” creates a separate resume without overwriting its source;
+it is not an automatic version history or a comparison of application outcomes.
+
+
 ## What it does
 
 Paste a resume and a job description, hit **Analyze**, and get a Match Report with:

@@ -2,6 +2,7 @@
 
 import { useConfirm } from "@/hooks/useConfirm";
 import { useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
@@ -44,7 +45,12 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   const [resumeError, setResumeError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
-  const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes" | "candidate">("account");
+  const searchParams = useSearchParams();
+  type ProfileTab = "account" | "ai" | "extension" | "resumes" | "candidate";
+  const requestedTab = searchParams.get("tab");
+  const [profileTab, setProfileTab] = useState<ProfileTab>(
+    requestedTab && ["ai", "extension", "resumes", "candidate"].includes(requestedTab) ? requestedTab as ProfileTab : "account",
+  );
 
   const handleFile = async (
     file: File | undefined,

@@ -46,7 +46,7 @@ describe("pages", () => {
     const fresh = await openBrowser(app, { onboardingDone: false });
     try {
       await fresh.step("onboarding", async () => {
-        await fresh.page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
+        await fresh.page.goto(`${app.base}/jobs?view=tracker`, { waitUntil: "networkidle" });
         // getByRole skips the app's other dialogs, which sit in the page closed.
         const dialog = fresh.page.getByRole("dialog");
         await dialog.waitFor();
@@ -67,7 +67,7 @@ describe("jobs list", () => {
   it("a chosen sort survives a reload, without a hydration mismatch", async () => {
     await ui.step("sort", async () => {
       const { page } = ui;
-      await page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
+      await page.goto(`${app.base}/jobs?view=tracker`, { waitUntil: "networkidle" });
       await page.locator("th").filter({ hasText: /^Company/ }).locator("button").first().click();
       await page.waitForTimeout(500);
       ui.errors.length = 0;
@@ -84,7 +84,7 @@ describe("jobs list", () => {
     await app.db.execute({ sql: "UPDATE jobs SET status = 'closed', previous_status = 'applied', auto_closed = 1 WHERE id = ?", args: [closed] });
     await ui.step("confirm auto-closed", async () => {
       const { page } = ui;
-      await page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
+      await page.goto(`${app.base}/jobs?view=tracker`, { waitUntil: "networkidle" });
       await page.getByRole("button", { name: "This looks correct. Save." }).click();
       await page.getByText(/Saved — 1 job stays closed/).waitFor();
       assert.equal((await app.req("GET", "/api/jobs/check-status")).data.restorableCount, 0);

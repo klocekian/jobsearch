@@ -13,6 +13,7 @@ import { apiGet } from "@/lib/api-client";
 import type { ClaudeStatus } from "@/lib/anthropic";
 import type { UserAIStatus } from "@/lib/ai";
 import { ChevronUpIcon, ChevronDownIcon, JobStatusDot } from "./icons";
+import { SearchNav } from "./search/SearchNav";
 
 interface NavUser {
   id: number;
@@ -29,6 +30,15 @@ interface JobWorkspaceState {
 }
 
 export function Nav({ user }: { user: NavUser | null }) {
+  const pathname = usePathname();
+  const params = useSearchParams();
+  if (user && ((pathname === "/jobs" && params.get("view") !== "tracker") || pathname === "/profile")) {
+    return <SearchNav name={user.name || user.email} />;
+  }
+  return <LegacyNav user={user} />;
+}
+
+function LegacyNav({ user }: { user: NavUser | null }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
