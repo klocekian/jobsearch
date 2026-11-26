@@ -13,14 +13,18 @@ import { Badge } from "@/components/ui/Badge";
 import { HStack } from "@/components/ui/Stack";
 import { Tooltip } from "@/components/ui/Tooltip";
 
-const TERMINAL_LINES = [
-  { status: "rejected", label: "Rejected", color: STATUS_TEXT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
-  { status: "stale", label: "Stale", color: STATUS_TEXT_COLORS.stale, stages: ["applied", "interview", "interview2", "onsite"] },
-  { status: "abandoned", label: "Abandoned", color: STATUS_TEXT_COLORS.abandoned, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
-  { status: "closed", label: "Closed", color: STATUS_TEXT_COLORS.closed, stages: ["saved", "applying", "applied", "interview", "interview2", "onsite", "offer"] },
-];
+// One dot per job, laid out left to right along the pipeline. A job still in
+// play sits in its stage's column; a job that ended sits in the gap after the
+// last stage it reached, since a rejection is what kept it from the next one.
+const FATES = {
+  here: { word: "in play", color: "var(--color-text-strong)", text: "var(--color-text-primary)" },
+  rejected: { word: "rejected", color: STATUS_DOT_COLORS.rejected, text: STATUS_TEXT_COLORS.rejected },
+  other: { word: "dropped", color: "light-dark(#cfcfcf, #5c5c5c)", text: "var(--color-text-secondary)" },
+} as const;
+type Fate = keyof typeof FATES;
 
-const DOT_COLORS: Record<string, string> = { total: "var(--color-text-primary)", ...STATUS_DOT_COLORS };
+/** A selection: everyone who reached a stage, or one fate at or after a stage (all stages when `stage` is unset). */
+type Selection = { row: "reached" | Fate; stage?: string };
 
 // The 5 gates shown per job row in the selected-jobs list — a simplified
 // view of the pipeline (skips "applying", stops at Onsite since Offer/
@@ -71,151 +75,159 @@ function GateStepper({ job }: { job: JobRow }) {
   );
 }
 
+function Swatch({ color }: { color: string }) {
+  return <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />;
+}
+
+/** A clickable count, e.g. "29 rejected", in its fate's color. */
+function FateCount({ n, word, color, selected, onClick, label }: { n: number; word?: string; color: string; selected: boolean; onClick: () => void; label: string }) {
+  if (n === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      aria-label={label}
+      className={`whitespace-nowrap rounded px-1 text-[12px] tabular-nums transition ${selected ? "bg-[var(--color-background-inverted)] text-[var(--color-background-body)]" : "hover:bg-muted"}`}
+      style={selected ? undefined : { color }}
+    >
+      <span className="font-semibold">{n}</span>{word && ` ${word}`}
+    </button>
+  );
+}
+
+// Dots stack in rows of five, so they count like tally marks.
+const PER_ROW = 5;
+
+/** A column of job dots, filled from the bottom. Past `max` it shows the newest and says how many more. */
+function DotStack({ groups, max, align = "center" }: { groups: { fate: Fate; jobs: JobRow[] }[]; max: number; align?: "start" | "center" }) {
+  const all = groups.flatMap((g) => [...g.jobs].sort((x, y) => y.created_at.localeCompare(x.created_at)).map((job) => ({ job, color: FATES[g.fate].color })));
+  const shown = all.slice(0, max);
+  const rows: (typeof shown)[] = [];
+  for (let i = 0; i < shown.length; i += PER_ROW) rows.push(shown.slice(i, i + PER_ROW));
+  return (
+    <div className={`flex flex-col-reverse items-start gap-[2px] self-end ${align === "start" ? "justify-self-start" : "justify-self-center"}`} style={{ width: PER_ROW * 9 - 2 }}>
+      {rows.map((row, r) => (
+        <div key={r} className="flex gap-[2px]">
+          {row.map(({ job, color }) => (
+            <Tooltip key={job.id} content={`${job.company || "—"} · ${job.title || "—"}`}>
+              <Link href={`/jobs/${job.id}`} aria-label={`${job.company || "Untitled"}, ${statusLabel(job.status)}`} className="block h-[7px] w-[7px] shrink-0 rounded-full transition-transform hover:scale-150" style={{ backgroundColor: color }} />
+            </Tooltip>
+          ))}
+        </div>
+      ))}
+      {all.length > shown.length && <span className="mb-0.5 whitespace-nowrap text-[11px] tabular-nums text-secondary">+{all.length - shown.length} more</span>}
+    </div>
+  );
+}
+
 export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
-  const [selected, setSelected] = useState<{ status: string; stage?: string } | null>(null);
+  const [selected, setSelected] = useState<Selection | null>(null);
 
-  const counts: Record<string, number> = {};
-  for (const j of jobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
-
-  const pipelineStages = [
-    { status: "total", label: "Total", count: jobs.length },
-    ...PIPELINE_STATUSES.map((s) => ({ status: s, label: statusLabel(s), count: counts[s] ?? 0 })),
-  ];
-  const max = Math.max(...pipelineStages.map((s) => s.count), 1);
-
-  // Terminal breakdown by the stage each job stopped at
-  const terminalByStage: Record<string, Record<string, number>> = {};
-  for (const tl of TERMINAL_LINES) {
-    terminalByStage[tl.status] = {};
-    for (const stage of tl.stages) terminalByStage[tl.status][stage] = 0;
-  }
-  for (const j of jobs) {
-    const stage = furthestStage(j);
-    if (terminalByStage[j.status]?.[stage] !== undefined) terminalByStage[j.status][stage]++;
-  }
-
-  // SVG layout — main chart only (compact 1/2 height)
-  const W = 720;
-  const H = 90;
-  const padX = 40;
-  const padTop = 16;
-  const padBot = 20;
-  const chartW = W - padX * 2;
-  const chartH = H - padTop - padBot;
-
-  const xFor = (i: number) => padX + (pipelineStages.length > 1 ? (i / (pipelineStages.length - 1)) * chartW : chartW / 2);
-
-  const mainPoints = pipelineStages.map((s, i) => ({
-    ...s,
-    x: xFor(i),
-    y: padTop + chartH - (s.count / max) * chartH,
-  }));
-  const mainPath = mainPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const ticks = [0, Math.round(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
+  const stages = PIPELINE_STATUSES.map((stage) => {
+    const stopped = jobs.filter((j) => !PIPELINE_STATUSES.includes(j.status) && furthestStage(j) === stage);
+    return {
+      stage,
+      label: statusLabel(stage),
+      reached: jobs.filter((j) => reachedStage(j, stage)).length,
+      here: jobs.filter((j) => j.status === stage),
+      rejected: stopped.filter((j) => j.status === "rejected"),
+      other: stopped.filter((j) => j.status !== "rejected"),
+    };
+  });
+  const totals = { here: 0, rejected: 0, other: 0 };
+  for (const s of stages) for (const f of ["here", "rejected", "other"] as const) totals[f] += s[f].length;
 
   // Selected jobs
   let selectedJobs: JobRow[] = [];
   let selectedLabel = "";
   if (selected) {
-    if (selected.status === "total") {
-      selectedJobs = jobs;
-      selectedLabel = "Total";
-    } else if (selected.stage) {
-      selectedJobs = jobs.filter((j) => j.status === selected.status && furthestStage(j) === selected.stage);
-      selectedLabel = `${statusLabel(selected.status)} (from ${statusLabel(selected.stage)})`;
+    const { row, stage } = selected;
+    const i = stage ? PIPELINE_STATUSES.indexOf(stage) : -1;
+    const next = PIPELINE_STATUSES[i + 1];
+    const between = stage && next ? ` between ${statusLabel(stage)} and ${statusLabel(next)}` : stage ? ` after ${statusLabel(stage)}` : "";
+    const s = stages[i];
+    if (row === "reached" && stage) {
+      selectedJobs = jobs.filter((j) => reachedStage(j, stage));
+      selectedLabel = `Reached ${statusLabel(stage)}`;
+    } else if (row === "here") {
+      selectedJobs = s ? s.here : stages.flatMap((x) => x.here);
+      selectedLabel = s ? `In play at ${s.label}` : "In play";
     } else {
-      selectedJobs = jobs.filter((j) => j.status === selected.status);
-      selectedLabel = statusLabel(selected.status);
+      const fate = row as "rejected" | "other";
+      selectedJobs = s ? s[fate] : stages.flatMap((x) => x[fate]);
+      selectedLabel = `${fate === "rejected" ? "Rejected" : "Dropped"}${between}`;
     }
   }
 
-  const isSel = (status: string, stage?: string) => selected?.status === status && selected?.stage === stage;
+  const isSel = (row: Selection["row"], stage?: string) => selected?.row === row && selected?.stage === stage;
+  const toggle = (row: Selection["row"], stage?: string) => setSelected(isSel(row, stage) ? null : { row, stage });
+  // Saved can run to hundreds, so it's cut off at the height of the tallest
+  // other column (at least 8 rows, at most 20) rather than dwarfing the rest.
+  const tallest = Math.max(...stages.slice(1).map((s) => s.here.length), ...stages.map((s) => s.rejected.length + s.other.length));
+  const savedMax = PER_ROW * Math.min(20, Math.max(8, Math.ceil(tallest / PER_ROW)));
+  // Stage columns alternate with narrower gap columns; the last stage has no gap after it.
+  const columns = stages.map((_, i) => (i < stages.length - 1 ? "minmax(0, 2fr) minmax(44px, 0.8fr)" : "minmax(0, 2fr)")).join(" ");
 
   return (
     <div>
       <Card className="p-4 sm:p-5">
-        <div className="mb-2 flex items-baseline justify-between">
+        <div className="mb-1 flex items-baseline justify-between">
           <Heading level={3}>Application pipeline</Heading>
-          <Text type="supporting" color="secondary">{jobs.length} total jobs tracked</Text>
+          <Text type="supporting" color="secondary">{jobs.length} jobs tracked</Text>
         </div>
+        <Text as="p" type="supporting" color="secondary" className="mb-4">
+          Each dot is a job. <Swatch color={FATES.here.color} />
+          <FateCount n={totals.here} word="in play" color={FATES.here.text} selected={isSel("here")} onClick={() => toggle("here")} label={`${totals.here} in play`} /> sit at their stage; the rest stopped in the gap before the next one:{" "}
+          <Swatch color={FATES.rejected.color} />
+          <FateCount n={totals.rejected} word="rejected" color={FATES.rejected.text} selected={isSel("rejected")} onClick={() => toggle("rejected")} label={`${totals.rejected} rejected`} />{" "}
+          <Swatch color={FATES.other.color} />
+          <FateCount n={totals.other} word="dropped" color={FATES.other.text} selected={isSel("other")} onClick={() => toggle("other")} label={`${totals.other} dropped`} />
+        </Text>
 
-        {/* Main pipeline chart */}
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 110 }}>
-          {ticks.map((t) => {
-            const y = padTop + chartH - (t / max) * chartH;
-            return (
-              <g key={t}>
-                <line x1={padX} y1={y} x2={W - padX} y2={y} stroke="var(--color-border, #f1f5f9)" strokeWidth={1} />
-                <text x={padX - 8} y={y + 3} textAnchor="end" fontSize={9} fill="var(--color-text-secondary, #94a3b8)">{t}</text>
-              </g>
-            );
-          })}
-          <defs>
-            <linearGradient id="aGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#3b82f6" />
-              <stop offset="100%" stopColor="#22c55e" />
-            </linearGradient>
-          </defs>
-          <path
-            d={`${mainPath} L ${mainPoints[mainPoints.length - 1].x} ${padTop + chartH} L ${mainPoints[0].x} ${padTop + chartH} Z`}
-            fill="url(#aGrad)" opacity={0.1}
-          />
-          <path d={mainPath} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinejoin="round" />
-          {mainPoints.map((p) => (
-            <g key={p.status} onClick={() => setSelected(isSel(p.status) ? null : { status: p.status })} className="cursor-pointer">
-              <circle cx={p.x} cy={p.y} r={isSel(p.status) ? 7 : 5} fill={DOT_COLORS[p.status] ?? "var(--color-text-secondary, #94a3b8)"} stroke="var(--color-background-surface, white)" strokeWidth={1.5} />
-              {p.count > 0 && <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize={10} fill="var(--color-text-primary, #1e293b)" fontWeight={600}>{p.count}</text>}
-              <text x={p.x} y={padTop + chartH + 14} textAnchor="middle" fontSize={9} fill="var(--color-text-secondary, #64748b)">{p.label}</text>
-            </g>
-          ))}
-        </svg>
-
-        {/* Terminal rows */}
-        <div className="mt-3 border-t border-border pt-2">
-          {TERMINAL_LINES.map((tl) => {
-            const stageCounts = tl.stages.map((stage) => ({
-              stage,
-              count: terminalByStage[tl.status][stage],
-              pipeIdx: PIPELINE_STATUSES.indexOf(stage) + 1,
-            }));
-            const total = stageCounts.reduce((s, c) => s + c.count, 0);
-            return (
-              <div key={tl.status} className="flex items-center gap-0 py-1">
-                <div className="w-[72px] shrink-0 text-right pr-3">
-                  <Text type="supporting" weight="semibold" style={{ color: tl.color }}>{tl.label}</Text>
-                </div>
-                <div className="flex flex-1 items-center">
-                  {pipelineStages.map((ps, pi) => {
-                    const entry = stageCounts.find((sc) => sc.pipeIdx === pi);
-                    return (
-                      <div key={pi} className="flex-1 text-center">
-                        {entry ? (
-                          <button
-                            onClick={() => setSelected(isSel(tl.status, entry.stage) ? null : { status: tl.status, stage: entry.stage })}
-                            className={`inline-block min-w-[24px] rounded-full px-1.5 py-0.5 text-[11px] font-semibold transition ${
-                              isSel(tl.status, entry.stage)
-                                ? "bg-primary text-body"
-                                : entry.count > 0
-                                  ? "hover:bg-muted text-primary"
-                                  : "text-disabled"
-                            }`}
-                            style={!isSel(tl.status, entry.stage) && entry.count > 0 ? { color: tl.color } : undefined}
-                          >
-                            {entry.count}
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-disabled">·</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="w-10 shrink-0 text-center">
-                  <Text type="supporting" weight="semibold">{total}</Text>
-                </div>
+        <div className="overflow-x-auto">
+          <div className="grid min-w-[640px] items-end" style={{ gridTemplateColumns: columns, columnGap: 4 }}>
+            {/* Dots */}
+            {stages.map((s, i) => (
+              <div key={s.stage} className="contents">
+                <DotStack groups={[{ fate: "here", jobs: s.here }]} max={i === 0 ? savedMax : PER_ROW * 20} align={i === 0 ? "start" : "center"} />
+                {i < stages.length - 1 && <DotStack groups={[{ fate: "rejected", jobs: s.rejected }, { fate: "other", jobs: s.other }]} max={PER_ROW * 20} />}
               </div>
-            );
-          })}
+            ))}
+
+            <div className="col-span-full mt-1.5 border-t border-border" />
+
+            {/* Labels: stage name, how many reached it, how many are there now; gap counts */}
+            {stages.map((s, i) => (
+              <div key={s.stage} className="contents">
+                {/* The first column hugs the left edge so its labels never clip there */}
+                <div className={`flex flex-col self-start pt-1.5 ${i === 0 ? "items-start text-left" : "items-center text-center"}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggle("reached", s.stage)}
+                    aria-pressed={isSel("reached", s.stage)}
+                    className={`rounded px-1 leading-tight transition ${isSel("reached", s.stage) ? "bg-muted" : "hover:bg-muted"}`}
+                  >
+                    <Text type="supporting" weight="semibold" display="block" className="whitespace-nowrap">{s.label}</Text>
+                  </button>
+                  <FateCount n={s.here.length} word="in play" color={FATES.here.text} selected={isSel("here", s.stage)} onClick={() => toggle("here", s.stage)} label={`${s.here.length} in play at ${s.label}`} />
+                  <span className="whitespace-nowrap text-[11px] tabular-nums text-secondary">{s.reached} reached</span>
+                </div>
+                {i < stages.length - 1 && (
+                  <div className="flex flex-col items-center self-start pt-1.5 text-center">
+                    <FateCount n={s.rejected.length} color={FATES.rejected.text} selected={isSel("rejected", s.stage)} onClick={() => toggle("rejected", s.stage)} label={`${s.rejected.length} rejected after ${s.label}`} />
+                    {s.other.length > 0 && (
+                      <Tooltip content={s.other.map((j) => statusLabel(j.status).toLowerCase()).sort().join(", ")}>
+                        <span>
+                          <FateCount n={s.other.length} color={FATES.other.text} selected={isSel("other", s.stage)} onClick={() => toggle("other", s.stage)} label={`${s.other.length} dropped after ${s.label}`} />
+                        </span>
+                      </Tooltip>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Selected jobs list */}
