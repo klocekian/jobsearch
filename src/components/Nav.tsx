@@ -32,8 +32,9 @@ interface JobWorkspaceState {
 export function Nav({ user }: { user: NavUser | null }) {
   const pathname = usePathname();
   const params = useSearchParams();
-  if (user && ((pathname === "/jobs" && params.get("view") !== "tracker") || pathname === "/profile")) {
-    return <SearchNav name={user.name || user.email} />;
+  if (user && (pathname.startsWith("/jobs") || pathname === "/profile")) {
+    const needsJobControls = pathname.startsWith("/jobs/") || params.get("view") === "tracker";
+    return <><SearchNav name={user.name || user.email} />{needsJobControls && <LegacyNav user={user} />}</>;
   }
   return <LegacyNav user={user} />;
 }

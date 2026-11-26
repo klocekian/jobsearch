@@ -379,7 +379,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   if (isMobile) {
     return (
-      <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden bg-surface text-primary">
+      <div data-job-workspace className="flex h-[calc(100vh-57px)] flex-col overflow-hidden bg-surface text-primary">
         <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
           <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
           <div className="mt-3">{activityBanner}</div>
@@ -412,6 +412,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   return (
     <div
+      data-job-workspace
       ref={containerRef}
       className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] bg-surface text-primary"
       style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}

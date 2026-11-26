@@ -45,8 +45,8 @@ export function PrepareSpace({ jobs }: { jobs: JobRow[] }) {
     <div className={styles.prepareMain}>
       <ResumeLibrary />
       <section className={styles.panel} id="learning">
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>THE PART THAT KEEPS EVOLVING</p><h2>Your direction & learning</h2></div><span className={styles.loopLabel}>↶ Bring it back here</span></div>
-        <p className={styles.sectionDescription}>Use real conversations and your own observations to decide what to work on next.</p>
+        <div className={styles.sectionHeading}><h2>Feedback & learning</h2></div>
+        <p className={styles.sectionDescription}>Record feedback and choose what to improve next.</p>
         {error && <div className={styles.error} role="alert">{error}{!data && <button onClick={() => setReload((n) => n + 1)}>Try again</button>}</div>}
         {!data && !error && <p role="status">Loading your notes…</p>}
         {data && <form onSubmit={(e) => { e.preventDefault(); void savePlan(); }} className={styles.planForm}>
@@ -55,18 +55,18 @@ export function PrepareSpace({ jobs }: { jobs: JobRow[] }) {
             <label>Feedback & reflections<span>What did you hear? What landed? What surprised you?</span><textarea maxLength={20000} rows={6} value={plan.feedback} onChange={(e) => update("feedback", e.target.value)} placeholder="After a conversation, capture the date, role, and what you learned…" disabled={saving} /></label>
             <label>What to improve or learn next<span>Turn a useful observation into a concrete next step.</span><textarea maxLength={20000} rows={6} value={plan.learning} onChange={(e) => update("learning", e.target.value)} placeholder="Practice a story, strengthen a resume example, build a skill…" disabled={saving} /></label>
           </div>
-          <div className={styles.formFooter}><p aria-live="polite">{saved && !dirty ? "Your preparation notes are saved." : dirty ? "You have unsaved changes." : "No response yet is not a diagnosis of your resume."}</p><button className={styles.button} disabled={saving || !dirty}>{saving ? "Saving…" : "Save preparation notes"}</button></div>
+          <div className={styles.formFooter}><p aria-live="polite">{saved && !dirty ? "Your preparation notes are saved." : dirty ? "You have unsaved changes." : "Notes are saved to your account."}</p><button className={styles.button} disabled={saving || !dirty}>{saving ? "Saving…" : "Save preparation notes"}</button></div>
         </form>}
       </section>
     </div>
     <aside className={styles.sidebar}>
-      <section className={styles.patternPanel}><p className={styles.eyebrow}>LISTEN TO THE MARKET</p><h2>What keeps coming up?</h2><p className={styles.sectionDescription}>Skills mentioned across the saved roles you’re exploring.</p>
+      <section className={styles.patternPanel}><h2>Recurring skills</h2><p className={styles.sectionDescription}>Skills mentioned across the saved roles you’re exploring.</p>
         {data ? <>
           {data.patterns.length ? <div className={styles.patterns}>{data.patterns.map((pattern) => <details key={pattern.skill}><summary><span>{pattern.skill}</span><span>{pattern.jobs.length} roles</span></summary><ul>{pattern.jobs.map((job) => <li key={job.id}><Link href={`/jobs/${job.id}`}>{job.company} · {job.title} ↗</Link></li>)}</ul></details>)}</div> : <p className={styles.subtle}>No recurring skills found yet. Save at least two roles with posting text to start spotting patterns.</p>}
           <p className={styles.patternFootnote}>Based on {data.postingCount} saved or in-preparation postings with text, using our curated skill vocabulary. Matches are prompts to investigate, not proof of requirements or skill gaps.</p>
         </> : <p className={styles.subtle}>{error ? "Patterns are unavailable until loading succeeds." : "Reading your saved postings…"}</p>}
       </section>
-      <section className={styles.asideNote}><p className={styles.eyebrow}>MAKE IT SPECIFIC</p><h3>Ready to tailor?</h3><p>Start with a reusable resume. Then adapt it and draft a cover letter for a particular role.</p>{ready.slice(0, 4).map((job) => <Link className={styles.prepJob} key={job.id} href={`/jobs/${job.id}?view=prepare`}><span>{job.title}<small>{job.company}</small></span><span>→</span></Link>)}{!ready.length && <Link className={styles.textLink} href="/jobs?phase=explore">Shortlist a role to get started →</Link>}</section>
+      <section className={styles.asideNote}><h3>Tailor for a role</h3><p>Shortlisted roles and applications in preparation.</p>{ready.slice(0, 4).map((job) => <Link className={styles.prepJob} key={job.id} href={`/jobs/${job.id}?view=prepare`}><span>{job.title}<small>{job.company}</small></span><span>→</span></Link>)}{!ready.length && <Link className={styles.textLink} href="/jobs?phase=explore">Shortlist a role to get started →</Link>}</section>
       <Link className={styles.noticeLink} href="/profile?tab=candidate">Review your experience & known gaps ↗</Link>
     </aside>
   </div>;
@@ -113,8 +113,8 @@ function ResumeLibrary() {
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   }
   return <section className={styles.panel}>
-    <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>YOUR WORKING MATERIALS</p><h2>A resume for where you’re headed.</h2></div>{!draft && <button className={styles.button} onClick={() => edit()} disabled={resumes === null}>+ Add resume</button>}</div>
-    <p className={styles.sectionDescription}>Build a few strong versions for the roles you want. Keep refining them as you learn.</p>
+    <div className={styles.sectionHeading}><h2>Resumes</h2>{!draft && <button className={styles.button} onClick={() => edit()} disabled={resumes === null}>+ Add resume</button>}</div>
+    <p className={styles.sectionDescription}>Reusable versions. Select a resume to edit, or create a new version.</p>
     {error && <div className={styles.error} role="alert">{error}{!resumes && <button onClick={() => setReload((n) => n + 1)}>Try again</button>}</div>}
     {message && <p className={styles.success} role="status">{message}</p>}
     {!resumes && !error && <p role="status">Loading your resumes…</p>}
@@ -125,7 +125,7 @@ function ResumeLibrary() {
       <div className={styles.editorActions}><button type="button" className={styles.secondaryButton} onClick={() => { if (!dirty || window.confirm("Discard your unsaved resume changes?")) setDraft(null); }} disabled={busy}>Cancel</button>{draft.id && <button type="button" className={styles.secondaryButton} disabled={busy || !draft.name.trim() || !draft.content.trim()} onClick={() => void save(true)}>Save as new version</button>}<button className={styles.button} disabled={busy || !draft.name.trim() || !draft.content.trim()}>{busy ? "Working…" : "Save resume"}</button></div>
     </form> : <div className={styles.resumeList}>
       {resumes?.map((resume) => <article key={resume.id} className={styles.resumeRow}><span className={styles.documentIcon} aria-hidden="true">↳</span><div><h3>{resume.name} {!!resume.is_default && <span className={styles.tag}>Default</span>}</h3><p>Updated {formatDate(resume.updated_at)} · {resume.content.trim().split(/\s+/).filter(Boolean).length} words</p></div><button className={styles.secondaryButton} onClick={() => edit(resume)}>Edit</button></article>)}
-      {resumes?.length === 0 && <div className={styles.empty}><h3>Start with what you have.</h3><p>Add your current resume. It doesn’t have to be your final version.</p><button className={styles.secondaryButton} onClick={() => edit()}>Add your first resume</button></div>}
+      {resumes?.length === 0 && <div className={styles.empty}><h3>No resumes yet</h3><p>Upload or paste a resume to start preparing.</p><button className={styles.secondaryButton} onClick={() => edit()}>Add your first resume</button></div>}
     </div>}
   </section>;
 }

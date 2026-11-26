@@ -24,15 +24,19 @@ describe("search cycle", () => {
   it("opens Explore without a mandatory tour, and shortlists persist", async () => {
     const { page } = ui;
     await page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
-    await page.getByRole("heading", { name: "Good work starts with curiosity." }).waitFor();
+    await page.getByRole("heading", { name: "Explore" }).waitFor();
     assert.equal(await page.getByRole("dialog").count(), 0);
     assert.equal(await page.getByText("Waiting Studio", { exact: true }).count(), 0);
+    await page.getByRole("button", { name: "Preview Preparing Studio Product Designer", exact: true }).click();
+    await page.getByRole("complementary", { name: "Job preview" }).getByText("Preparing Studio", { exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, "/jobs", "previewing a role keeps the job list open");
+    await page.getByRole("complementary", { name: "Job preview" }).getByText("User research, product design and prototyping.", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Add Saved Studio Product Designer to shortlist" }).click();
     await page.getByRole("button", { name: "Remove Saved Studio Product Designer from shortlist" }).waitFor();
     await page.reload({ waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Shortlisted", exact: true }).click();
-    assert.equal(await page.getByText("Saved Studio", { exact: true }).count(), 1);
-    assert.equal(await page.getByText("Preparing Studio", { exact: true }).count(), 0);
+    assert.equal(await page.getByRole("region", { name: "Opportunities" }).getByText("Saved Studio", { exact: true }).count(), 1);
+    assert.equal(await page.getByRole("region", { name: "Opportunities" }).getByText("Preparing Studio", { exact: true }).count(), 0);
     await page.getByRole("textbox", { name: "Search jobs" }).fill("does not exist");
     await page.getByRole("heading", { name: "No roles match this view" }).waitFor();
   });
@@ -79,7 +83,7 @@ describe("search cycle", () => {
   it("separates conversations, preparation and waiting, with working detail links", async () => {
     const { page } = ui;
     await page.goto(`${app.base}/jobs?phase=applications`, { waitUntil: "networkidle" });
-    for (const name of ["Conversations & decisions", "Getting ready to send", "Awaiting a response"]) {
+    for (const name of ["Conversations", "Preparing", "Awaiting response"]) {
       await page.getByRole("heading", { name: new RegExp(name) }).waitFor();
     }
     assert.equal(await page.getByText("Saved Studio", { exact: true }).count(), 0);

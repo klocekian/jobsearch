@@ -13,9 +13,11 @@ Jobscan Match Reports.
 Signed-in users start at `/jobs`, organized around **Explore → Prepare → Applications**.
 These three views use custom CSS and native controls, independent of Astryx components.
 Explore collects saved and in-preparation roles, with search, shortlist, and fit sorting.
+Its compact table opens a posting preview alongside the list. A persistent sidebar
+connects the three phases, the full tracker, and job-specific workspaces.
 Prepare holds reusable resumes, editable search direction, feedback, and learning notes.
 Its recurring skill signals use the existing curated vocabulary and link back to the
-saved postings where they appear. Applications groups preparation, waiting, conversations,
+saved postings where they appear. An Applications board groups preparation, waiting, conversations,
 and ended applications; it does not infer feedback from a lack of response.
 
 The full tracker, imports, posting-status checks, and archive remain at
