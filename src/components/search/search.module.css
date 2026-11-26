@@ -12,7 +12,7 @@
 .brandRow { display: flex; align-items: center; justify-content: space-between; }
 .mobileSettings { display: none; }
 .brand { display: flex; align-items: center; gap: 9px; font-size: 20px; font-weight: 650; letter-spacing: -.6px; padding: 0 10px; }
-.brandMark { display: grid; place-items: center; width: 26px; height: 26px; background: var(--brand); color: #fff; border-radius: 6px; font-size: 22px; font-weight: 600; line-height: 1; }
+.brandMark { width: 26px; height: 26px; }
 .workspaceLabel { display: flex; align-items: center; gap: 9px; padding: 12px 10px; margin: 22px 0 21px; background: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-weight: 500; }
 .workspaceDot { width: 8px; height: 8px; background: #737373; border-radius: 3px; }
 .navCaption { font-size: 9px; font-weight: 600; letter-spacing: 1.1px; color: var(--muted); padding: 0 10px; margin: 0 0 8px; }
@@ -188,7 +188,7 @@
   .nav { position: sticky; top: 0; width: 100%; padding: 12px 16px 0; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .mobileSettings { display: flex; padding: 5px; }
   .brand { font-size: 18px; padding: 0; }
-  .brandMark { width: 23px; height: 23px; font-size: 19px; }
+  .brandMark { width: 23px; height: 23px; }
   .workspaceLabel, .navCaption, .navUtilities, .navBottom { display: none; }
   .navLinks { flex-direction: row; gap: 6px; margin-top: 12px; padding-bottom: 10px; }
   .navLinks a { flex: 1; justify-content: center; padding: 7px; gap: 7px; font-size: 11px; }

@@ -5,6 +5,7 @@ import { Icon, type IconName } from "@/components/iconstack/Icon";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PHASES, searchPhase } from "@/lib/search-workflow";
 import type { AiConnection } from "@/components/Nav";
+import { BrandMark } from "@/components/BrandMark";
 import styles from "./search.module.css";
 
 export function SearchNav({ name, aiStatus }: { name: string; aiStatus: AiConnection }) {
@@ -14,7 +15,7 @@ export function SearchNav({ name, aiStatus }: { name: string; aiStatus: AiConnec
   const phase = searchPhase(pathname.startsWith("/jobs/") ? view === "application" ? "applications" : view === "prepare" ? "prepare" : "explore" : params.get("phase"));
   const inSearch = pathname.startsWith("/jobs") && view !== "tracker" && !params.has("add");
   return <aside className={styles.nav}>
-    <div className={styles.brandRow}><Link href="/jobs" className={styles.brand} aria-label="Fieldlines job search home"><span className={styles.brandMark} aria-hidden="true">f</span>fieldlines</Link><Link href="/profile" aria-label="Settings" className={styles.mobileSettings}><NavIcon kind="settings" /></Link></div>
+    <div className={styles.brandRow}><Link href="/jobs" className={styles.brand} aria-label="Fieldlines job search home"><BrandMark className={styles.brandMark} />fieldlines</Link><Link href="/profile" aria-label="Settings" className={styles.mobileSettings}><NavIcon kind="settings" /></Link></div>
     <div className={styles.workspaceLabel}><span className={styles.workspaceDot} />My job search</div>
     <p className={styles.navCaption}>WORKSPACE</p>
     <nav className={styles.navLinks} aria-label="Search phases">

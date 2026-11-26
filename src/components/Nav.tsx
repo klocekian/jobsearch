@@ -8,6 +8,7 @@ import { apiGet } from "@/lib/api-client";
 import type { ClaudeStatus } from "@/lib/anthropic";
 import type { UserAIStatus } from "@/lib/ai";
 import { SearchNav } from "./search/SearchNav";
+import { BrandMark } from "./BrandMark";
 
 interface NavUser {
   id: number;
@@ -65,7 +66,7 @@ function PublicNav({ signedIn, isLanding }: { signedIn: boolean; isLanding: bool
     <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5">
         <Link href="/" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-primary">
-          <span aria-hidden="true" className="grid h-6 w-6 place-items-center rounded-md bg-brand text-[19px] leading-none text-white">f</span>
+          <BrandMark size={24} />
           fieldlines <span className="font-normal text-secondary">Job Search</span>
         </Link>
         <nav aria-label="Main navigation" className="flex items-center gap-1">
