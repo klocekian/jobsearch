@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Icon } from "@/components/iconstack/Icon";
 import { useEffect, useRef, useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import type { ResumeRow } from "@/lib/db/resumes";
@@ -62,12 +63,12 @@ export function PrepareSpace({ jobs }: { jobs: JobRow[] }) {
     <aside className={styles.sidebar}>
       <section className={styles.patternPanel}><h2>Recurring skills</h2><p className={styles.sectionDescription}>Skills mentioned across the saved roles you’re exploring.</p>
         {data ? <>
-          {data.patterns.length ? <div className={styles.patterns}>{data.patterns.map((pattern) => <details key={pattern.skill}><summary><span>{pattern.skill}</span><span>{pattern.jobs.length} roles</span></summary><ul>{pattern.jobs.map((job) => <li key={job.id}><Link href={`/jobs/${job.id}`}>{job.company} · {job.title} ↗</Link></li>)}</ul></details>)}</div> : <p className={styles.subtle}>No recurring skills found yet. Save at least two roles with posting text to start spotting patterns.</p>}
+          {data.patterns.length ? <div className={styles.patterns}>{data.patterns.map((pattern) => <details key={pattern.skill}><summary><span>{pattern.skill}</span><span>{pattern.jobs.length} roles</span><Icon name="chevron-down" size={14} className={styles.disclosure} /></summary><ul>{pattern.jobs.map((job) => <li key={job.id}><Link href={`/jobs/${job.id}`}>{job.company} · {job.title} <Icon name="arrow-up-right" size={14} /></Link></li>)}</ul></details>)}</div> : <p className={styles.subtle}>No recurring skills found yet. Save at least two roles with posting text to start spotting patterns.</p>}
           <p className={styles.patternFootnote}>Based on {data.postingCount} saved or in-preparation postings with text, using our curated skill vocabulary. Matches are prompts to investigate, not proof of requirements or skill gaps.</p>
         </> : <p className={styles.subtle}>{error ? "Patterns are unavailable until loading succeeds." : "Reading your saved postings…"}</p>}
       </section>
-      <section className={styles.asideNote}><h3>Tailor for a role</h3><p>Shortlisted roles and applications in preparation.</p>{ready.slice(0, 4).map((job) => <Link className={styles.prepJob} key={job.id} href={`/jobs/${job.id}?view=prepare`}><span>{job.title}<small>{job.company}</small></span><span>→</span></Link>)}{!ready.length && <Link className={styles.textLink} href="/jobs?phase=explore">Shortlist a role to get started →</Link>}</section>
-      <Link className={styles.noticeLink} href="/profile?tab=candidate">Review your experience & known gaps ↗</Link>
+      <section className={styles.asideNote}><h3>Tailor for a role</h3><p>Shortlisted roles and applications in preparation.</p>{ready.slice(0, 4).map((job) => <Link className={styles.prepJob} key={job.id} href={`/jobs/${job.id}?view=prepare`}><span>{job.title}<small>{job.company}</small></span><Icon name="arrow-right" size={16} /></Link>)}{!ready.length && <Link className={styles.textLink} href="/jobs?phase=explore">Shortlist a role to get started <Icon name="arrow-right" size={14} /></Link>}</section>
+      <Link className={styles.noticeLink} href="/profile?tab=candidate">Review your experience & known gaps <Icon name="arrow-up-right" size={14} /></Link>
     </aside>
   </div>;
 }
@@ -113,18 +114,18 @@ function ResumeLibrary() {
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   }
   return <section className={styles.panel}>
-    <div className={styles.sectionHeading}><h2>Resumes</h2>{!draft && <button className={styles.button} onClick={() => edit()} disabled={resumes === null}>+ Add resume</button>}</div>
+    <div className={styles.sectionHeading}><h2>Resumes</h2>{!draft && <button className={styles.button} onClick={() => edit()} disabled={resumes === null}><Icon name="plus" size={14} />Add resume</button>}</div>
     <p className={styles.sectionDescription}>Reusable versions. Select a resume to edit, or create a new version.</p>
     {error && <div className={styles.error} role="alert">{error}{!resumes && <button onClick={() => setReload((n) => n + 1)}>Try again</button>}</div>}
     {message && <p className={styles.success} role="status">{message}</p>}
     {!resumes && !error && <p role="status">Loading your resumes…</p>}
     {draft ? <form className={styles.resumeEditor} onSubmit={(e) => { e.preventDefault(); void save(false); }}>
       <label>Resume name<input maxLength={200} required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Product design leadership" disabled={busy} /></label>
-      <div className={styles.uploadRow}><span>Start from a file, or write below.</span><button type="button" className={styles.secondaryButton} onClick={() => fileRef.current?.click()} disabled={busy}>Upload resume</button><input ref={fileRef} type="file" accept=".pdf,.txt,.md,.docx" hidden onChange={(e) => void upload(e.target.files?.[0])} /></div>
+      <div className={styles.uploadRow}><span>Start from a file, or write below.</span><button type="button" className={styles.secondaryButton} onClick={() => fileRef.current?.click()} disabled={busy}><Icon name="upload" size={14} />Upload resume</button><input ref={fileRef} type="file" accept=".pdf,.txt,.md,.docx" hidden onChange={(e) => void upload(e.target.files?.[0])} /></div>
       <label>Resume content<textarea aria-label="Resume content" required rows={14} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} disabled={busy} /></label>
       <div className={styles.editorActions}><button type="button" className={styles.secondaryButton} onClick={() => { if (!dirty || window.confirm("Discard your unsaved resume changes?")) setDraft(null); }} disabled={busy}>Cancel</button>{draft.id && <button type="button" className={styles.secondaryButton} disabled={busy || !draft.name.trim() || !draft.content.trim()} onClick={() => void save(true)}>Save as new version</button>}<button className={styles.button} disabled={busy || !draft.name.trim() || !draft.content.trim()}>{busy ? "Working…" : "Save resume"}</button></div>
     </form> : <div className={styles.resumeList}>
-      {resumes?.map((resume) => <article key={resume.id} className={styles.resumeRow}><span className={styles.documentIcon} aria-hidden="true">↳</span><div><h3>{resume.name} {!!resume.is_default && <span className={styles.tag}>Default</span>}</h3><p>Updated {formatDate(resume.updated_at)} · {resume.content.trim().split(/\s+/).filter(Boolean).length} words</p></div><button className={styles.secondaryButton} onClick={() => edit(resume)}>Edit</button></article>)}
+      {resumes?.map((resume) => <article key={resume.id} className={styles.resumeRow}><span className={styles.documentIcon} aria-hidden="true"><Icon name="file-text" size={20} /></span><div><h3>{resume.name} {!!resume.is_default && <span className={styles.tag}>Default</span>}</h3><p>Updated {formatDate(resume.updated_at)} · {resume.content.trim().split(/\s+/).filter(Boolean).length} words</p></div><button className={styles.secondaryButton} onClick={() => edit(resume)}>Edit</button></article>)}
       {resumes?.length === 0 && <div className={styles.empty}><h3>No resumes yet</h3><p>Upload or paste a resume to start preparing.</p><button className={styles.secondaryButton} onClick={() => edit()}>Add your first resume</button></div>}
     </div>}
   </section>;

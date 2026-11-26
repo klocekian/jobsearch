@@ -65,7 +65,7 @@ describe("search cycle", () => {
 
   it("creates and copies a reusable resume without overwriting the original", async () => {
     const { page } = ui;
-    await page.getByRole("button", { name: "+ Add resume", exact: true }).click();
+    await page.getByRole("button", { name: "Add resume", exact: true }).click();
     await page.getByLabel("Resume name", { exact: true }).fill("Design leadership");
     await page.getByLabel("Resume content", { exact: true }).fill("Alex\nProduct designer. Led user research and prototyping.");
     await page.getByRole("button", { name: "Save resume", exact: true }).click();
