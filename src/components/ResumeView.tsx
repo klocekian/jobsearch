@@ -16,9 +16,9 @@ import { DOC_SURFACE, DocumentField } from "./DocumentField";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
 import { apiFetch, apiSend, errorMessage, readTextStream } from "@/lib/api-client";
 import type { AiDetection } from "@/lib/analysis/types";
-import { Button } from "@astryxdesign/core/Button";
-import { Banner } from "@astryxdesign/core/Banner";
-import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
+import { Button } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface ResumeViewProps {

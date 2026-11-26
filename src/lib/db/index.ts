@@ -4,6 +4,7 @@ import path from "node:path";
 
 let _client: Client | null = null;
 let _initialized = false;
+let _initializing: Promise<Client> | null = null;
 
 export function getClient(): Client {
   if (_client) return _client;
@@ -68,6 +69,18 @@ async function addMissingColumns(client: Client): Promise<void> {
 export async function getDb(): Promise<Client> {
   const client = getClient();
   if (_initialized) return client;
+  // Layout, streamed page data and API reads can arrive together on a cold
+  // start. Share schema initialization so they don't open competing writes.
+  if (!_initializing) {
+    _initializing = initializeDb(client).catch((error) => {
+      _initializing = null;
+      throw error;
+    });
+  }
+  return _initializing;
+}
+
+async function initializeDb(client: Client): Promise<Client> {
 
   // Single batch: tables + indexes.
   await client.executeMultiple(`

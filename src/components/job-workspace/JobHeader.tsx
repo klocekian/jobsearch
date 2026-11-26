@@ -1,13 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { Text } from "@astryxdesign/core/Text";
-import { Heading } from "@astryxdesign/core/Heading";
-import { Banner } from "@astryxdesign/core/Banner";
-import { HStack } from "@astryxdesign/core/Stack";
+import { STATUS_OPTIONS } from "@/lib/status";
+import { applicationGroup } from "@/lib/search-workflow";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { Selector } from "@/components/ui/Selector";
+import { Banner } from "@/components/ui/Banner";
+import { Icon } from "@/components/iconstack/Icon";
+import { JobStatusDot } from "../icons";
 import type { Draft } from "./useDraft";
+import type { useJobStepper } from "./useJobStepper";
+import styles from "./job.module.css";
 
 export type HeaderFields = Pick<JobRow, "title" | "company" | "location" | "salary_text" | "url">;
 
@@ -16,75 +21,96 @@ export const EMPTY_HEADER: HeaderFields = { title: "", company: "", location: ""
 interface JobHeaderProps {
   job: JobRow;
   draft: Draft<HeaderFields>;
+  stepper: ReturnType<typeof useJobStepper>;
   onSave: () => void;
-  onRestoreStatus: (status: string) => void;
+  onStatusChange: (status: string) => void;
   onDelete: () => void;
   error: string | null;
   onDismissError: () => void;
 }
 
-export function JobHeader({ job, draft, onSave, onRestoreStatus, onDelete, error, onDismissError }: JobHeaderProps) {
+/** Where the job sits in the search, so the breadcrumb leads back there. */
+function backLink(job: JobRow) {
+  if (job.status === "saved") return { href: "/jobs?phase=explore", label: "Explore" };
+  if (job.status === "applying") return { href: "/jobs?phase=prepare", label: "Prepare" };
+  return applicationGroup(job) ? { href: "/jobs?phase=applications", label: "Applications" } : { href: "/jobs?view=tracker", label: "All jobs" };
+}
+
+export function JobHeader({ job, draft, stepper, onSave, onStatusChange, onDelete, error, onDismissError }: JobHeaderProps) {
   const fields = draft.value;
   const setField = (key: keyof HeaderFields) => (v: string) => draft.set({ ...fields, [key]: v });
+  const back = backLink(job);
+  const meta = [job.company, job.location, job.salary_text].filter(Boolean);
 
   return (
-    <div className="min-w-0 flex-1">
-      {draft.isOpen ? (
-        <div className="mt-1 space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <div className="min-w-0 flex-1">
-              <TextInput label="Job title" isLabelHidden value={fields.title} onChange={setField("title")} placeholder="Job title" />
-            </div>
-            <div className="flex shrink-0 gap-1.5">
-              <Button label="Cancel" variant="secondary" size="sm" onClick={draft.close} />
-              <Button label="Save" variant="primary" size="sm" onClick={onSave} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <TextInput label="Company" isLabelHidden value={fields.company} onChange={setField("company")} placeholder="Company" />
-            <TextInput label="Location" isLabelHidden value={fields.location} onChange={setField("location")} placeholder="Location" />
-            <TextInput label="Salary" isLabelHidden value={fields.salary_text} onChange={setField("salary_text")} placeholder="Salary" />
-            <TextInput label="URL" isLabelHidden value={fields.url} onChange={setField("url")} placeholder="URL" />
-          </div>
+    <header className={styles.header}>
+      <div className={styles.titleRow}>
+        <div className={styles.title}>
+          <Link href={back.href} className={styles.crumb}>{back.label} /</Link>
+          <h1>{job.title || "Untitled role"}</h1>
         </div>
-      ) : (
-        <div>
-          <HStack gap={2} className="w-full items-center">
-            <Heading level={2}>{job.title || "Untitled"}</Heading>
+        <div className={styles.headerActions}>
+          {stepper.total > 0 && (
+            <div className={styles.stepper}>
+              <Button label="Previous job" tooltip="Previous job (k)" variant="ghost" size="sm" isIconOnly icon={<Icon name="chevron-up" size={15} />} onClick={() => stepper.go(stepper.prevId)} isDisabled={!stepper.prevId} />
+              <Button label="Next job" tooltip="Next job (j)" variant="ghost" size="sm" isIconOnly icon={<Icon name="chevron-down" size={15} />} onClick={() => stepper.go(stepper.nextId)} isDisabled={!stepper.nextId} />
+              {stepper.index >= 0 && <span>{stepper.index + 1} of {stepper.total}</span>}
+            </div>
+          )}
+          <Selector
+            label="Status"
+            isLabelHidden
+            size="sm"
+            className={styles.status}
+            options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
+            value={job.status}
+            onChange={onStatusChange}
+          />
+          {!draft.isOpen && (
             <Button
               label="Edit"
               variant="secondary"
               size="sm"
+              icon={<Icon name="pencil" size={13} />}
               onClick={() => draft.open({ title: job.title, company: job.company, location: job.location, salary_text: job.salary_text, url: job.url })}
             />
-            <span className="ml-auto">
-              <Button label="Delete" variant="ghost" size="sm" onClick={onDelete} />
-            </span>
-          </HStack>
-          <Text type="supporting" display="block">
-            {job.company}
-            {job.location && <> · {job.location}</>}
-            {job.salary_text && <> · {job.salary_text}</>}
-          </Text>
-          {job.status === "closed" && !!job.auto_closed && job.previous_status && (
-            <div className="mt-2 flex items-center justify-between p-2 px-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100 text-sm">
-              <span>This job was auto-marked closed (previously <strong>{job.previous_status}</strong>).</span>
-              <button
-                type="button"
-                onClick={() => onRestoreStatus(job.previous_status!)}
-                className="font-semibold underline hover:no-underline ml-2 cursor-pointer"
-              >
-                Restore to {job.previous_status}
-              </button>
-            </div>
           )}
+          <Button label="Delete" tooltip="Delete job" variant="ghost" size="sm" isIconOnly icon={<Icon name="trash" size={15} />} onClick={onDelete} />
         </div>
+      </div>
+
+      {draft.isOpen ? (
+        <form className={styles.editForm} onSubmit={(e) => { e.preventDefault(); onSave(); }}>
+          <TextInput label="Job title" value={fields.title} onChange={setField("title")} size="sm" className={styles.wide} />
+          <TextInput label="Company" value={fields.company} onChange={setField("company")} size="sm" />
+          <TextInput label="Location" value={fields.location} onChange={setField("location")} size="sm" />
+          <TextInput label="Salary" value={fields.salary_text} onChange={setField("salary_text")} size="sm" />
+          <TextInput label="URL" value={fields.url} onChange={setField("url")} size="sm" />
+          <div className={styles.editActions}>
+            <Button label="Cancel" variant="secondary" size="sm" onClick={draft.close} />
+            <Button label="Save" variant="primary" size="sm" type="submit" />
+          </div>
+        </form>
+      ) : (
+        <p className={styles.meta}>
+          {meta.length ? meta.join(" · ") : "No company or location yet"}
+          {job.url && (
+            <a href={job.url} target="_blank" rel="noopener noreferrer">
+              Posting <Icon name="arrow-up-right" size={12} />
+            </a>
+          )}
+        </p>
       )}
-      {error && (
-        <div className="mt-2">
-          <Banner status="error" title={error} isDismissable onDismiss={onDismissError} />
-        </div>
+
+      {job.status === "closed" && !!job.auto_closed && job.previous_status && (
+        <Banner
+          status="warning"
+          className={styles.headerBanner}
+          title={<>An automated check marked this job closed. It was <strong>{job.previous_status}</strong>.</>}
+          endContent={<Button label={`Restore to ${job.previous_status}`} variant="secondary" size="sm" onClick={() => onStatusChange(job.previous_status!)} />}
+        />
       )}
-    </div>
+      {error && <Banner status="error" className={styles.headerBanner} title={error} isDismissable onDismiss={onDismissError} />}
+    </header>
   );
 }

@@ -1,7 +1,8 @@
 import Image, { getImageProps } from "next/image";
-import { Button } from "@astryxdesign/core/Button";
-import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
+import { Button } from "@/components/ui/Button";
+import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { TipIcon } from "@/components/icons";
+import { Icon } from "@/components/iconstack/Icon";
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" className="shrink-0">
@@ -116,7 +117,7 @@ function FeatureSection({
             <ul className="space-y-3 pt-2 text-sm text-primary">
               {bullets.map((b) => (
                 <li key={b.title} className="flex items-start gap-2.5">
-                  <span className={`${CHECK_COLORS[check]} font-bold mt-0.5`}>✓</span>
+                  <Icon name="check" size={15} strokeWidth={2.25} className={`${CHECK_COLORS[check]} mt-0.5`} />
                   <span><strong>{b.title}.</strong> {b.body}</span>
                 </li>
               ))}
@@ -282,7 +283,7 @@ export function LandingPage() {
           <>
             <p className="pt-2 text-xs text-secondary sm:hidden">Works in desktop Chrome. Open this page on your computer to install it.</p>
             <a href="/chrome-extension.zip" download className="hidden sm:inline-block pt-2 text-xs font-semibold text-cyan-700 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200 transition-colors">
-              Download the Chrome extension →
+              Download the Chrome extension <Icon name="arrow-right" size={13} />
             </a>
           </>
         }

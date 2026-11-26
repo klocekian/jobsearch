@@ -5,12 +5,13 @@ import Link from "next/link";
 import type { JobRow } from "@/lib/db/jobs";
 import { PIPELINE_STATUSES, STATUS_DOT_COLORS, STATUS_TEXT_COLORS, furthestStage, reachedStage, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
-import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
-import { Heading } from "@astryxdesign/core/Heading";
-import { Text } from "@astryxdesign/core/Text";
-import { Badge } from "@astryxdesign/core/Badge";
-import { HStack } from "@astryxdesign/core/Stack";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Heading } from "@/components/ui/Heading";
+import { Text } from "@/components/ui/Text";
+import { Badge } from "@/components/ui/Badge";
+import { HStack } from "@/components/ui/Stack";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 const TERMINAL_LINES = [
   { status: "rejected", label: "Rejected", color: STATUS_TEXT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
@@ -45,11 +46,12 @@ function GateStepper({ job }: { job: JobRow }) {
     <HStack gap={0} className="items-center">
       {GATES.map((g, i) => (
         <HStack key={g.key} gap={0} className="items-center">
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: i < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-border-strong, #cbd5e1)" }}
-            title={g.label}
-          />
+          <Tooltip content={g.label}>
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: i < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-border-strong, #cbd5e1)" }}
+            />
+          </Tooltip>
           <Text
             type="supporting"
             className="mr-2 ml-1 whitespace-nowrap"
@@ -133,7 +135,7 @@ export function JobsFunnel({ jobs }: { jobs: JobRow[] }) {
     <div>
       <Card className="p-4 sm:p-5">
         <div className="mb-2 flex items-baseline justify-between">
-          <Heading level={3}>Application Pipeline</Heading>
+          <Heading level={3}>Application pipeline</Heading>
           <Text type="supporting" color="secondary">{jobs.length} total jobs tracked</Text>
         </div>
 

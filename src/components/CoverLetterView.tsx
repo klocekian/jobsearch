@@ -11,14 +11,14 @@ import { DownloadMenu } from "./DownloadMenu";
 import { DocumentField } from "./DocumentField";
 import { combinedContextText, type ContextMaterial } from "@/lib/context";
 import { apiFetch, errorMessage, readTextStream } from "@/lib/api-client";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { TextArea } from "@astryxdesign/core/TextArea";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Card } from "@astryxdesign/core/Card";
-import { Spinner } from "@astryxdesign/core/Spinner";
-import { Text } from "@astryxdesign/core/Text";
-import { Heading } from "@astryxdesign/core/Heading";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { TextArea } from "@/components/ui/TextArea";
+import { Banner } from "@/components/ui/Banner";
+import { Card } from "@/components/ui/Card";
+import { Spinner } from "@/components/ui/Spinner";
+import { Text } from "@/components/ui/Text";
+import { Heading } from "@/components/ui/Heading";
 
 interface CoverLetterViewProps {
   jobId: number;

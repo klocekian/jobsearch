@@ -46,7 +46,7 @@ describe("pages", () => {
     const fresh = await openBrowser(app, { onboardingDone: false });
     try {
       await fresh.step("onboarding", async () => {
-        await fresh.page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
+        await fresh.page.goto(`${app.base}/jobs?view=tracker`, { waitUntil: "networkidle" });
         // getByRole skips the app's other dialogs, which sit in the page closed.
         const dialog = fresh.page.getByRole("dialog");
         await dialog.waitFor();
@@ -67,7 +67,7 @@ describe("jobs list", () => {
   it("a chosen sort survives a reload, without a hydration mismatch", async () => {
     await ui.step("sort", async () => {
       const { page } = ui;
-      await page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
+      await page.goto(`${app.base}/jobs?view=tracker`, { waitUntil: "networkidle" });
       await page.locator("th").filter({ hasText: /^Company/ }).locator("button").first().click();
       await page.waitForTimeout(500);
       ui.errors.length = 0;
@@ -84,7 +84,7 @@ describe("jobs list", () => {
     await app.db.execute({ sql: "UPDATE jobs SET status = 'closed', previous_status = 'applied', auto_closed = 1 WHERE id = ?", args: [closed] });
     await ui.step("confirm auto-closed", async () => {
       const { page } = ui;
-      await page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
+      await page.goto(`${app.base}/jobs?view=tracker`, { waitUntil: "networkidle" });
       await page.getByRole("button", { name: "This looks correct. Save." }).click();
       await page.getByText(/Saved — 1 job stays closed/).waitFor();
       assert.equal((await app.req("GET", "/api/jobs/check-status")).data.restorableCount, 0);
@@ -97,8 +97,7 @@ describe("a job", () => {
     await ui.step("status", async () => {
       const { page } = ui;
       await page.goto(`${app.base}/jobs/${jobId}`, { waitUntil: "networkidle" });
-      // The job page's only combobox is Change Status.
-      await page.getByRole("combobox").first().click();
+      await page.getByRole("combobox", { name: "Status", exact: true }).click();
       await page.getByRole("option", { name: "Onsite" }).click();
       await page.waitForTimeout(800);
       assert.equal((await job(jobId)).status, "onsite");
@@ -147,6 +146,50 @@ describe("profile", () => {
       await page.reload({ waitUntil: "networkidle" });
       assert.equal(await page.getByLabel("First name").inputValue(), "Jane");
       assert.equal(await page.getByLabel("LinkedIn URL").inputValue(), "linkedin.com/in/jane");
+    });
+  });
+});
+
+describe("theme, tooltips and keyboard", () => {
+  it("dark mode applies at once, survives a reload without a hydration mismatch, and back to system", async () => {
+    await ui.step("theme", async () => {
+      const { page } = ui;
+      const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
+      await page.goto(`${app.base}/profile`, { waitUntil: "networkidle" });
+      await page.getByRole("group", { name: "Theme" }).getByRole("button", { name: "Dark" }).click();
+      assert.equal(await theme(), "dark");
+      ui.errors.length = 0;
+      await page.reload({ waitUntil: "networkidle" });
+      assert.equal(await theme(), "dark", "set before paint from the saved choice");
+      assert.deepEqual(hydrationErrors(ui.errors), []);
+      await page.getByRole("group", { name: "Theme" }).getByRole("button", { name: "System" }).click();
+      assert.equal(await page.evaluate(() => localStorage.getItem("theme")), null);
+      assert.equal(await theme(), "light", "headless Chrome reports a light system theme");
+    });
+  });
+
+  it("an icon button shows a styled tooltip on hover", async () => {
+    await ui.step("tooltip", async () => {
+      const { page } = ui;
+      await page.goto(`${app.base}/jobs/${jobId}`, { waitUntil: "networkidle" });
+      const del = page.getByRole("button", { name: "Delete", exact: true });
+      await del.hover();
+      await page.getByRole("tooltip").filter({ hasText: "Delete job" }).waitFor();
+      assert.equal(await del.getAttribute("title"), null, "no native title");
+      await page.mouse.move(0, 0);
+      await page.getByRole("tooltip").waitFor({ state: "detached" });
+    });
+  });
+
+  it("arrow keys move between a job's tabs", async () => {
+    await ui.step("tab keys", async () => {
+      const { page } = ui;
+      await page.goto(`${app.base}/jobs/${jobId}`, { waitUntil: "networkidle" });
+      await page.getByRole("button", { name: /^Fit/ }).focus();
+      await page.keyboard.press("ArrowRight");
+      assert.equal(await page.getByRole("button", { name: /^Resume check/ }).getAttribute("aria-current"), "page");
+      await page.keyboard.press("End");
+      assert.equal(await page.getByRole("button", { name: /^Application/ }).getAttribute("aria-current"), "page");
     });
   });
 });

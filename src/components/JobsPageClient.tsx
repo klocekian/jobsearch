@@ -8,8 +8,12 @@ import { JobsList } from "@/components/JobsList";
 import { JobsFunnel } from "@/components/JobsFunnel";
 import { StrategyBanner } from "@/components/StrategyBanner";
 import { AddJobForm } from "@/components/AddJobForm";
-import { Text } from "@astryxdesign/core/Text";
-import { Card } from "@astryxdesign/core/Card";
+import { Card } from "@/components/ui/Card";
+import { Page } from "@/components/ui/Page";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/iconstack/Icon";
+import { SearchHome } from "./search/SearchHome";
+import { searchPhase } from "@/lib/search-workflow";
 
 export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]> }) {
   const params = useSearchParams();
@@ -21,11 +25,12 @@ export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]>
   // thenable rather than a real Promise: its .then() returns undefined, so
   // chaining .catch() off it crashes — hence the two-argument form.
   const [jobs, setJobs] = useState<JobRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let ignore = false;
     jobsPromise.then(
       (initial) => { if (!ignore) setJobs(initial); },
-      () => { if (!ignore) setJobs([]); },
+      () => { if (!ignore) setError("Could not load your jobs."); },
     );
     return () => { ignore = true; };
   }, [jobsPromise]);
@@ -35,31 +40,38 @@ export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]>
       // Runs right after writes, so skip the short private cache /api/jobs allows.
       const data = await apiGet<{ jobs?: JobRow[] }>("/api/jobs?sort=created_at&order=desc", { cache: "no-store" });
       setJobs(data.jobs ?? []);
+      setError(null);
     } catch {
-      // keep the list we have
+      setError("Could not refresh your jobs. Please try again.");
     }
   }, []);
 
   if (adding) {
     return (
-      <main className="mx-auto w-full max-w-7xl px-5 py-8">
-        <Text type="display-3" as="h1" className="mb-6">Add Job</Text>
-        <Card>
-          <div className="p-6">
-            <AddJobForm />
-          </div>
+      <Page title="Save a job" crumb={{ label: "Explore", href: "/jobs?phase=explore" }} narrow>
+        <Card className="p-5 sm:p-6">
+          <AddJobForm />
         </Card>
-      </main>
+      </Page>
     );
   }
 
+  if (params.get("view") !== "tracker") {
+    const phase = searchPhase(params.get("phase"));
+    return <SearchHome key={`${phase}:${params.get("filter") ?? "all"}`} initialFilter={params.get("filter")} jobs={jobs} phase={phase} error={error} retry={() => void refreshJobs()} onJobChange={(job) => setJobs((list) => list?.map((j) => j.id === job.id ? job : j) ?? null)} />;
+  }
+
   return (
-    <main className="mx-auto w-full max-w-7xl px-5 py-5">
+    <Page
+      title="All jobs & archive"
+      crumb={{ label: "Library" }}
+      actions={<Button label="Save a job" variant="primary" size="sm" href="/jobs?add=1" icon={<Icon name="plus" size={13} />} />}
+    >
       <div className="space-y-4">
         <StrategyBanner jobs={jobs ?? []} />
         <JobsFunnel jobs={jobs ?? []} />
         <JobsList allJobs={jobs} setAllJobs={setJobs} refreshAllJobs={refreshJobs} />
       </div>
-    </main>
+    </Page>
   );
 }

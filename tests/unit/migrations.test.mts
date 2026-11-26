@@ -10,7 +10,7 @@ import { createClient } from "@libsql/client";
 const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "jobsearch-migrate-")), "old.db");
 process.env.TURSO_DATABASE_URL = `file:${file}`;
 
-it("adds missing columns (and their index) to an old database", async () => {
+it("concurrent startup adds missing columns once and preserves existing data", async () => {
   const old = createClient({ url: `file:${file}` });
   await old.executeMultiple(`
     CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '');
@@ -21,7 +21,9 @@ it("adds missing columns (and their index) to an old database", async () => {
   old.close();
 
   const { getDb } = await import("@/lib/db");
-  const db = await getDb();
+  const clients = await Promise.all(Array.from({ length: 8 }, () => getDb()));
+  const db = clients[0];
+  assert.ok(clients.every((client) => client === db));
   const cols = async (t: string) => (await db.execute(`PRAGMA table_info(${t})`)).rows.map((r) => String(r.name));
   for (const c of ["is_starred", "fitness_score", "fitness_report", "fitness_run_at", "match_resume_name", "activity_summary", "auto_closed"]) {
     assert.ok((await cols("jobs")).includes(c), c);

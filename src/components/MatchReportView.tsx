@@ -9,15 +9,16 @@ import type {
   AiDetection,
 } from "@/lib/analysis/types";
 import { StatusIcon, ScoreRing } from "./icons";
-import { Button } from "@astryxdesign/core/Button";
-import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
-import { Card } from "@astryxdesign/core/Card";
-import { Spinner } from "@astryxdesign/core/Spinner";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Text } from "@astryxdesign/core/Text";
+import { Button } from "@/components/ui/Button";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/SegmentedControl";
+import { Card } from "@/components/ui/Card";
+import { Spinner } from "@/components/ui/Spinner";
+import { Banner } from "@/components/ui/Banner";
+import { Text } from "@/components/ui/Text";
 
-import { Badge } from "@astryxdesign/core/Badge";
-import { ProgressBar } from "@astryxdesign/core/ProgressBar";
+import { Badge } from "@/components/ui/Badge";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { Icon } from "@/components/iconstack/Icon";
 
 /** Async state of the LLM-based AI-authorship check (owned by App). */
 export interface AiDetectionState {
@@ -41,10 +42,10 @@ interface MatchReportViewProps {
 
 function SummaryCards({ report }: { report: MatchReport }) {
   const cards = [
-    { label: "Hard Skills", n: report.counts.hardSkillsIssues },
-    { label: "Soft Skills", n: report.counts.softSkillsIssues },
+    { label: "Hard skills", n: report.counts.hardSkillsIssues },
+    { label: "Soft skills", n: report.counts.softSkillsIssues },
     { label: "Searchability", n: report.counts.searchabilityIssues },
-    { label: "Recruiter Tips", n: report.counts.recruiterIssues },
+    { label: "Recruiter tips", n: report.counts.recruiterIssues },
   ];
   return (
     <div className="flex items-center gap-3">
@@ -149,7 +150,7 @@ function SkillsTable({ section }: { section: SkillSection }) {
                   </span>
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-sm">
-                  {row.state === "missing" ? <Text className="text-rose-700 dark:text-rose-400 text-sm">✕</Text> : <Text className="text-sm">{row.resumeCount}</Text>}
+                  {row.state === "missing" ? <Icon name="x" size={14} className="text-rose-700" aria-label="Missing" role="img" aria-hidden={false} /> : <Text className="text-sm">{row.resumeCount}</Text>}
                 </td>
                 <td className="py-1.5 pl-3 text-right tabular-nums text-sm"><Text className="text-sm">{row.jobCount}</Text></td>
               </tr>
@@ -291,11 +292,11 @@ export function MatchReportView({
           </Section>
 
           <div className="grid gap-x-8 @xl:grid-cols-2">
-            <Section title="Hard Skills" aside={<SkillCounts section={report.hardSkills} />}>
+            <Section title="Hard skills" aside={<SkillCounts section={report.hardSkills} />}>
               <SkillsTable section={report.hardSkills} />
             </Section>
             <Section
-              title="Soft Skills"
+              title="Soft skills"
               aside={<SkillCounts section={report.softSkills} />}
               className="mt-4 border-t border-border pt-4 @xl:mt-0 @xl:border-t-0 @xl:pt-0"
             >
@@ -303,7 +304,7 @@ export function MatchReportView({
             </Section>
           </div>
 
-          <Section title="Recruiter Tips">
+          <Section title="Recruiter tips">
             <RecruiterTable tips={report.recruiterTips} />
           </Section>
         </div>

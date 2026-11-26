@@ -1,9 +1,9 @@
 "use client";
 
 import type { FitnessResult, FitnessRequirement } from "@/lib/fitness/schema";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Button } from "@astryxdesign/core/Button";
-import { Text } from "@astryxdesign/core/Text";
+import { Banner } from "@/components/ui/Banner";
+import { Button } from "@/components/ui/Button";
+import { Text } from "@/components/ui/Text";
 
 /**
  * Renders a fitness check.

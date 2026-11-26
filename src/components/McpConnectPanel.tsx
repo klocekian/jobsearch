@@ -2,14 +2,14 @@
 
 import { useConfirm, type ConfirmOptions } from "@/hooks/useConfirm";
 import { useCallback, useEffect, useState } from "react";
-import { Card } from "@astryxdesign/core/Card";
-import { Button } from "@astryxdesign/core/Button";
-import { Badge } from "@astryxdesign/core/Badge";
-import { Text } from "@astryxdesign/core/Text";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { HStack } from "@astryxdesign/core/Stack";
-import { CodeBlock } from "@astryxdesign/core/CodeBlock";
-import { Spinner } from "@astryxdesign/core/Spinner";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Text } from "@/components/ui/Text";
+import { TextInput } from "@/components/ui/TextInput";
+import { HStack } from "@/components/ui/Stack";
+import { CodeBlock } from "@/components/ui/CodeBlock";
+import { Spinner } from "@/components/ui/Spinner";
 import { formatDate } from "@/lib/format";
 import type { ApiTokenRow } from "@/lib/db/api-tokens";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";

@@ -2,7 +2,7 @@
 
 import { useConfirm } from "@/hooks/useConfirm";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import type { ContextMaterial } from "@/lib/context";
 import type { ResumeRow } from "@/lib/db/resumes";
@@ -20,6 +20,7 @@ import { useMatchAnalysis } from "./job-workspace/useMatchAnalysis";
 import { useWithAi } from "./job-workspace/useWithAi";
 import { useDraft } from "./job-workspace/useDraft";
 import { useSplitPane } from "./job-workspace/useSplitPane";
+import { useJobStepper } from "./job-workspace/useJobStepper";
 import { saveApplicationDocs } from "./job-workspace/applicationDocs";
 import { JobHeader, EMPTY_HEADER } from "./job-workspace/JobHeader";
 import { PostingPane, type LeftTab } from "./job-workspace/PostingPane";
@@ -28,12 +29,13 @@ import { MatchTab } from "./job-workspace/MatchTab";
 import { ResumePicker } from "./job-workspace/ResumePicker";
 import { SubmissionPanel, type SubmissionEdit } from "./job-workspace/SubmissionPanel";
 import { NotesPanel } from "./job-workspace/NotesPanel";
-import { TabList, Tab } from "@astryxdesign/core/TabList";
-import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
-import { Button } from "@astryxdesign/core/Button";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Spinner } from "@astryxdesign/core/Spinner";
-import { useMediaQuery } from "@astryxdesign/core/hooks";
+import { TabList, Tab } from "@/components/ui/TabList";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/SegmentedControl";
+import { Button } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
+import { Spinner } from "@/components/ui/Spinner";
+import { useMediaQuery } from "@/components/ui/hooks";
+import styles from "./job-workspace/job.module.css";
 
 type RightTab = "profile" | "resume" | "application" | "tools";
 type MobilePane = "posting" | "analysis";
@@ -42,6 +44,8 @@ type ToolsSubTab = "profile" | "resume" | "cover";
 
 export function JobWorkspace({ jobId }: { jobId: number }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedView = searchParams.get("view");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const { job, setJob, submissions, loading, refetch: fetchJob, updateJob } = useJob(jobId);
   const { savedResumes, setSavedResumes, resumeText, setResumeText } = useSavedResumes(job);
@@ -56,19 +60,13 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   const [analyzing, setAnalyzing] = useState(false);
 
   const [leftTab, setLeftTab] = useState<LeftTab>("posting");
-  const [rightTab, setRightTab] = useState<RightTab>("profile");
+  const [rightTab, setRightTab] = useState<RightTab>(requestedView === "prepare" ? "tools" : requestedView === "application" ? "application" : "profile");
   const [appSubTab, setAppSubTab] = useState<AppSubTab>("notes");
-  const [toolsSubTab, setToolsSubTab] = useState<ToolsSubTab>("profile");
+  const [toolsSubTab, setToolsSubTab] = useState<ToolsSubTab>("resume");
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const [mobilePane, setMobilePane] = useState<MobilePane>("posting");
+  const [mobilePane, setMobilePane] = useState<MobilePane>(requestedView ? "analysis" : "posting");
   const { splitPct, containerRef, onDragStart } = useSplitPane();
-  // The nav right-aligns the job controls to the left column's edge, where the card begins.
-  useEffect(() => {
-    if (isMobile) return;
-    const root = document.documentElement;
-    root.style.setProperty("--job-split", `${splitPct}%`);
-    return () => { root.style.removeProperty("--job-split"); };
-  }, [isMobile, splitPct]);
+  const stepper = useJobStepper(jobId);
 
   const headerDraft = useDraft(EMPTY_HEADER);
   const notesDraft = useDraft("");
@@ -80,14 +78,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
   // The saved resume the picked text came from (none for an edited, unsaved one).
   const pickedResume = savedResumes.find((r) => r.content === resumeText) ?? null;
-
-  useEffect(() => {
-    if (job) {
-      window.dispatchEvent(new CustomEvent("job-workspace-sync", {
-        detail: { jobId: job.id, status: job.status, analyzing: analyzing || fitness.running }
-      }));
-    }
-  }, [job, analyzing, fitness.running]);
 
   const runAnalysis = () => {
     if (!match.run()) return;
@@ -140,16 +130,6 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     router.push("/jobs");
   }, [jobId, router, confirm]);
 
-  // The nav's status selector acts on this job through an event.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const custom = e as CustomEvent<{ action: string; status?: string }>;
-      if (custom.detail?.action === "status" && custom.detail.status) updateStatus(custom.detail.status);
-    };
-    window.addEventListener("job-workspace-action", handler);
-    return () => window.removeEventListener("job-workspace-action", handler);
-  }, [updateStatus]);
-
   // Runs a write, reporting failure in the workspace's error banner. Edit
   // forms stay open on failure so nothing typed is lost.
   const attempt = async (write: () => Promise<unknown>, fallback: string): Promise<boolean> => {
@@ -191,21 +171,22 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     if (await attempt(() => apiSend(`/api/jobs/${jobId}/submissions/${sid}`, "DELETE"), "Could not remove the submission.")) fetchJob();
   };
 
-  // Tools › Resume saved over the picked resume, or as a new one: pick it.
+  // Prepare › Resume saved over the picked resume, or as a new one: pick it.
   const onResumeSaved = (row: ResumeRow, isNew: boolean) => {
     setSavedResumes((prev) => (isNew ? [...prev, row] : prev.map((r) => (r.id === row.id ? row : r))));
     setResumeText(row.content);
   };
 
-  if (loading) return <div className="py-12 text-center"><Spinner label="Loading…" /></div>;
-  if (!job) return <div className="py-12"><Banner status="error" title="Job not found." /></div>;
+  if (loading) return <div data-job-workspace className="grid place-items-center py-16"><Spinner label="Loading…" /></div>;
+  if (!job) return <div data-job-workspace className="p-6"><Banner status="error" title="Job not found." /></div>;
 
   const jobHeaderInner = (
     <JobHeader
       job={job}
       draft={headerDraft}
+      stepper={stepper}
       onSave={saveHeader}
-      onRestoreStatus={updateStatus}
+      onStatusChange={updateStatus}
       onDelete={deleteJob}
       error={actionError}
       onDismissError={() => setActionError(null)}
@@ -213,8 +194,8 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   );
 
   const leftTabBar = (
-    <TabList value={leftTab} onChange={(v) => setLeftTab(v as LeftTab)}>
-      <Tab value="posting" label="Job Posting" />
+    <TabList value={leftTab} onChange={(v) => setLeftTab(v as LeftTab)} label="Posting views">
+      <Tab value="posting" label="Posting" />
       <Tab value="apply" label="Apply" />
     </TabList>
   );
@@ -228,11 +209,11 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
   );
 
   const rightTabBar = (
-    <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)}>
-      <Tab value="profile" label={fitness.saved ? `Profile (${fitness.saved.score}/10)` : "Profile"} />
-      <Tab value="resume" label={analyzed ? `Resume (${analyzed.report.score}/100)` : "Resume"} />
+    <TabList value={rightTab} onChange={(v) => setRightTab(v as RightTab)} label="Analysis views">
+      <Tab value="profile" label={fitness.saved ? `Fit · ${fitness.saved.score}/10` : "Fit"} />
+      <Tab value="resume" label={analyzed ? `Resume check · ${analyzed.report.score}` : "Resume check"} />
+      <Tab value="tools" label="Prepare" />
       <Tab value="application" label={submissions.length > 0 ? `Application (${submissions.length})` : "Application"} />
-      <Tab value="tools" label="Tools" />
     </TabList>
   );
 
@@ -284,7 +265,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
       {rightTab === "application" && (
         // Editing notes, the text area takes the rest of the pane's height.
         <div className={editingNotes ? "flex h-full min-h-0 flex-col gap-4" : "space-y-4"}>
-          <div className="flex items-center gap-2">
+          <div className={styles.subNav}>
             <SegmentedControl value={appSubTab} onChange={(v) => setAppSubTab(v as AppSubTab)} label="Application view">
               <SegmentedControlItem value="notes" label="Notes" />
               <SegmentedControlItem
@@ -296,7 +277,7 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
               <Button label="Edit" variant="secondary" size="sm" onClick={() => notesDraft.open(job.notes)} />
             )}
             {editingNotes && (
-              <div className="ml-auto flex shrink-0 gap-2">
+              <div className={styles.subNavEnd}>
                 <Button label="Cancel" variant="secondary" size="sm" onClick={notesDraft.close} />
                 <Button label="Save" variant="primary" size="sm" onClick={saveNotes} />
               </div>
@@ -319,10 +300,10 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
 
       {rightTab === "tools" && (
         <div className="space-y-4">
-          <SegmentedControl value={toolsSubTab} onChange={(v) => setToolsSubTab(v as ToolsSubTab)} label="Tool">
-            <SegmentedControlItem value="profile" label="Profile" />
+          <SegmentedControl value={toolsSubTab} onChange={(v) => setToolsSubTab(v as ToolsSubTab)} label="Prepare">
             <SegmentedControlItem value="resume" label="Resume" />
             <SegmentedControlItem value="cover" label="Cover letter" />
+            <SegmentedControlItem value="profile" label="Your profile" />
           </SegmentedControl>
 
           {toolsSubTab === "profile" && <CandidateProfilePanel embedded />}
@@ -372,77 +353,49 @@ export function JobWorkspace({ jobId }: { jobId: number }) {
     </>
   );
 
-  const rightPaneCardClass =
-    "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-[0_0_20px_rgba(0,0,0,0.18)] dark:shadow-[0_0_20px_rgba(0,0,0,0.9)]";
-
   if (isMobile) {
     return (
-      <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden bg-surface text-primary">
-        <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
-          <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
-          <div className="mt-3">{activityBanner}</div>
-        </div>
-        <div className="shrink-0 border-b border-border bg-surface px-4 py-2">
+      <div data-job-workspace className={styles.workspace}>
+        {jobHeaderInner}
+        <div className={styles.mobileSwitch}>
           <SegmentedControl value={mobilePane} onChange={(v) => setMobilePane(v as MobilePane)} label="View">
             <SegmentedControlItem value="posting" label="Posting" />
             <SegmentedControlItem value="analysis" label="Analysis" />
           </SegmentedControl>
         </div>
-        {mobilePane === "posting" ? (
-          <>
-            <div className="shrink-0 border-b border-border bg-surface px-4">{leftTabBar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-surface p-4">{leftPaneBody}</div>
-          </>
-        ) : (
-          <>
-            <div className="flex min-h-0 flex-1 flex-col p-3">
-              <div className={rightPaneCardClass}>
-                <div className="shrink-0 border-b border-border px-4">{rightTabBar}</div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4">{rightPaneBody}</div>
-              </div>
-            </div>
-          </>
-        )}
+        <div className={styles.body}>
+          {mobilePane === "posting" ? (
+            <section className={styles.pane}>
+              <div className={styles.paneTabs}>{leftTabBar}</div>
+              <div className={`${styles.paneContent} ${leftTab === "apply" ? styles.fill : ""}`}>{leftPaneBody}</div>
+            </section>
+          ) : (
+            <section className={`${styles.pane} ${styles.analysis}`}>
+              <div className={styles.activity}>{activityBanner}</div>
+              <div className={styles.paneTabs}>{rightTabBar}</div>
+              <div className={`${styles.paneContent} ${editingNotes ? styles.fill : ""}`}>{rightPaneBody}</div>
+            </section>
+          )}
+        </div>
         {confirmDialog}
       </div>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative grid h-[calc(100vh-57px)] grid-rows-[auto_auto_minmax(0,1fr)] bg-surface text-primary"
-      style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}
-    >
-      {/* Drag handle */}
-      <div
-        onMouseDown={onDragStart}
-        className="absolute -top-[57px] bottom-0 z-50 w-1 cursor-col-resize bg-transparent hover:bg-brand/30 active:bg-brand/50 transition-colors"
-        style={{ left: `${splitPct}%`, transform: "translateX(-50%)" }}
-      />
-      {/* Header */}
-      <div className="col-start-1 row-start-1 border-b border-border bg-surface px-4 py-3">
-        <div className="flex items-start justify-between gap-3">{jobHeaderInner}</div>
-      </div>
-
-      {/* Left tabs */}
-      <div className="col-start-1 row-start-2 border-b border-border bg-surface px-4">{leftTabBar}</div>
-
-      {/* Carry the header and tab rules across the right column; the card paints over them */}
-      <div aria-hidden className="col-start-2 row-start-1 border-b border-border" />
-      <div aria-hidden className="col-start-2 row-start-2 border-b border-border" />
-
-      {/* Left content */}
-      <div className="col-start-1 row-start-3 min-h-0 overflow-y-auto bg-surface p-4">{leftPaneBody}</div>
-
-      {/* Right pane: activity banner, tabs, content. It rises over the nav
-          (whose controls sit on the left on job pages) to the top of the window. */}
-      <div className="relative z-40 col-start-2 row-start-1 row-span-3 -mt-[57px] flex min-h-0 flex-col p-3 sm:p-4">
-        <div className={rightPaneCardClass}>
-          <div className="shrink-0">{activityBanner}</div>
-          <div className="shrink-0 border-b border-border px-4">{rightTabBar}</div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 text-sm">{rightPaneBody}</div>
-        </div>
+    <div data-job-workspace className={styles.workspace}>
+      {jobHeaderInner}
+      <div ref={containerRef} className={styles.body} style={{ gridTemplateColumns: `${splitPct}% ${100 - splitPct}%` }}>
+        <section className={styles.pane} aria-label="Posting">
+          <div className={styles.paneTabs}>{leftTabBar}</div>
+          <div className={`${styles.paneContent} ${leftTab === "apply" ? styles.fill : ""}`}>{leftPaneBody}</div>
+        </section>
+        <div role="separator" aria-orientation="vertical" aria-label="Resize panes" onMouseDown={onDragStart} className={styles.divider} style={{ left: `${splitPct}%` }} />
+        <section className={`${styles.pane} ${styles.analysis}`} aria-label="Analysis">
+          <div className={styles.activity}>{activityBanner}</div>
+          <div className={styles.paneTabs}>{rightTabBar}</div>
+          <div className={`${styles.paneContent} ${editingNotes ? styles.fill : ""}`}>{rightPaneBody}</div>
+        </section>
       </div>
       {confirmDialog}
     </div>

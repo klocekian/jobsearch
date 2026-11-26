@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react";
-import { AlertDialog } from "@astryxdesign/core/AlertDialog";
+import { AlertDialog } from "@/components/ui/AlertDialog";
 
 export interface ConfirmOptions {
   title: string;

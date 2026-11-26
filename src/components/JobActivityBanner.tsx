@@ -9,6 +9,7 @@ import { STATUS_COLORS, statusLabel } from "@/lib/status";
 import { formatDate } from "@/lib/format";
 import { formatEventWhen, relativeDay, resolveJobActivity } from "@/lib/job-activity";
 import { ChevronDownIcon, ChevronUpIcon } from "./icons";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 
 /**
@@ -60,15 +61,17 @@ export function JobActivityBanner({
           )}
         </p>
         {hasDetail && (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Show activity details" : "Hide activity details"}
-            className="shrink-0 rounded p-0.5 text-secondary hover:bg-border/60 hover:text-primary cursor-pointer"
-          >
-            {collapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
-          </button>
+          <Tooltip content={collapsed ? "Show details" : "Hide details"}>
+            <button
+              type="button"
+              onClick={toggle}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Show activity details" : "Hide activity details"}
+              className="shrink-0 rounded p-0.5 text-secondary hover:bg-border/60 hover:text-primary cursor-pointer"
+            >
+              {collapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
+            </button>
+          </Tooltip>
         )}
       </div>
 

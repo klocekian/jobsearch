@@ -13,14 +13,11 @@
     "test:unit": "tsx --tsconfig tsconfig.json --test 'tests/unit/*.test.mts'",
     "test:http": "node --test --test-concurrency=1 'tests/http/*.test.mjs'",
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/*.test.mjs'",
-    "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
     "mcp": "tsx --tsconfig tsconfig.json src/mcp/stdio.mts",
     "package:extension": "bash scripts/package-extension.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
-    "@astryxdesign/core": "^0.1.2",
-    "@astryxdesign/theme-neutral": "^0.1.2",
     "@libsql/client": "^0.17.4",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@tailwindcss/typography": "^0.5.20",
@@ -35,7 +32,6 @@
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@astryxdesign/cli": "^0.1.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

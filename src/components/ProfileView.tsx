@@ -2,17 +2,18 @@
 
 import { useConfirm } from "@/hooks/useConfirm";
 import { useRef, useState } from "react";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { TextArea } from "@astryxdesign/core/TextArea";
-import { Badge } from "@astryxdesign/core/Badge";
-import { Card } from "@astryxdesign/core/Card";
-import { TabList, Tab } from "@astryxdesign/core/TabList";
-import { Switch } from "@astryxdesign/core/Switch";
-import { Text } from "@astryxdesign/core/Text";
-import { Stack } from "@astryxdesign/core/Stack";
-import { HStack } from "@astryxdesign/core/HStack";
-import { Banner } from "@astryxdesign/core/Banner";
+import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { TextArea } from "@/components/ui/TextArea";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { TabList, Tab } from "@/components/ui/TabList";
+import { Switch } from "@/components/ui/Switch";
+import { Text } from "@/components/ui/Text";
+import { Stack } from "@/components/ui/Stack";
+import { HStack } from "@/components/ui/HStack";
+import { Banner } from "@/components/ui/Banner";
 import { readResumeFile } from "@/lib/extract";
 import { formatDate } from "@/lib/format";
 import { apiSend, errorMessage } from "@/lib/api-client";
@@ -22,6 +23,7 @@ import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { AIProvidersPanel } from "./AIProvidersPanel";
 import { McpConnectPanel } from "./McpConnectPanel";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
+import { ThemeSelector } from "./ThemeControls";
 
 interface AuthUser { id: number; name: string; email: string; claudeStatus: ClaudeStatus }
 
@@ -44,7 +46,12 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   const [resumeError, setResumeError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const editFileRef = useRef<HTMLInputElement>(null);
-  const [profileTab, setProfileTab] = useState<"account" | "ai" | "extension" | "resumes" | "candidate">("account");
+  const searchParams = useSearchParams();
+  type ProfileTab = "account" | "ai" | "extension" | "resumes" | "candidate";
+  const requestedTab = searchParams.get("tab");
+  const [profileTab, setProfileTab] = useState<ProfileTab>(
+    requestedTab && ["ai", "extension", "resumes", "candidate"].includes(requestedTab) ? requestedTab as ProfileTab : "account",
+  );
 
   const handleFile = async (
     file: File | undefined,
@@ -108,16 +115,14 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
   };
 
   return (
-    <Stack gap={6}>
-      <div className="flex justify-center">
-        <TabList value={profileTab} onChange={(v) => setProfileTab(v as typeof profileTab)}>
-          <Tab value="account" label="Account" />
-          <Tab value="ai" label="AI" />
-          <Tab value="extension" label="Extension" />
-          <Tab value="resumes" label="Resumes" />
-          <Tab value="candidate" label="Candidate Profile" />
-        </TabList>
-      </div>
+    <Stack gap={5}>
+      <TabList value={profileTab} onChange={(v) => setProfileTab(v as typeof profileTab)} label="Settings sections" className="-mt-2 border-b border-border">
+        <Tab value="account" label="Account" />
+        <Tab value="candidate" label="Candidate profile" />
+        <Tab value="resumes" label="Resumes" />
+        <Tab value="ai" label="AI & connectors" />
+        <Tab value="extension" label="Chrome extension" />
+      </TabList>
 
       {profileTab === "account" && <>
       <Card>
@@ -152,13 +157,23 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
       </Card>
 
       <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+          <div>
+            <Text type="label" display="block" className="mb-1">Appearance</Text>
+            <Text type="supporting" display="block">System follows your computer&apos;s light or dark setting.</Text>
+          </div>
+          <ThemeSelector />
+        </div>
+      </Card>
+
+      <Card>
         <div className="p-5">
-          <Text type="label" display="block" className="mb-1">Help & Workflow Tour</Text>
+          <Text type="label" display="block" className="mb-1">Help & workflow tour</Text>
           <Text type="supporting" display="block" className="mb-3">
             Review the complete onboarding guide covering job capturing, candidate profiles, fitness scoring, and resume tailoring.
           </Text>
           <Button
-            label="Launch Onboarding Wizard"
+            label="Open the tour"
             variant="secondary"
             size="sm"
             onClick={() => window.dispatchEvent(new CustomEvent("open-onboarding-wizard"))}
@@ -177,13 +192,13 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
       {profileTab === "extension" && <>
       <Card>
         <div className="p-5">
-          <Text type="label" display="block" className="mb-3">Chrome Extension</Text>
+          <Text type="label" display="block" className="mb-3">Chrome extension</Text>
           <Text type="supporting" display="block" className="mb-3">
             Clip job postings from any page directly into your tracker. The extension opens in
             Chrome&apos;s side panel so it stays open while you browse.
           </Text>
           <HStack gap={3} className="items-center">
-            <Button label="Download Extension" variant="primary" href="/chrome-extension.zip" />
+            <Button label="Download extension" variant="primary" href="/chrome-extension.zip" />
             <Text type="supporting">
               Unzip, then load in chrome://extensions with Developer Mode on.
             </Text>
@@ -203,7 +218,7 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
               <Text type="supporting" display="block">Manage multiple resumes for different job types. Select which to use when analyzing or writing.</Text>
             </div>
             {!adding && (
-              <Button label="Add Resume" variant="primary" size="sm" onClick={() => setAdding(true)} />
+              <Button label="Add resume" variant="primary" size="sm" onClick={() => setAdding(true)} />
             )}
           </div>
 
@@ -221,13 +236,13 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
                 </div>
                 <HStack gap={2} className="shrink-0">
                   <Button label="Cancel" variant="secondary" onClick={() => { setAdding(false); setNewName(""); setNewContent(""); setResumeError(null); }} />
-                  <Button label={saving ? "Saving…" : "Save Resume"} variant="primary" onClick={saveNew} isDisabled={!newContent.trim() || saving} />
+                  <Button label={saving ? "Saving…" : "Save resume"} variant="primary" onClick={saveNew} isDisabled={!newContent.trim() || saving} />
                 </HStack>
               </div>
               <div className="mb-3">
                 <div className="mb-1 flex items-center justify-between">
                   <Text type="supporting" weight="semibold">Content</Text>
-                  <Button label="Upload PDF / text file" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} />
+                  <Button label="Upload PDF or text file" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} />
                   <input ref={fileRef} type="file" accept=".pdf,.txt,.md,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0], setNewContent, setNewName)} />
                 </div>
                 <TextArea label="Content" isLabelHidden value={newContent} onChange={setNewContent} placeholder="Paste your resume text, or upload a file above." rows={10} />
@@ -362,7 +377,7 @@ function ApplicationFields({ initialFields }: { initialFields: Record<string, un
   return (
     <Card>
       <div className="p-5">
-        <Text type="label" display="block" className="mb-1">Application Fields</Text>
+        <Text type="label" display="block" className="mb-1">Application fields</Text>
         <Text type="supporting" display="block" className="mb-4">
           Used by the extension to auto-fill job applications and shown in the Fill tab for quick copying.
         </Text>

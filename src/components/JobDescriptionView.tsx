@@ -1,6 +1,6 @@
 import { SKILL_TAXONOMY } from "@/lib/analysis/taxonomy";
-import { Text } from "@astryxdesign/core/Text";
-import { HStack } from "@astryxdesign/core/Stack";
+import { Text } from "@/components/ui/Text";
+import { HStack } from "@/components/ui/Stack";
 
 interface JobDescriptionViewProps {
   jobText: string;
@@ -50,11 +50,11 @@ export function JobDescriptionView({ jobText, matched, missing, hideLegend = fal
         <HStack gap={4} className="mb-4">
           <HStack gap={2} className="items-center">
             <span className="inline-block h-1 w-5 rounded bg-rose-600 dark:bg-rose-400" />
-            <Text type="supporting">Missing Skills</Text>
+            <Text type="supporting">Missing skills</Text>
           </HStack>
           <HStack gap={2} className="items-center">
             <span className="inline-block h-1 w-5 rounded bg-emerald-600 dark:bg-emerald-400" />
-            <Text type="supporting">Matched Skills</Text>
+            <Text type="supporting">Matched skills</Text>
           </HStack>
         </HStack>
       )}

@@ -7,11 +7,13 @@ import {
   totalContextChars,
   type ContextMaterial,
 } from "@/lib/context";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { TextArea } from "@astryxdesign/core/TextArea";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Link } from "@astryxdesign/core/Link";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { TextArea } from "@/components/ui/TextArea";
+import { Banner } from "@/components/ui/Banner";
+import { Link } from "@/components/ui/Link";
+import { Icon } from "@/components/iconstack/Icon";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface ContextMaterialsPanelProps {
   materials: ContextMaterial[];
@@ -133,14 +135,16 @@ export function ContextMaterialsPanel({ materials, onChange }: ContextMaterialsP
                 className="inline-flex items-center gap-1 rounded bg-surface border border-border px-2 py-0.5 text-sm text-foreground shadow-xs"
               >
                 <span className="max-w-[130px] truncate">{m.name}</span>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground ml-0.5 cursor-pointer font-semibold leading-none"
-                  onClick={() => remove(m.id)}
-                  title="Remove"
-                >
-                  ×
-                </button>
+                <Tooltip content="Remove">
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground ml-0.5 cursor-pointer font-semibold leading-none"
+                    onClick={() => remove(m.id)}
+                    aria-label={`Remove ${m.name}`}
+                  >
+                    <Icon name="x" size={12} />
+                  </button>
+                </Tooltip>
               </span>
             ))}
           </div>
