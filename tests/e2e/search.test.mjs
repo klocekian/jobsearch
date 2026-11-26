@@ -88,7 +88,7 @@ describe("search cycle", () => {
     }
     assert.equal(await page.getByText("Saved Studio", { exact: true }).count(), 0);
     await page.goto(`${app.base}/jobs/${savedJob}?view=prepare`, { waitUntil: "networkidle" });
-    assert.equal(await page.getByRole("button", { name: "Tools", exact: true }).getAttribute("aria-current"), "page");
+    assert.equal(await page.getByRole("button", { name: "Prepare", exact: true }).getAttribute("aria-current"), "page");
     await page.goto(`${app.base}/jobs/${savedJob}?view=application`, { waitUntil: "networkidle" });
     assert.equal(await page.getByRole("button", { name: "Application", exact: true }).getAttribute("aria-current"), "page");
   });

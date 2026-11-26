@@ -14,17 +14,18 @@ import {
 } from "@/lib/storage";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 import { JobStatusDot } from "./icons";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { Selector } from "@astryxdesign/core/Selector";
-import { Badge } from "@astryxdesign/core/Badge";
-import { Text } from "@astryxdesign/core/Text";
-import { Spinner } from "@astryxdesign/core/Spinner";
-import { Stack, HStack } from "@astryxdesign/core/Stack";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Table, useTableSortable, proportional, pixel } from "@astryxdesign/core/Table";
-import type { TableColumn, TableSortState } from "@astryxdesign/core/Table";
-import { useMediaQuery } from "@astryxdesign/core/hooks";
+import { Icon } from "@/components/iconstack/Icon";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { Selector } from "@/components/ui/Selector";
+import { Badge } from "@/components/ui/Badge";
+import { Text } from "@/components/ui/Text";
+import { Spinner } from "@/components/ui/Spinner";
+import { Stack, HStack } from "@/components/ui/Stack";
+import { Banner } from "@/components/ui/Banner";
+import { Table, useTableSortable, proportional, pixel } from "@/components/ui/Table";
+import type { TableColumn, TableSortState } from "@/components/ui/Table";
+import { useMediaQuery } from "@/components/ui/hooks";
 import { ImportSheetModal } from "./ImportSheetModal";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
 
@@ -208,8 +209,9 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
     router.replace(`/jobs?${params}`, { scroll: false });
   };
 
+  const [checking, setChecking] = useState(false);
   const checkClosed = useCallback(async () => {
-    window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { checking: true } }));
+    setChecking(true);
     setImportMsg("");
     try {
       const data = await apiSend<{ checked?: number; closed?: number; closedJobs?: { company: string; title?: string; reason?: string }[] }>(
@@ -225,20 +227,10 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
     } catch {
       setImportMsg("Failed to check job URLs.");
     } finally {
-      window.dispatchEvent(new CustomEvent("jobs-action-status", { detail: { checking: false } }));
+      setChecking(false);
     }
   }, [fetchJobs]);
 
-  useEffect(() => {
-    const handleImport = () => { setIsImportModalOpen(true); };
-    const handleCheckClosed = () => { checkClosed(); };
-    window.addEventListener("jobs-action-import", handleImport);
-    window.addEventListener("jobs-action-check-closed", handleCheckClosed);
-    return () => {
-      window.removeEventListener("jobs-action-import", handleImport);
-      window.removeEventListener("jobs-action-check-closed", handleCheckClosed);
-    };
-  }, [checkClosed]);
 
   const handleSortChange = (newSort: TableSortState<string>) => {
     if (newSort.length === 0) return;
@@ -283,14 +275,17 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
   const allColumns: TableColumn<JobRow & Record<string, unknown>>[] = [
     {
       key: "is_starred",
-      header: "★",
+      header: <><Icon name="star" size={13} /><span className="sr-only">Starred</span></>,
       width: pixel(40),
       renderCell: (job) => (
         <button
+          type="button"
           onClick={(e) => { e.preventDefault(); toggleStar(job); }}
-          className={`text-lg leading-none transition ${job.is_starred ? "text-amber-600 dark:text-amber-400" : "text-disabled hover:text-amber-600 dark:hover:text-amber-400"}`}
+          aria-label={`${job.is_starred ? "Unstar" : "Star"} ${job.company} ${job.title}`}
+          aria-pressed={!!job.is_starred}
+          className={`flex cursor-pointer rounded p-0.5 transition ${job.is_starred ? "text-amber-600" : "text-disabled hover:text-amber-600"}`}
         >
-          {job.is_starred ? "★" : "☆"}
+          <Icon name="star" size={16} fill={job.is_starred ? "currentColor" : "none"} />
         </button>
       ),
     },
@@ -399,8 +394,8 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
   ];
 
   return (
-    <div className="flex flex-col" style={{ "--table-header-top": `${56 + toolbarHeight}px` } as React.CSSProperties}>
-      <div ref={toolbarRef} className="sticky top-[56px] z-20 bg-surface border-b border-border/40 py-2.5 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:bg-surface">
+    <div className="flex flex-col" style={{ "--table-header-top": `${58 + toolbarHeight}px` } as React.CSSProperties}>
+      <div ref={toolbarRef} className="sticky top-[58px] z-20 bg-[#fafafa] py-2.5 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:bg-[#fafafa] max-md:static">
         <Stack gap={3} className="shrink-0">
           <HStack gap={3} className="flex-wrap items-center">
             <TextInput
@@ -421,16 +416,21 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
               className="w-36"
             />
             <label className="flex cursor-pointer items-center gap-1.5 text-sm select-none">
-              <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-400" />
-              <span className={starredOnly ? "text-amber-700 dark:text-amber-400 font-medium" : "text-secondary"}>★ Starred</span>
+              <input type="checkbox" checked={starredOnly} onChange={(e) => setStarredOnly(e.target.checked)} className="accent-amber-500" />
+              <span className={`inline-flex items-center gap-1 ${starredOnly ? "text-amber-700 font-medium" : "text-secondary"}`}><Icon name="star" size={13} fill={starredOnly ? "currentColor" : "none"} />Starred</span>
             </label>
+            <span className="ml-auto flex items-center gap-2">
+              <Button label={checking ? "Checking…" : "Check for closed postings"} variant="ghost" size="sm" icon={<Icon name="refresh" size={13} />} onClick={checkClosed} isDisabled={checking} />
+              <Button label="Import from Google Sheet" variant="secondary" size="sm" icon={<Icon name="upload" size={13} />} onClick={() => setIsImportModalOpen(true)} />
+            </span>
           </HStack>
 
           {showAutoClosed && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-100">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-sm">
-                  ⚠️ <strong>{autoClosedJobs.length}</strong> job{autoClosedJobs.length === 1 ? " was" : "s were"} recently marked closed by an automated check — the posting looks to be taken down. Check it before restoring.
+                <span className="flex items-start gap-2 text-sm">
+                  <Icon name="alert-triangle" size={16} className="mt-px" />
+                  <span><strong>{autoClosedJobs.length}</strong> job{autoClosedJobs.length === 1 ? " was" : "s were"} recently marked closed by an automated check — the posting looks to be taken down. Check it before restoring.</span>
                 </span>
                 <HStack gap={2} className="items-center">
                   <Button
@@ -454,10 +454,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
                     title="Dismiss"
                     className="rounded p-1 text-amber-900/80 hover:bg-amber-500/15 hover:text-amber-900 dark:text-amber-100/80 dark:hover:text-amber-100 cursor-pointer"
                   >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
+                    <Icon name="x" size={16} />
                   </button>
                 </HStack>
               </div>
@@ -470,7 +467,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
                     <span className="text-xs text-amber-900/80 dark:text-amber-100/80">was {j.previous_status && statusLabel(j.previous_status)}</span>
                     {j.url && (
                       <a href={j.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium underline hover:no-underline">
-                        View posting ↗
+                        View posting <Icon name="arrow-up-right" size={12} />
                       </a>
                     )}
                   </li>
@@ -495,8 +492,9 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
             <Text type="supporting">Add a job manually, import from your Google Sheet, or paste a job posting URL.</Text>
           </Stack>
         ) : (
-          <div className="sticky-table-header">
+          <div className="rounded-md border border-border bg-surface">
             <Table
+              isScrollable={isMobile}
               data={jobs as (JobRow & Record<string, unknown>)[]}
               columns={columns}
               idKey="id"

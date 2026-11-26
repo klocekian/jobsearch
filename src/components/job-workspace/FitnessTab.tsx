@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import { apiGet } from "@/lib/api-client";
 import { FitnessReportView } from "../FitnessReportView";
-import { Button } from "@astryxdesign/core/Button";
-import { Text } from "@astryxdesign/core/Text";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Spinner } from "@astryxdesign/core/Spinner";
-import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@/components/ui/Button";
+import { Text } from "@/components/ui/Text";
+import { Banner } from "@/components/ui/Banner";
+import { Spinner } from "@/components/ui/Spinner";
+import { Badge } from "@/components/ui/Badge";
 import { WithAiToggle } from "./WithAiToggle";
 import type { useFitness } from "./useFitness";
 
@@ -67,7 +67,7 @@ export function FitnessTab({ job, fitness, withAi, onWithAiChange, onEditProfile
           status="warning"
           title={`Add your ${missingDocs.join(" and ")} to ground the fitness check.`}
           description="The AI check won't run without both; the rule-based check scores against your default resume instead."
-          endContent={<Button label="Open Tools › Profile" variant="secondary" size="sm" onClick={onEditProfile} />}
+          endContent={<Button label="Edit your profile" variant="secondary" size="sm" onClick={onEditProfile} />}
         />
       )}
 

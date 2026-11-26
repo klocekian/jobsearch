@@ -4,10 +4,10 @@ import type { JobRow } from "@/lib/db/jobs";
 import type { MatchReport } from "@/lib/analysis/types";
 import { JobDescriptionView } from "../JobDescriptionView";
 import { DocumentField } from "../DocumentField";
-import { Button } from "@astryxdesign/core/Button";
-import { Text } from "@astryxdesign/core/Text";
-import { Link as AstryxLink } from "@astryxdesign/core/Link";
-import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@/components/ui/Button";
+import { Text } from "@/components/ui/Text";
+import { Link as AstryxLink } from "@/components/ui/Link";
+import { Banner } from "@/components/ui/Banner";
 import type { Draft } from "./useDraft";
 
 export type LeftTab = "posting" | "apply";
@@ -54,11 +54,11 @@ export function PostingPane({ tab, job, report, paste, onSavePaste }: PostingPan
               <>
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block h-1 w-4 rounded bg-rose-600 dark:bg-rose-400" />
-                  <Text type="supporting">Missing Skills</Text>
+                  <Text type="supporting">Missing skills</Text>
                 </div>
                 <div className="flex items-center gap-1.5 mr-1">
                   <span className="inline-block h-1 w-4 rounded bg-emerald-600 dark:bg-emerald-400" />
-                  <Text type="supporting">Matched Skills</Text>
+                  <Text type="supporting">Matched skills</Text>
                 </div>
               </>
             )}

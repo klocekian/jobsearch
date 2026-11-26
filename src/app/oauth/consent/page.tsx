@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { Card } from "@astryxdesign/core/Card";
-import { Button } from "@astryxdesign/core/Button";
-import { Text } from "@astryxdesign/core/Text";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Text } from "@/components/ui/Text";
 import { getSession } from "@/lib/auth";
 import { parseAuthorizeRequest } from "@/lib/mcp-oauth";
 
@@ -51,7 +51,7 @@ export default async function ConsentPage({ searchParams }: Props) {
           </ul>
           <Text type="supporting" display="block" className="mb-5">
             You&apos;ll be sent back to <code className="text-xs">{destination}</code>. Disconnect any
-            time from Profile → AI.
+            time from Settings → AI &amp; connectors.
           </Text>
           {/* Astryx Button defaults to type="button" — submit must be explicit. */}
           <form action="/api/oauth/authorize" method="POST" className="flex gap-2">

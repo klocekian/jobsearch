@@ -97,9 +97,7 @@ describe("a job", () => {
     await ui.step("status", async () => {
       const { page } = ui;
       await page.goto(`${app.base}/jobs/${jobId}`, { waitUntil: "networkidle" });
-      // The job page's only combobox is Change Status.
-      await page.getByRole("combobox").first().click();
-      await page.getByRole("option", { name: "Onsite" }).click();
+      await page.getByRole("combobox", { name: "Status", exact: true }).selectOption({ label: "Onsite" });
       await page.waitForTimeout(800);
       assert.equal((await job(jobId)).status, "onsite");
     });

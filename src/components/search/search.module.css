@@ -24,6 +24,8 @@
 .navBottom { margin-top: auto; }
 .account { display: flex; align-items: center; gap: 9px; border-top: 1px solid var(--line); margin-top: 12px; padding: 15px 9px 1px; font-size: 12px; }
 .account small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+.aiDot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #a3a3a3; margin-right: 5px; vertical-align: 1px; }
+.aiDot[data-connected="true"] { background: #10b981; }
 .avatar { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: #e5e5e5; color: #525252; font-size: 12px; }
 .nav ~ :global(main), .nav ~ :global(header), .nav ~ :global([data-job-workspace]) { margin-left: 216px; width: calc(100% - 216px); max-width: none; }
 .page { display: flex; flex-direction: column; height: 100dvh; min-height: 0; background: #fff; overflow: hidden; }

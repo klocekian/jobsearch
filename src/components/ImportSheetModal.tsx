@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { loadLastSheetUrl, saveLastSheetUrl } from "@/lib/storage";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { Stack, HStack } from "@astryxdesign/core/Stack";
-import { Text } from "@astryxdesign/core/Text";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Spinner } from "@astryxdesign/core/Spinner";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { Stack, HStack } from "@/components/ui/Stack";
+import { Text } from "@/components/ui/Text";
+import { Banner } from "@/components/ui/Banner";
+import { Spinner } from "@/components/ui/Spinner";
 import { apiSend, errorMessage } from "@/lib/api-client";
+import { Icon } from "@/components/iconstack/Icon";
 
 interface ImportSheetModalProps {
   isOpen: boolean;
@@ -64,7 +65,7 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onClose();
       }}
@@ -88,7 +89,7 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
               className="text-secondary hover:text-primary rounded p-1 transition cursor-pointer"
               aria-label="Close"
             >
-              ✕
+              <Icon name="x" size={16} />
             </button>
           </div>
 

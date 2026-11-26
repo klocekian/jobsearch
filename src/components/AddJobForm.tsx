@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { TextArea } from "@astryxdesign/core/TextArea";
-import { Selector } from "@astryxdesign/core/Selector";
-import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { TextArea } from "@/components/ui/TextArea";
+import { Selector } from "@/components/ui/Selector";
+import { Banner } from "@/components/ui/Banner";
 import { apiSend, errorMessage } from "@/lib/api-client";
 
 const remoteOptions = [
@@ -102,7 +102,7 @@ export function AddJobForm() {
       <div className="flex justify-end gap-2">
         <Button label="Cancel" variant="secondary" onClick={() => router.push("/jobs")} />
         <Button
-          label={saving ? "Saving…" : "Save Job"}
+          label={saving ? "Saving…" : "Save job"}
           variant="primary"
           onClick={save}
           isDisabled={saving || (!company.trim() && !title.trim())}
@@ -114,7 +114,7 @@ export function AddJobForm() {
       <div>
         <div className="flex gap-2 items-end">
           <TextInput
-            label="Job Posting URL"
+            label="Job posting URL"
             value={url}
             onChange={setUrl}
             placeholder="https://careers.example.com/job/12345"
@@ -134,7 +134,7 @@ export function AddJobForm() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextInput label="Company" value={company} onChange={setCompany} placeholder="Google" />
-        <TextInput label="Job Title" value={title} onChange={setTitle} placeholder="Director, UX" />
+        <TextInput label="Job title" value={title} onChange={setTitle} placeholder="Director, UX" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -157,7 +157,7 @@ export function AddJobForm() {
           />
         </div>
         <TextArea
-          label="Job Description"
+          label="Job description"
           isLabelHidden
           value={postingText}
           onChange={setPostingText}

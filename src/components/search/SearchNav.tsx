@@ -4,9 +4,10 @@ import Link from "next/link";
 import { Icon, type IconName } from "@/components/iconstack/Icon";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PHASES, searchPhase } from "@/lib/search-workflow";
+import type { AiConnection } from "@/components/Nav";
 import styles from "./search.module.css";
 
-export function SearchNav({ name }: { name: string }) {
+export function SearchNav({ name, aiStatus }: { name: string; aiStatus: AiConnection }) {
   const params = useSearchParams();
   const pathname = usePathname();
   const view = params.get("view");
@@ -26,7 +27,7 @@ export function SearchNav({ name }: { name: string }) {
     </div>
     <div className={styles.navBottom}>
       <Link className={styles.navSettings} href="/profile" aria-current={pathname === "/profile" ? "page" : undefined}><NavIcon kind="settings" />Settings</Link>
-      <div className={styles.account}><span className={styles.avatar}>{name.charAt(0).toUpperCase()}</span><span>{name}<small>Personal workspace</small></span></div>
+      <Link href="/profile?tab=ai" className={styles.account} title={aiStatus.label}><span className={styles.avatar}>{name.charAt(0).toUpperCase()}</span><span>{name}<small><span className={styles.aiDot} data-connected={aiStatus.connected} aria-hidden="true" />{aiStatus.label}</small></span></Link>
     </div>
   </aside>;
 }

@@ -8,8 +8,10 @@ import { JobsList } from "@/components/JobsList";
 import { JobsFunnel } from "@/components/JobsFunnel";
 import { StrategyBanner } from "@/components/StrategyBanner";
 import { AddJobForm } from "@/components/AddJobForm";
-import { Text } from "@astryxdesign/core/Text";
-import { Card } from "@astryxdesign/core/Card";
+import { Card } from "@/components/ui/Card";
+import { Page } from "@/components/ui/Page";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/iconstack/Icon";
 import { SearchHome } from "./search/SearchHome";
 import { searchPhase } from "@/lib/search-workflow";
 
@@ -46,14 +48,11 @@ export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]>
 
   if (adding) {
     return (
-      <main className="mx-auto w-full max-w-7xl px-5 py-8">
-        <Text type="display-3" as="h1" className="mb-6">Add Job</Text>
-        <Card>
-          <div className="p-6">
-            <AddJobForm />
-          </div>
+      <Page title="Save a job" crumb={{ label: "Explore", href: "/jobs?phase=explore" }} narrow>
+        <Card className="p-5 sm:p-6">
+          <AddJobForm />
         </Card>
-      </main>
+      </Page>
     );
   }
 
@@ -63,12 +62,16 @@ export function JobsPageClient({ jobsPromise }: { jobsPromise: Promise<JobRow[]>
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-5 py-5">
+    <Page
+      title="All jobs & archive"
+      crumb={{ label: "Library" }}
+      actions={<Button label="Save a job" variant="primary" size="sm" href="/jobs?add=1" icon={<Icon name="plus" size={13} />} />}
+    >
       <div className="space-y-4">
         <StrategyBanner jobs={jobs ?? []} />
         <JobsFunnel jobs={jobs ?? []} />
         <JobsList allJobs={jobs} setAllJobs={setJobs} refreshAllJobs={refreshJobs} />
       </div>
-    </main>
+    </Page>
   );
 }

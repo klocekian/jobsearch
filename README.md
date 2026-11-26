@@ -11,7 +11,6 @@ Jobscan Match Reports.
 ## Search workspace
 
 Signed-in users start at `/jobs`, organized around **Explore → Prepare → Applications**.
-These three views use custom CSS and native controls, independent of Astryx components.
 Explore collects saved and in-preparation roles, with search, shortlist, and fit sorting.
 Its compact table opens a posting preview alongside the list. A persistent sidebar
 connects the three phases, the full tracker, and job-specific workspaces.
@@ -20,10 +19,19 @@ Its recurring skill signals use the existing curated vocabulary and link back to
 saved postings where they appear. An Applications board groups preparation, waiting, conversations,
 and ended applications; it does not infer feedback from a lack of response.
 
-The full tracker, imports, posting-status checks, and archive remain at
-`/jobs?view=tracker`. Job-specific analysis and writing tools, account settings, and
-job capture retain their existing UI for this first iteration. Links from the new
-workspace open the relevant job preparation or application tab directly.
+The full tracker, imports, posting-status checks, and archive live at
+`/jobs?view=tracker`. A job's workspace (`/jobs/:id`) puts the posting beside its
+analysis: Fit, Resume check, Prepare (tailored resume, cover letter, candidate
+profile) and Application (notes and what was submitted). Links from the search
+views open the Prepare or Application tab directly.
+
+## UI
+
+The app has no third-party component library. Shared controls live in
+`src/components/ui/` (buttons, fields, tabs, banners, table, dialogs, page shell),
+styled by CSS modules over the tokens in `src/app/globals.css`; Tailwind utilities
+still work alongside them. Icons are a bundled subset of Tabler in
+`src/components/iconstack/`.
 
 Preparation notes are stored per authenticated user through `/api/search-plan`.
 “Save as new version” creates a separate resume without overwriting its source;

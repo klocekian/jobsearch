@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@astryxdesign/core/Button";
-import { Banner } from "@astryxdesign/core/Banner";
-import { Text } from "@astryxdesign/core/Text";
-import { Heading } from "@astryxdesign/core/Heading";
+import { Button } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
+import { Text } from "@/components/ui/Text";
+import { Heading } from "@/components/ui/Heading";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 import { downloadText } from "@/lib/download";
 import { downloadMarkdownPdf } from "@/lib/pdf/markdown";
@@ -182,7 +182,7 @@ export function CandidateProfilePanel({ embedded = false }: CandidateProfilePane
           </Text>
         ) : (
           <div>
-            <Heading level={2} className="tracking-tight">Candidate Profile</Heading>
+            <Heading level={2} className="tracking-tight">Candidate profile</Heading>
             <div className="mt-0.5">
               <Text type="supporting" color="secondary">
                 Grounding for the fitness check. Both documents are required.

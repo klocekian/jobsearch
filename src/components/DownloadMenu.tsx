@@ -1,6 +1,6 @@
 "use client";
 
-import { DropdownMenu } from "@astryxdesign/core/DropdownMenu";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 
 interface DownloadMenuProps {
   onPdf: () => void;

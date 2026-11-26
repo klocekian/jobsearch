@@ -4,8 +4,8 @@ import { useRef } from "react";
 import { readResumeFile } from "@/lib/extract";
 import { apiSend, errorMessage } from "@/lib/api-client";
 import type { ResumeRow } from "@/lib/db/resumes";
-import { Button } from "@astryxdesign/core/Button";
-import { Selector } from "@astryxdesign/core/Selector";
+import { Button } from "@/components/ui/Button";
+import { Selector } from "@/components/ui/Selector";
 
 interface ResumePickerProps {
   resumes: ResumeRow[];

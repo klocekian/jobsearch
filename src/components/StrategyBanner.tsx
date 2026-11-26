@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import { wasSubmitted } from "@/lib/status";
 import { TipIcon, type TipIconName } from "@/components/icons";
+import { Icon } from "@/components/iconstack/Icon";
 
 export interface StrategyBannerItem {
   id: "A" | "B" | "C" | "D";
@@ -103,7 +104,7 @@ export function StrategyBanner({ jobs }: StrategyBannerProps) {
   return (
     <div
       role="region"
-      aria-label="Job Search Strategy Tips"
+      aria-label="Job search strategy tips"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-lg border border-sky-500/25 bg-sky-500/10 text-sky-950 dark:text-sky-100 transition-all duration-200"
@@ -141,9 +142,7 @@ export function StrategyBanner({ jobs }: StrategyBannerProps) {
           aria-label="Previous strategy tip"
           className="p-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
+<Icon name="chevron-left" size={14} />
         </button>
 
         <button
@@ -152,9 +151,7 @@ export function StrategyBanner({ jobs }: StrategyBannerProps) {
           aria-label="Next strategy tip"
           className="p-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+<Icon name="chevron-right" size={14} />
         </button>
 
         <button
@@ -164,10 +161,7 @@ export function StrategyBanner({ jobs }: StrategyBannerProps) {
           className="p-1 ml-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
           title="Dismiss"
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+<Icon name="x" size={14} />
         </button>
       </div>
     </div>

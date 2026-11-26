@@ -2,16 +2,16 @@
 
 import { useConfirm } from "@/hooks/useConfirm";
 import { useEffect, useState } from "react";
-import { Card } from "@astryxdesign/core/Card";
-import { Button } from "@astryxdesign/core/Button";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { Selector } from "@astryxdesign/core/Selector";
-import { Badge } from "@astryxdesign/core/Badge";
-import { Text } from "@astryxdesign/core/Text";
-import { HStack } from "@astryxdesign/core/Stack";
-import { Link } from "@astryxdesign/core/Link";
-import { Spinner } from "@astryxdesign/core/Spinner";
-import { Banner } from "@astryxdesign/core/Banner";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { TextInput } from "@/components/ui/TextInput";
+import { Selector } from "@/components/ui/Selector";
+import { Badge } from "@/components/ui/Badge";
+import { Text } from "@/components/ui/Text";
+import { HStack } from "@/components/ui/Stack";
+import { Link } from "@/components/ui/Link";
+import { Spinner } from "@/components/ui/Spinner";
+import { Banner } from "@/components/ui/Banner";
 import type { AIProviderId } from "@/lib/ai";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 
@@ -132,7 +132,7 @@ export function AIProvidersPanel() {
   return (
     <Card>
       <div className="p-5">
-        <Text type="label" display="block" className="mb-1">AI Providers &amp; Keys</Text>
+        <Text type="label" display="block" className="mb-1">AI providers &amp; keys</Text>
         <Text type="supporting" display="block" className="mb-3">
           API keys for in-app AI: cover letters, resume rewrites, fitness checks, and parsing.
           {!hasActive && " Connect one to unlock AI tools."}
@@ -178,7 +178,7 @@ export function AIProvidersPanel() {
                       {p.isConfigured ? (
                         <>
                           {!isActive && (
-                            <Button label="Set Active" variant="ghost" size="sm" onClick={() => handleSetActive(p.id)} />
+                            <Button label="Set active" variant="ghost" size="sm" onClick={() => handleSetActive(p.id)} />
                           )}
                           <Button label="Update" variant="ghost" size="sm" onClick={() => startEditing(p)} />
                           <Button label="Disconnect" variant="ghost" size="sm" onClick={() => handleDelete(p.id)} />

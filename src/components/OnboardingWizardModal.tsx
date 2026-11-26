@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useStoredValue } from "@/hooks/useStoredValue";
 import { isOnboardingDone, markOnboardingDone } from "@/lib/storage";
-import { Button } from "@astryxdesign/core/Button";
-import { Heading } from "@astryxdesign/core/Heading";
-import { Text } from "@astryxdesign/core/Text";
-import { Badge } from "@astryxdesign/core/Badge";
-import { HStack } from "@astryxdesign/core/Stack";
+import { Button } from "@/components/ui/Button";
+import { Heading } from "@/components/ui/Heading";
+import { Text } from "@/components/ui/Text";
+import { Badge } from "@/components/ui/Badge";
+import { HStack } from "@/components/ui/Stack";
+import { Icon } from "@/components/iconstack/Icon";
 
 interface OnboardingStep {
   badge: string;
@@ -81,7 +82,7 @@ const STEPS: OnboardingStep[] = [
 
           <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-subtle">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-purple-800 dark:text-purple-300 font-bold text-xs">
-              ✍️
+              <Icon name="pencil" size={14} />
             </div>
             <div>
               <Text weight="semibold" display="block">Manual Entry</Text>
@@ -293,7 +294,7 @@ export function OnboardingWizardModal() {
   const isLast = stepIndex === STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div
         className="w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         role="dialog"
@@ -312,7 +313,7 @@ export function OnboardingWizardModal() {
             className="text-secondary hover:text-primary transition-colors p-1 rounded-md text-sm font-medium"
             aria-label="Close"
           >
-            ✕
+            <Icon name="x" size={16} />
           </button>
         </div>
 
@@ -368,7 +369,7 @@ export function OnboardingWizardModal() {
             )}
 
             <Button
-              label={isLast ? "Get Started" : "Next →"}
+              label={isLast ? "Get started" : "Next"}
               variant="primary"
               size="sm"
               onClick={next}

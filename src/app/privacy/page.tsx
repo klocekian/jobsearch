@@ -100,7 +100,7 @@ export default function PrivacyPage() {
         Some features send text to an AI provider: extracting fields from a posting, fit checks,
         resume rewrites and cover letters. The request includes the posting text and, for features
         that need it, your resume or profile text. It goes to the provider you connected under
-        Profile → AI (Anthropic, Google Gemini, xAI Grok or Mistral). If you haven&rsquo;t connected
+        Settings → AI &amp; connectors (Anthropic, Google Gemini, xAI Grok or Mistral). If you haven&rsquo;t connected
         one, it may go to a provider we pay for. The provider handles the request under its own terms
         and privacy policy. These calls happen only when you use an AI feature.
       </p>

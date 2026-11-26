@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Nav } from "@/components/Nav";
-import { Providers } from "@/components/Providers";
 import { getSession } from "@/lib/auth";
 import { getUserClaudeStatus } from "@/lib/anthropic";
 import { getUserAIStatus } from "@/lib/ai";
@@ -32,16 +31,13 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      data-astryx-theme="neutral"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body data-astryx-theme="neutral" className="min-h-full flex flex-col bg-surface text-primary">
-        <Providers>
-          <Suspense fallback={null}>
-            <Nav user={navUser} />
-          </Suspense>
-          {children}
-        </Providers>
+      <body className="min-h-full flex flex-col bg-surface text-primary">
+        <Suspense fallback={null}>
+          <Nav user={navUser} />
+        </Suspense>
+        {children}
       </body>
     </html>
   );

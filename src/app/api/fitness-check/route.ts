@@ -54,7 +54,7 @@ export const POST = withUser(async (request, userId) => {
         {
           error: `Fitness check with AI needs your ${missing.join(" and ")}. Add ${
             missing.length > 1 ? "them" : "it"
-          } under Profile → Candidate Profile, or uncheck "with AI" for deterministic scoring.`,
+          } under Settings → Candidate profile, or uncheck "with AI" for deterministic scoring.`,
           code: "missing_candidate_docs",
           missing,
         },

@@ -3,6 +3,7 @@
 import { memo, useRef, useState } from "react";
 import { applyChange, buildReview, type ReviewNode } from "@/lib/diff";
 import { DOC_SURFACE_EDITING } from "./DocumentField";
+import { Icon } from "@/components/iconstack/Icon";
 
 interface RewriteEditorProps {
   /** The AI rewrite (suggestion source). Empty string = no suggestions yet. */
@@ -138,9 +139,10 @@ function ChangeWidget({
         type="button"
         onMouseDown={click(onDismiss)}
         title="Dismiss (keep current)"
-        className="ml-0.5 rounded px-0.5 text-secondary hover:bg-card hover:text-primary"
+        aria-label="Dismiss suggestion"
+        className="ml-0.5 inline-flex rounded px-0.5 align-middle text-secondary hover:bg-card hover:text-primary"
       >
-        ×
+        <Icon name="x" size={12} />
       </button>
     </span>
   );
