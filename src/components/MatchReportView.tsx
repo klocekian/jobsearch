@@ -19,6 +19,7 @@ import { Text } from "@/components/ui/Text";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Icon } from "@/components/iconstack/Icon";
+import { SortButton, nextSort, sortRows, type Sort } from "@/components/ui/Table";
 
 /** Async state of the LLM-based AI-authorship check (owned by App). */
 export interface AiDetectionState {
@@ -123,7 +124,22 @@ function SearchabilityTable({ groups }: { groups: SearchabilityGroup[] }) {
   );
 }
 
+type SkillRowData = SkillSection["rows"][number];
+const SKILL_SORTS = {
+  skill: { value: (r: SkillRowData) => r.skill, first: "ascending" },
+  resume: { value: (r: SkillRowData) => (r.state === "missing" ? 0 : r.resumeCount), first: "descending" },
+  job: { value: (r: SkillRowData) => r.jobCount, first: "descending" },
+} as const;
+type SkillSortKey = keyof typeof SKILL_SORTS;
+
 function SkillsTable({ section }: { section: SkillSection }) {
+  // Unsorted, rows keep the report's own order until a header is clicked.
+  const [sort, setSort] = useState<Sort<SkillSortKey> | null>(null);
+  const rows = sort ? sortRows(section.rows, SKILL_SORTS[sort.key].value, sort.direction) : section.rows;
+  const header = (key: SkillSortKey, label: string) => (
+    <SortButton active={sort?.key === key} direction={sort?.direction} onClick={() => setSort(nextSort(sort, key, SKILL_SORTS[key].first))}>{label}</SortButton>
+  );
+  const ariaSort = (key: SkillSortKey) => (sort?.key === key ? sort.direction : undefined);
   return (
     <div className="text-sm">
       {section.rows.length === 0 ? (
@@ -132,13 +148,13 @@ function SkillsTable({ section }: { section: SkillSection }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-              <th className="py-1 pr-3 text-xs font-semibold">Skill</th>
-              <th className="px-3 py-1 text-right text-xs font-semibold">Resume</th>
-              <th className="py-1 pl-3 text-right text-xs font-semibold">Job</th>
+              <th className="py-1 pr-3 text-xs font-semibold" aria-sort={ariaSort("skill")}>{header("skill", "Skill")}</th>
+              <th className="px-3 py-1 text-right text-xs font-semibold" aria-sort={ariaSort("resume")}>{header("resume", "Resume")}</th>
+              <th className="py-1 pl-3 text-right text-xs font-semibold" aria-sort={ariaSort("job")}>{header("job", "Job")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {section.rows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.skill}>
                 <td className="py-1.5 pr-3">
                   <span className="inline-flex items-center gap-1.5">

@@ -1,5 +1,6 @@
 import { getDb, ownedBy, plainRow } from "./index";
 import type { Row, InValue } from "@libsql/client";
+import { STATUS_OPTIONS } from "@/lib/status";
 
 export interface JobRow {
   id: number;
@@ -51,7 +52,9 @@ export async function listJobs(userId: number | null, opts?: {
   const allowedSorts: Record<string, string> = {
     company: "company COLLATE NOCASE",
     title: "title COLLATE NOCASE",
-    status: "status",
+    // Pipeline order, not alphabetical.
+    status: `CASE status ${STATUS_OPTIONS.map((o, i) => `WHEN '${o.value}' THEN ${i}`).join(" ")} ELSE ${STATUS_OPTIONS.length} END`,
+    is_starred: "is_starred",
     salary_min: "salary_min",
     salary_max: "salary_max",
     location: "location COLLATE NOCASE",
@@ -84,7 +87,8 @@ export async function listJobs(userId: number | null, opts?: {
   const where = `WHERE ${conditions.join(" AND ")}`;
 
   const listCols = "id, user_id, company, title, url, location, remote_type, salary_min, salary_max, salary_text, status, previous_status, auto_closed, notes, source, match_score, match_resume_name, fitness_score, fitness_run_at, is_starred, created_at, updated_at, applied_at";
-  const result = await db.execute({ sql: `SELECT ${listCols} FROM jobs ${where} ORDER BY ${sortCol} ${order}`, args: params });
+  // Empty values last in either direction; newest first among ties.
+  const result = await db.execute({ sql: `SELECT ${listCols} FROM jobs ${where} ORDER BY (${sortCol}) IS NULL, ${sortCol} ${order}, created_at DESC`, args: params });
   return result.rows.map(rowToJob);
 }
 
