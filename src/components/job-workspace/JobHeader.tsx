@@ -62,8 +62,7 @@ export function JobHeader({ job, draft, stepper, onSave, onStatusChange, onDelet
             isLabelHidden
             size="sm"
             className={styles.status}
-            startIcon={<JobStatusDot status={job.status} />}
-            options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+            options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
             value={job.status}
             onChange={onStatusChange}
           />

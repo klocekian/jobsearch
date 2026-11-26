@@ -321,7 +321,6 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
           label="Status"
           isLabelHidden
           size="sm"
-          startIcon={<JobStatusDot status={job.status} />}
           options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label, icon: <JobStatusDot status={s.value} /> }))}
           value={job.status}
           onChange={(v) => changeStatus(job, v)}
