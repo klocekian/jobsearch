@@ -9,6 +9,7 @@ import { Text } from "@/components/ui/Text";
 import { Badge } from "@/components/ui/Badge";
 import { HStack } from "@/components/ui/Stack";
 import { Icon } from "@/components/iconstack/Icon";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface OnboardingStep {
   badge: string;
@@ -308,13 +309,15 @@ export function OnboardingWizardModal() {
               Step {stepIndex + 1} of {STEPS.length}
             </span>
           </div>
-          <button
-            onClick={close}
-            className="text-secondary hover:text-primary transition-colors p-1 rounded-md text-sm font-medium"
-            aria-label="Close"
-          >
-            <Icon name="x" size={16} />
-          </button>
+          <Tooltip content="Close">
+            <button
+              onClick={close}
+              className="text-secondary hover:text-primary transition-colors p-1 rounded-md text-sm font-medium"
+              aria-label="Close"
+            >
+              <Icon name="x" size={16} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Modal Body */}

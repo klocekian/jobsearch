@@ -5,6 +5,7 @@ import type { JobRow } from "@/lib/db/jobs";
 import { wasSubmitted } from "@/lib/status";
 import { TipIcon, type TipIconName } from "@/components/icons";
 import { Icon } from "@/components/iconstack/Icon";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 export interface StrategyBannerItem {
   id: "A" | "B" | "C" | "D";
@@ -136,33 +137,38 @@ export function StrategyBanner({ jobs }: StrategyBannerProps) {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={prevBanner}
-          aria-label="Previous strategy tip"
-          className="p-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
-        >
-<Icon name="chevron-left" size={14} />
-        </button>
+        <Tooltip content="Previous tip">
+          <button
+            type="button"
+            onClick={prevBanner}
+            aria-label="Previous strategy tip"
+            className="p-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
+          >
+  <Icon name="chevron-left" size={14} />
+          </button>
+        </Tooltip>
 
-        <button
-          type="button"
-          onClick={nextBanner}
-          aria-label="Next strategy tip"
-          className="p-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
-        >
-<Icon name="chevron-right" size={14} />
-        </button>
+        <Tooltip content="Next tip">
+          <button
+            type="button"
+            onClick={nextBanner}
+            aria-label="Next strategy tip"
+            className="p-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
+          >
+  <Icon name="chevron-right" size={14} />
+          </button>
+        </Tooltip>
 
-        <button
-          type="button"
-          onClick={() => setIsDismissed(true)}
-          aria-label="Dismiss strategy banner"
-          className="p-1 ml-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
-          title="Dismiss"
-        >
-<Icon name="x" size={14} />
-        </button>
+        <Tooltip content="Dismiss">
+          <button
+            type="button"
+            onClick={() => setIsDismissed(true)}
+            aria-label="Dismiss strategy banner"
+            className="p-1 ml-1 rounded hover:bg-sky-500/15 text-secondary hover:text-primary transition-colors cursor-pointer"
+          >
+  <Icon name="x" size={14} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

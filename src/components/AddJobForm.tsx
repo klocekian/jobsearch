@@ -146,7 +146,7 @@ export function AddJobForm() {
       <div>
         <div className="mb-1 flex items-center justify-between">
           <span className="text-xs font-medium text-secondary">
-            Job Description (paste the full posting)
+            Job description (paste the full posting)
           </span>
           <Button
             label={extractStatus === "loading" ? "Extracting…" : "Extract fields from text"}

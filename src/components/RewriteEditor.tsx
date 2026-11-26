@@ -4,6 +4,7 @@ import { memo, useRef, useState } from "react";
 import { applyChange, buildReview, type ReviewNode } from "@/lib/diff";
 import { DOC_SURFACE_EDITING } from "./DocumentField";
 import { Icon } from "@/components/iconstack/Icon";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface RewriteEditorProps {
   /** The AI rewrite (suggestion source). Empty string = no suggestions yet. */
@@ -117,33 +118,37 @@ function ChangeWidget({
     >
       {del && <span className="text-rose-700 dark:text-rose-400 line-through">{del}</span>}
       {ins ? (
-        <button
-          type="button"
-          onMouseDown={click(onAccept)}
-          title="Accept this suggestion"
-          className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-0.5 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-900"
-        >
-          {ins}
-        </button>
+        <Tooltip content="Accept this suggestion">
+          <button
+            type="button"
+            onMouseDown={click(onAccept)}
+            className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-0.5 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-900"
+          >
+            {ins}
+          </button>
+        </Tooltip>
       ) : (
+        <Tooltip content="Remove this text">
+          <button
+            type="button"
+            onMouseDown={click(onAccept)}
+            aria-label="Remove this text"
+            className="inline-flex rounded px-0.5 align-middle text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50"
+          >
+            <Icon name="backspace" size={13} />
+          </button>
+        </Tooltip>
+      )}
+      <Tooltip content="Dismiss (keep current)">
         <button
           type="button"
-          onMouseDown={click(onAccept)}
-          title="Remove this text"
-          className="rounded px-0.5 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50"
+          onMouseDown={click(onDismiss)}
+          aria-label="Dismiss suggestion"
+          className="ml-0.5 inline-flex rounded px-0.5 align-middle text-secondary hover:bg-card hover:text-primary"
         >
-          ⌫
+          <Icon name="x" size={12} />
         </button>
-      )}
-      <button
-        type="button"
-        onMouseDown={click(onDismiss)}
-        title="Dismiss (keep current)"
-        aria-label="Dismiss suggestion"
-        className="ml-0.5 inline-flex rounded px-0.5 align-middle text-secondary hover:bg-card hover:text-primary"
-      >
-        <Icon name="x" size={12} />
-      </button>
+      </Tooltip>
     </span>
   );
 }

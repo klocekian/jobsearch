@@ -11,6 +11,7 @@ import { Heading } from "@/components/ui/Heading";
 import { Text } from "@/components/ui/Text";
 import { Badge } from "@/components/ui/Badge";
 import { HStack } from "@/components/ui/Stack";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 const TERMINAL_LINES = [
   { status: "rejected", label: "Rejected", color: STATUS_TEXT_COLORS.rejected, stages: ["applied", "interview", "interview2", "onsite"] },
@@ -45,11 +46,12 @@ function GateStepper({ job }: { job: JobRow }) {
     <HStack gap={0} className="items-center">
       {GATES.map((g, i) => (
         <HStack key={g.key} gap={0} className="items-center">
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: i < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-border-strong, #cbd5e1)" }}
-            title={g.label}
-          />
+          <Tooltip content={g.label}>
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: i < reached ? STATUS_DOT_COLORS[g.key] : "var(--color-border-strong, #cbd5e1)" }}
+            />
+          </Tooltip>
           <Text
             type="supporting"
             className="mr-2 ml-1 whitespace-nowrap"

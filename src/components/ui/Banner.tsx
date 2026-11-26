@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "@/components/iconstack/Icon";
+import { Tooltip } from "./Tooltip";
 import styles from "./ui.module.css";
 
 type Status = "info" | "success" | "warning" | "error";
@@ -28,9 +29,11 @@ export function Banner({ status = "info", title, description, endContent, isDism
       </div>
       {endContent && <div className={styles.bannerEnd}>{endContent}</div>}
       {isDismissable && (
-        <button type="button" className={styles.bannerClose} onClick={onDismiss} aria-label="Dismiss">
-          <Icon name="x" size={14} />
-        </button>
+        <Tooltip content="Dismiss">
+          <button type="button" className={styles.bannerClose} onClick={onDismiss} aria-label="Dismiss">
+            <Icon name="x" size={14} />
+          </button>
+        </Tooltip>
       )}
     </div>
   );

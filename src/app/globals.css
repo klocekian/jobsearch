@@ -6,8 +6,8 @@
 
 @plugin "@tailwindcss/typography";
 
-/* Light only. `dark:` utilities stay inert unless a `.dark` ancestor opts in. */
-@custom-variant dark (&:where(.dark, .dark *));
+/* `dark:` utilities follow the app's theme, not the OS directly. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
  * Design tokens. One neutral palette with the brand red as the accent, shared
@@ -26,16 +26,22 @@
   --color-brand-dark: #c20808;
 
   --color-text-primary: #262626;
+  --color-text-strong: #404040;
+  --color-text-body: #525252;
   --color-text-secondary: #737373;
   --color-text-disabled: #a3a3a3;
   --color-text-accent: #d10808;
+  /* Text on --color-accent-muted: selected nav items and filters. */
+  --color-text-on-accent-muted: #c20808;
 
   --color-background-body: #ffffff;
   --color-background-surface: #ffffff;
   --color-background-card: #ffffff;
   --color-background-popover: #ffffff;
-  --color-background-muted: #f5f5f5;
   --color-background-subtle: #fafafa;
+  --color-background-muted: #f5f5f5;
+  --color-background-hover: #ebebeb;
+  --color-background-selected: #fff7f7;
   --color-background-inverted: #262626;
 
   --color-accent: var(--color-brand);
@@ -48,14 +54,16 @@
   --color-border-subtle: #eeeeee;
   --color-border-emphasized: #d4d4d4;
 
-  --color-success: #047857;
-  --color-success-muted: #ecfdf5;
-  --color-warning: #b45309;
-  --color-warning-muted: #fffbeb;
-  --color-error: #b91c1c;
-  --color-error-muted: #fdf1ee;
-  --color-info: #1d4ed8;
-  --color-info-muted: #eff6ff;
+  /* Tints: background, text, border. */
+  --color-info-muted: #eff6ff; --color-info: #1d4ed8; --color-info-border: #d6e2fb;
+  --color-success-muted: #ecfdf5; --color-success: #047857; --color-success-border: #cdebdd;
+  --color-warning-muted: #fffbeb; --color-warning: #b45309; --color-warning-border: #f1e3b5;
+  --color-error-muted: #fdf1ee; --color-error: #b91c1c; --color-error-border: #edd4ce;
+  --color-cyan-muted: #ecfeff; --color-cyan: #0e7490;
+  --color-teal-muted: #f0fdfa; --color-teal: #0f766e;
+  --color-pink-muted: #fdf2f8; --color-pink: #be185d;
+  --color-purple-muted: #f5f3ff; --color-purple: #6d28d9;
+  --color-star: #b69339;
 
   --font-size-xs: 0.625rem;
   --font-size-sm: 0.75rem;
@@ -68,7 +76,55 @@
   --radius-panel: 6px;
 
   --shadow-popover: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.12);
+  --color-overlay: rgba(23, 23, 23, 0.4);
   --focus-ring: 2px solid var(--color-brand);
+}
+
+/* Set on <html> before paint from the saved choice or the system setting
+   (see ThemeScript in components/theme.tsx). */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-brand-dark: #ff4d45;
+
+  --color-text-primary: #ededed;
+  --color-text-strong: #d9d9d9;
+  --color-text-body: #c2c2c2;
+  --color-text-secondary: #9a9a9a;
+  --color-text-disabled: #6b6b6b;
+  --color-text-accent: #ff6b61;
+  --color-text-on-accent-muted: #ff8a80;
+
+  --color-background-body: #161616;
+  --color-background-surface: #1b1b1b;
+  --color-background-card: #1f1f1f;
+  --color-background-popover: #242424;
+  --color-background-subtle: #191919;
+  --color-background-muted: #262626;
+  --color-background-hover: #2c2c2c;
+  --color-background-selected: #2a1a1a;
+  --color-background-inverted: #ededed;
+
+  --color-accent-hover: #ff2a2a;
+  --color-accent-muted: #e9090a33;
+  --color-neutral: #2c2c2c;
+
+  --color-border: #2e2e2e;
+  --color-border-subtle: #262626;
+  --color-border-emphasized: #3d3d3d;
+
+  --color-info-muted: #172036; --color-info: #93b4fd; --color-info-border: #263559;
+  --color-success-muted: #0f2a20; --color-success: #6ee7b7; --color-success-border: #1c4535;
+  --color-warning-muted: #2b220d; --color-warning: #fcd34d; --color-warning-border: #4a3a14;
+  --color-error-muted: #2f1414; --color-error: #fca5a5; --color-error-border: #522222;
+  --color-cyan-muted: #0e2a30; --color-cyan: #67e8f9;
+  --color-teal-muted: #0e2a27; --color-teal: #5eead4;
+  --color-pink-muted: #301325; --color-pink: #f9a8d4;
+  --color-purple-muted: #231a3a; --color-purple: #c4b5fd;
+  --color-star: #e0b850;
+
+  --shadow-popover: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
+  --color-overlay: rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {

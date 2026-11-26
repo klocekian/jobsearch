@@ -2,6 +2,7 @@
 
 import NextLink from "next/link";
 import type { MouseEvent, ReactNode } from "react";
+import { Tooltip } from "./Tooltip";
 import styles from "./ui.module.css";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
@@ -33,14 +34,21 @@ const isAppRoute = (href: string) => href.startsWith("/") && !href.startsWith("/
 export function Button({ label, variant, size, icon, isIconOnly, isDisabled, tooltip, href, onClick, type = "button", name, value, className }: ButtonProps) {
   const cls = buttonClass({ variant, size, isIconOnly, className });
   const content = <>{icon}{isIconOnly ? <span className={styles.srOnly}>{label}</span> : label}</>;
+  let el;
   if (href && !isDisabled) {
-    return isAppRoute(href)
-      ? <NextLink href={href} className={cls} title={tooltip} onClick={onClick}>{content}</NextLink>
-      : <a href={href} className={cls} title={tooltip} onClick={onClick}>{content}</a>;
+    el = isAppRoute(href)
+      ? <NextLink href={href} className={cls} onClick={onClick}>{content}</NextLink>
+      : <a href={href} className={cls} onClick={onClick}>{content}</a>;
+  } else {
+    el = (
+      <button type={type} name={name} value={value} className={cls} disabled={isDisabled} onClick={onClick}>
+        {content}
+      </button>
+    );
   }
-  return (
-    <button type={type} name={name} value={value} className={cls} title={tooltip} disabled={isDisabled} onClick={onClick}>
-      {content}
-    </button>
-  );
+  // Icon-only buttons show their label as a tooltip unless given one.
+  const tip = tooltip ?? (isIconOnly ? label : undefined);
+  // A disabled button gets no pointer events, so its tooltip hangs off a wrapper.
+  if (tip && isDisabled) return <Tooltip content={tip}><span className={styles.disabledTipAnchor}>{el}</span></Tooltip>;
+  return tip ? <Tooltip content={tip}>{el}</Tooltip> : el;
 }

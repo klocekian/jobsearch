@@ -10,6 +10,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Spinner } from "@/components/ui/Spinner";
 import { apiSend, errorMessage } from "@/lib/api-client";
 import { Icon } from "@/components/iconstack/Icon";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface ImportSheetModalProps {
   isOpen: boolean;
@@ -83,14 +84,16 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
                 Sync job opportunities directly into your pipeline
               </Text>
             </div>
-            <button
-              onClick={onClose}
-              disabled={loading}
-              className="text-secondary hover:text-primary rounded p-1 transition cursor-pointer"
-              aria-label="Close"
-            >
-              <Icon name="x" size={16} />
-            </button>
+            <Tooltip content="Close">
+              <button
+                onClick={onClose}
+                disabled={loading}
+                className="text-secondary hover:text-primary rounded p-1 transition cursor-pointer"
+                aria-label="Close"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </Tooltip>
           </div>
 
           <HStack gap={2} className="border-b border-border pb-3">

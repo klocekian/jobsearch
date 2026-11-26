@@ -23,6 +23,7 @@ import { CandidateProfilePanel } from "./CandidateProfilePanel";
 import { AIProvidersPanel } from "./AIProvidersPanel";
 import { McpConnectPanel } from "./McpConnectPanel";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
+import { ThemeSelector } from "./ThemeControls";
 
 interface AuthUser { id: number; name: string; email: string; claudeStatus: ClaudeStatus }
 
@@ -152,6 +153,16 @@ export function ProfileView({ initialUser, initialAutofillFields }: ProfileViewP
               />
             </div>
           )}
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+          <div>
+            <Text type="label" display="block" className="mb-1">Appearance</Text>
+            <Text type="supporting" display="block">System follows your computer&apos;s light or dark setting.</Text>
+          </div>
+          <ThemeSelector />
         </div>
       </Card>
 

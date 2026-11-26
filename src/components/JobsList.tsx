@@ -28,6 +28,7 @@ import type { TableColumn, TableSortState } from "@/components/ui/Table";
 import { useMediaQuery } from "@/components/ui/hooks";
 import { ImportSheetModal } from "./ImportSheetModal";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
 
@@ -278,15 +279,17 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       header: <><Icon name="star" size={13} /><span className="sr-only">Starred</span></>,
       width: pixel(40),
       renderCell: (job) => (
-        <button
-          type="button"
-          onClick={(e) => { e.preventDefault(); toggleStar(job); }}
-          aria-label={`${job.is_starred ? "Unstar" : "Star"} ${job.company} ${job.title}`}
-          aria-pressed={!!job.is_starred}
-          className={`flex cursor-pointer rounded p-0.5 transition ${job.is_starred ? "text-amber-600" : "text-disabled hover:text-amber-600"}`}
-        >
-          <Icon name="star" size={16} fill={job.is_starred ? "currentColor" : "none"} />
-        </button>
+        <Tooltip content={job.is_starred ? "Unstar" : "Star"}>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); toggleStar(job); }}
+            aria-label={`${job.is_starred ? "Unstar" : "Star"} ${job.company} ${job.title}`}
+            aria-pressed={!!job.is_starred}
+            className={`flex cursor-pointer rounded p-0.5 transition ${job.is_starred ? "text-amber-600" : "text-disabled hover:text-amber-600"}`}
+          >
+            <Icon name="star" size={16} fill={job.is_starred ? "currentColor" : "none"} />
+          </button>
+        </Tooltip>
       ),
     },
     {
@@ -360,9 +363,11 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       renderCell: (job) =>
         job.match_score != null
           ? (
-            <span title={job.match_resume_name ? `Scored with: ${job.match_resume_name}` : undefined}>
-              <Badge variant={matchVariant(job.match_score)} label={`${job.match_score}%`} />
-            </span>
+            <Tooltip content={job.match_resume_name ? `Scored with ${job.match_resume_name}` : null}>
+              <span>
+                <Badge variant={matchVariant(job.match_score)} label={`${job.match_score}%`} />
+              </span>
+            </Tooltip>
           )
           : <Text>—</Text>,
     },
@@ -394,7 +399,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
 
   return (
     <div className="flex flex-col" style={{ "--table-header-top": `${58 + toolbarHeight}px` } as React.CSSProperties}>
-      <div ref={toolbarRef} className="sticky top-[58px] z-20 bg-[#fafafa] py-2.5 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:bg-[#fafafa] max-md:static">
+      <div ref={toolbarRef} className="sticky top-[58px] z-20 bg-[var(--color-background-subtle)] py-2.5 before:absolute before:-top-4 before:left-0 before:right-0 before:h-4 before:bg-[var(--color-background-subtle)] max-md:static">
         <Stack gap={3} className="shrink-0">
           <HStack gap={3} className="flex-wrap items-center">
             <TextInput
@@ -446,15 +451,16 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
                     onClick={undoAutoClosed}
                     isDisabled={restoring || confirming}
                   />
-                  <button
-                    type="button"
-                    onClick={dismissAutoClosed}
-                    aria-label="Dismiss"
-                    title="Dismiss"
-                    className="rounded p-1 text-amber-900/80 hover:bg-amber-500/15 hover:text-amber-900 dark:text-amber-100/80 dark:hover:text-amber-100 cursor-pointer"
-                  >
-                    <Icon name="x" size={16} />
-                  </button>
+                  <Tooltip content="Dismiss">
+                    <button
+                      type="button"
+                      onClick={dismissAutoClosed}
+                      aria-label="Dismiss"
+                      className="rounded p-1 text-amber-900/80 hover:bg-amber-500/15 hover:text-amber-900 dark:text-amber-100/80 dark:hover:text-amber-100 cursor-pointer"
+                    >
+                      <Icon name="x" size={16} />
+                    </button>
+                  </Tooltip>
                 </HStack>
               </div>
               <ul className="mt-2 space-y-1 text-sm">

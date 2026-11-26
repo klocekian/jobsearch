@@ -41,6 +41,22 @@ describe("search cycle", () => {
     await page.getByRole("heading", { name: "No roles match this view" }).waitFor();
   });
 
+  it("j/k and arrow keys step through the Explore preview", async () => {
+    const { page } = ui;
+    await page.goto(`${app.base}/jobs`, { waitUntil: "networkidle" });
+    const preview = page.getByRole("complementary", { name: "Job preview" }).getByRole("heading", { level: 2 });
+    const rows = page.locator("[data-job-row] [data-preview]");
+    const first = await rows.nth(0).getAttribute("aria-label");
+    const second = await rows.nth(1).getAttribute("aria-label");
+    await page.keyboard.press("j");
+    assert.equal(await rows.nth(1).getAttribute("aria-pressed"), "true", second);
+    await rows.nth(1).focus();
+    await page.keyboard.press("ArrowUp");
+    assert.equal(await rows.nth(0).getAttribute("aria-pressed"), "true", first);
+    assert.equal(await page.evaluate(() => document.activeElement?.closest("tr")?.dataset.selected), "true", "focus follows");
+    await preview.waitFor();
+  });
+
   it("saves preparation and reflection notes, retaining drafts after failed writes", async () => {
     const { page } = ui;
     await page.goto(`${app.base}/jobs?phase=prepare`, { waitUntil: "networkidle" });

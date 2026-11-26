@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Icon } from "@/components/iconstack/Icon";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useEffect, useMemo, useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
@@ -9,6 +10,7 @@ import { formatDate, formatSalary } from "@/lib/format";
 import { statusLabel } from "@/lib/status";
 import { applicationGroup, isExploring, type SearchPhase, type ApplicationGroup } from "@/lib/search-workflow";
 import { saveJobListIds } from "@/lib/storage";
+import { onRovingKeyDown } from "@/components/ui/rovingKeys";
 import { PrepareSpace } from "./PrepareSpace";
 import styles from "./search.module.css";
 
@@ -37,6 +39,27 @@ export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilt
   const selected = visible.find((job) => job.id === selectedId) ?? visible[0];
   useEffect(() => { if (phase !== "prepare") saveJobListIds(visible.map((j) => j.id)); }, [visible, phase]);
 
+  // j/k anywhere (outside fields), or ↑/↓ within the list, step through the preview.
+  useEffect(() => {
+    if (phase !== "explore" || !selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || t.isContentEditable || e.metaKey || e.ctrlKey || e.altKey) return;
+      const inList = !!t.closest("[data-job-list]");
+      const step = e.key === "j" || (inList && e.key === "ArrowDown") ? 1 : e.key === "k" || (inList && e.key === "ArrowUp") ? -1 : 0;
+      if (!step) return;
+      const next = visible[visible.indexOf(selected) + step];
+      if (!next) return;
+      e.preventDefault();
+      setSelectedId(next.id);
+      const button = document.querySelector<HTMLElement>(`[data-job-row="${next.id}"] [data-preview]`);
+      button?.scrollIntoView({ block: "nearest" });
+      if (inList) button?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, selected, visible]);
+
   async function toggleShortlist(job: JobRow) {
     setPending(job.id); setActionError("");
     try {
@@ -62,7 +85,7 @@ export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilt
     {actionError && <p className={styles.error} role="alert">{actionError}</p>}
     {phase === "prepare" ? <div className={styles.prepareContent}><PrepareSpace jobs={all} /></div> : <>
       <div className={styles.toolbar}>
-        <div className={styles.filters} aria-label="Filter jobs">{filters.map((f) => <button key={f.id} aria-label={f.label} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}<span aria-hidden="true">{jobs ? f.count : "—"}</span></button>)}</div>
+        <div role="group" className={styles.filters} aria-label="Filter jobs" onKeyDown={(e) => onRovingKeyDown(e, setFilter)}>{filters.map((f) => <button key={f.id} data-value={f.id} tabIndex={filter === f.id ? 0 : -1} aria-label={f.label} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}<span aria-hidden="true">{jobs ? f.count : "—"}</span></button>)}</div>
         <div className={styles.searchControls}><input aria-label="Search jobs" placeholder="Search jobs…" value={query} onChange={(e) => setQuery(e.target.value)} /><select aria-label="Sort opportunities" value={sort} onChange={(e) => setSort(e.target.value)}><option value="recent">Newest first</option><option value="fit">Highest fit</option></select></div>
       </div>
       {all.some((j) => j.auto_closed) && <Link className={styles.closureNotice} href="/jobs?view=tracker">Posting checks found closed roles. Review changes <Icon name="arrow-right" size={14} /></Link>}
@@ -72,16 +95,16 @@ export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilt
         <section className={styles.jobList} aria-label="Opportunities">
           <div className={styles.tableScroll}><table className={styles.jobsTable}>
             <thead><tr><th scope="col"><span className={styles.srOnly}>Shortlist</span></th><th scope="col">Role / Company</th><th scope="col" className={styles.locationColumn}>Location</th><th scope="col" className={styles.salaryColumn}>Salary</th><th scope="col">Fit</th><th scope="col" className={styles.statusColumn}>Status</th></tr></thead>
-            <tbody>{visible.map((job) => <tr key={job.id} data-selected={selected?.id === job.id}>
-              <td><button className={styles.star} aria-label={`${job.is_starred ? "Remove" : "Add"} ${job.company} ${job.title} ${job.is_starred ? "from" : "to"} shortlist`} aria-pressed={!!job.is_starred} onClick={() => void toggleShortlist(job)} disabled={pending !== null}><Icon name="star" size={17} fill={job.is_starred ? "currentColor" : "none"} /></button></td>
-              <td><button className={styles.roleButton} onClick={() => setSelectedId(job.id)} aria-pressed={selected?.id === job.id} aria-label={`Preview ${job.company} ${job.title}`}><span className={styles.companyLogo} aria-hidden="true">{(job.company || "?").slice(0, 2).toUpperCase()}</span><span><strong>{job.title || "Untitled role"}</strong><small>{job.company || "Company not added"}</small></span></button></td>
+            <tbody data-job-list>{visible.map((job) => <tr key={job.id} data-job-row={job.id} data-selected={selected?.id === job.id}>
+              <td><Tooltip content={job.is_starred ? "Remove from shortlist" : "Add to shortlist"}><button className={styles.star} aria-label={`${job.is_starred ? "Remove" : "Add"} ${job.company} ${job.title} ${job.is_starred ? "from" : "to"} shortlist`} aria-pressed={!!job.is_starred} onClick={() => void toggleShortlist(job)} disabled={pending !== null}><Icon name="star" size={17} fill={job.is_starred ? "currentColor" : "none"} /></button></Tooltip></td>
+              <td><button data-preview className={styles.roleButton} onClick={() => setSelectedId(job.id)} aria-pressed={selected?.id === job.id} aria-label={`Preview ${job.company} ${job.title}`}><span className={styles.companyLogo} aria-hidden="true">{(job.company || "?").slice(0, 2).toUpperCase()}</span><span><strong>{job.title || "Untitled role"}</strong><small>{job.company || "Company not added"}</small></span></button></td>
               <td className={styles.locationColumn}><span>{job.location || "—"}</span><small>{job.remote_type && job.remote_type !== "unknown" ? job.remote_type : ""}</small></td>
               <td className={styles.salaryColumn}>{formatSalary(job) || "—"}</td>
               <td>{job.fitness_score != null ? <span className={styles.fitTag}>{job.fitness_score}<small>/10</small></span> : <span className={styles.subtle}>—</span>}</td>
               <td className={styles.statusColumn}><span className={styles.tag} data-status={job.status}>{job.status === "applying" ? "Preparing" : "Saved"}</span></td>
             </tr>)}</tbody>
           </table></div>
-          <div className={styles.listFooter}><span>{visible.length} opportunities</span><Link href="/jobs?view=tracker">Open full tracker <Icon name="arrow-up-right" size={14} /></Link></div>
+          <div className={styles.listFooter}><span>{visible.length} opportunities<span className={styles.keyHint}> · <kbd>j</kbd> <kbd>k</kbd> to move through them</span></span><Link href="/jobs?view=tracker">Open full tracker <Icon name="arrow-up-right" size={14} /></Link></div>
         </section>
         {selected && <JobInspector key={selected.id} job={selected} />}
       </div> : <ApplicationList jobs={visible} />)}
@@ -99,7 +122,7 @@ function JobInspector({ job }: { job: JobRow }) {
     return () => { ignore = true; };
   }, [job.id]);
   return <aside className={styles.inspector} aria-label="Job preview">
-    <div className={styles.inspectorHeading}><span>JOB PREVIEW</span><Link href={`/jobs/${job.id}`} aria-label="Open job workspace"><Icon name="arrow-up-right" size={17} /></Link></div>
+    <div className={styles.inspectorHeading}><span>JOB PREVIEW</span><Tooltip content="Open job workspace"><Link href={`/jobs/${job.id}`} aria-label="Open job workspace"><Icon name="arrow-up-right" size={17} /></Link></Tooltip></div>
     <div className={styles.inspectorBody}>
       <span className={styles.companyLogo} aria-hidden="true">{job.company.slice(0, 2).toUpperCase()}</span>
       <h2>{job.title}</h2><p className={styles.inspectorCompany}>{job.company}{job.location ? ` · ${job.location}` : ""}</p>
