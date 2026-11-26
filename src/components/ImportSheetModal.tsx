@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { apiSend, errorMessage } from "@/lib/api-client";
 import { Icon } from "@/components/iconstack/Icon";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/SegmentedControl";
 
 interface ImportSheetModalProps {
   isOpen: boolean;
@@ -79,9 +80,9 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
         <Stack gap={4}>
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div>
-              <Text type="display-3" as="h2">Import Jobs from Google Sheet</Text>
+              <Text type="display-3" as="h2">Import jobs</Text>
               <Text type="supporting" className="text-xs text-secondary mt-0.5">
-                Sync job opportunities directly into your pipeline
+                From a Google Sheet or a CSV file.
               </Text>
             </div>
             <Tooltip content="Close">
@@ -96,30 +97,12 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
             </Tooltip>
           </div>
 
-          <HStack gap={2} className="border-b border-border pb-3">
-            <button
-              type="button"
-              onClick={() => setMode("url")}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition cursor-pointer ${
-                mode === "url"
-                  ? "bg-accent text-on-accent"
-                  : "bg-surface text-secondary hover:bg-neutral hover:text-primary"
-              }`}
-            >
-              Google Sheet URL
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("file")}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition cursor-pointer ${
-                mode === "file"
-                  ? "bg-accent text-on-accent"
-                  : "bg-surface text-secondary hover:bg-neutral hover:text-primary"
-              }`}
-            >
-              Upload CSV
-            </button>
-          </HStack>
+          <div className="border-b border-border pb-3">
+            <SegmentedControl value={mode} onChange={(v) => setMode(v as typeof mode)} label="Import from">
+              <SegmentedControlItem value="url" label="Google Sheet link" />
+              <SegmentedControlItem value="file" label="Upload CSV" />
+            </SegmentedControl>
+          </div>
 
           {error && <Banner status="error" title={error} isDismissable onDismiss={() => setError("")} />}
 
@@ -141,7 +124,7 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
 
               <div className="rounded-md bg-neutral/10 border border-border/50 p-3">
                 <Text type="supporting" className="text-xs text-secondary leading-relaxed">
-                  💡 <strong>Sharing Requirement:</strong> Make sure the Google Sheet is shared with{" "}
+                  <Icon name="bulb" size={14} className="mr-1 -mt-0.5 text-amber-600" /><strong>Sharing:</strong> make sure the sheet is shared with{" "}
                   <em>&quot;Anyone with the link can view&quot;</em> so Job Search can read the rows.
                 </Text>
               </div>
@@ -156,7 +139,7 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
                   type="file"
                   accept=".csv,text/csv"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-secondary file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-xs file:font-semibold file:text-on-accent hover:file:opacity-90 cursor-pointer"
+                  className="block w-full text-sm text-secondary file:mr-4 file:rounded-md file:border-0 file:bg-accent-bg file:px-4 file:py-2 file:text-xs file:font-semibold file:text-on-accent hover:file:opacity-90 cursor-pointer"
                 />
               </div>
 
@@ -177,7 +160,7 @@ export function ImportSheetModal({ isOpen, onClose, onSuccess }: ImportSheetModa
               isDisabled={loading}
             />
             <Button
-              label={loading ? "Importing…" : "Import Jobs"}
+              label={loading ? "Importing…" : "Import jobs"}
               variant="primary"
               size="sm"
               onClick={handleImport}
