@@ -225,6 +225,9 @@ export const loadJobListSortKey = (): string => readKey("session", "jobsSortKey"
 export const saveJobListSortKey = (key: string): void => writeKey("session", "jobsSortKey", key);
 export const loadJobListSortOrder = (): "asc" | "desc" => (readKey("session", "jobsSortOrder") === "asc" ? "asc" : "desc");
 export const saveJobListSortOrder = (order: "asc" | "desc"): void => writeKey("session", "jobsSortOrder", order);
+/** Explore's sort, as "key:direction" (e.g. "created:descending"). */
+export const loadExploreSort = (): string => readKey("session", "exploreSort") ?? "created:descending";
+export const saveExploreSort = (sort: string): void => writeKey("session", "exploreSort", sort);
 export const loadJobListStatus = (): string => readKey("session", "jobsStatusFilter") ?? "";
 export const saveJobListStatus = (status: string): void => writeKey("session", "jobsStatusFilter", status || null);
 

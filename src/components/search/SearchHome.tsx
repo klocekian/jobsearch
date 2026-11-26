@@ -7,19 +7,47 @@ import { useEffect, useMemo, useState } from "react";
 import type { JobRow } from "@/lib/db/jobs";
 import { apiGet, apiSend, errorMessage } from "@/lib/api-client";
 import { formatDate, formatSalary } from "@/lib/format";
-import { statusLabel } from "@/lib/status";
+import { STATUS_OPTIONS, statusLabel } from "@/lib/status";
 import { applicationGroup, isExploring, type SearchPhase, type ApplicationGroup } from "@/lib/search-workflow";
-import { saveJobListIds } from "@/lib/storage";
+import { loadExploreSort, saveExploreSort, saveJobListIds } from "@/lib/storage";
+import { useStoredValue } from "@/hooks/useStoredValue";
+import { SortButton, nextSort, sortRows, type Sort, type SortDirection } from "@/components/ui/Table";
 import { onRovingKeyDown } from "@/components/ui/rovingKeys";
 import { PrepareSpace } from "./PrepareSpace";
 import styles from "./search.module.css";
 
 const labels = { explore: "Explore", prepare: "Prepare", applications: "Applications" };
 
+// What each sort orders by, which way a header's first click goes, and how the sort menu names each direction.
+const statusRank = (status: string) => STATUS_OPTIONS.findIndex((s) => s.value === status);
+const SORTS = {
+  created: { value: (j: JobRow) => j.created_at, first: "descending", names: ["Oldest first", "Newest first"] },
+  starred: { value: (j: JobRow) => j.is_starred, first: "descending", names: ["Shortlisted last", "Shortlisted first"] },
+  title: { value: (j: JobRow) => j.title, first: "ascending", names: ["Role A–Z", "Role Z–A"] },
+  company: { value: (j: JobRow) => j.company, first: "ascending", names: ["Company A–Z", "Company Z–A"] },
+  location: { value: (j: JobRow) => j.location, first: "ascending", names: ["Location A–Z", "Location Z–A"] },
+  salary: { value: (j: JobRow) => j.salary_max ?? j.salary_min, first: "descending", names: ["Lowest salary", "Highest salary"] },
+  fit: { value: (j: JobRow) => j.fitness_score, first: "descending", names: ["Lowest fit", "Highest fit"] },
+  status: { value: (j: JobRow) => statusRank(j.status), first: "ascending", names: ["Earliest stage first", "Furthest stage first"] },
+} satisfies Record<string, { value: (j: JobRow) => string | number | null; first: SortDirection; names: [string, string] }>;
+type SortKey = keyof typeof SORTS;
+const SORT_MENU: Sort<SortKey>[] = [
+  { key: "created", direction: "descending" }, { key: "created", direction: "ascending" }, { key: "fit", direction: "descending" },
+  { key: "salary", direction: "descending" }, { key: "title", direction: "ascending" }, { key: "company", direction: "ascending" },
+];
+const sortId = (s: Sort<SortKey>) => `${s.key}:${s.direction}`;
+const sortName = (s: Sort<SortKey>) => SORTS[s.key].names[s.direction === "ascending" ? 0 : 1];
+function parseSort(id: string): Sort<SortKey> {
+  const [key, direction] = id.split(":");
+  return key in SORTS && (direction === "ascending" || direction === "descending") ? { key: key as SortKey, direction } : { key: "created", direction: "descending" };
+}
+
 export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilter }: { jobs: JobRow[] | null; phase: SearchPhase; onJobChange: (job: JobRow) => void; error: string | null; retry: () => void; initialFilter: string | null }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState(initialFilter === "shortlist" && phase === "explore" ? "shortlist" : "all");
-  const [sort, setSort] = useState("recent");
+  const [sortValue, setSortValue] = useStoredValue(loadExploreSort, saveExploreSort, "created:descending");
+  const sort = parseSort(sortValue);
+  const sortBy = (key: SortKey) => setSortValue(sortId(nextSort(sort, key, SORTS[key].first)));
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [pending, setPending] = useState<number | null>(null);
   const [actionError, setActionError] = useState("");
@@ -34,8 +62,10 @@ export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilt
     if (filter === "active") list = list.filter((j) => applicationGroup(j) !== "finished");
     const text = query.trim().toLowerCase();
     list = list.filter((j) => `${j.company} ${j.title} ${j.location}`.toLowerCase().includes(text));
-    return list.sort(sort === "fit" ? (a, b) => (b.fitness_score ?? -1) - (a.fitness_score ?? -1) : (a, b) => b.created_at.localeCompare(a.created_at));
-  }, [jobs, phase, filter, query, sort]);
+    // Newest first within ties, whatever the sort.
+    const newest = sortRows(list, SORTS.created.value, "descending");
+    return sort.key === "created" ? sortRows(list, SORTS.created.value, sort.direction) : sortRows(newest, SORTS[sort.key].value, sort.direction);
+  }, [jobs, phase, filter, query, sort.key, sort.direction]);
   const selected = visible.find((job) => job.id === selectedId) ?? visible[0];
   useEffect(() => { if (phase !== "prepare") saveJobListIds(visible.map((j) => j.id)); }, [visible, phase]);
 
@@ -86,7 +116,7 @@ export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilt
     {phase === "prepare" ? <div className={styles.prepareContent}><PrepareSpace jobs={all} /></div> : <>
       <div className={styles.toolbar}>
         <div role="group" className={styles.filters} aria-label="Filter jobs" onKeyDown={(e) => onRovingKeyDown(e, setFilter)}>{filters.map((f) => <button key={f.id} data-value={f.id} tabIndex={filter === f.id ? 0 : -1} aria-label={f.label} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}<span aria-hidden="true">{jobs ? f.count : "—"}</span></button>)}</div>
-        <div className={styles.searchControls}><input aria-label="Search jobs" placeholder="Search jobs…" value={query} onChange={(e) => setQuery(e.target.value)} /><select aria-label="Sort opportunities" value={sort} onChange={(e) => setSort(e.target.value)}><option value="recent">Newest first</option><option value="fit">Highest fit</option></select></div>
+        <div className={styles.searchControls}><input aria-label="Search jobs" placeholder="Search jobs…" value={query} onChange={(e) => setQuery(e.target.value)} /><select aria-label="Sort opportunities" value={sortId(sort)} onChange={(e) => setSortValue(e.target.value)}>{(SORT_MENU.some((m) => sortId(m) === sortId(sort)) ? SORT_MENU : [...SORT_MENU, sort]).map((m) => <option key={sortId(m)} value={sortId(m)}>{sortName(m)}</option>)}</select></div>
       </div>
       {all.some((j) => j.auto_closed) && <Link className={styles.closureNotice} href="/jobs?view=tracker">Posting checks found closed roles. Review changes <Icon name="arrow-right" size={14} /></Link>}
       {!jobs && !error && <p className={styles.empty} role="status">Loading jobs…</p>}
@@ -94,7 +124,14 @@ export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilt
       {visible.length > 0 && (phase === "explore" ? <div className={styles.exploreWorkspace}>
         <section className={styles.jobList} aria-label="Opportunities">
           <div className={styles.tableScroll}><table className={styles.jobsTable}>
-            <thead><tr><th scope="col"><span className={styles.srOnly}>Shortlist</span></th><th scope="col">Role / Company</th><th scope="col" className={styles.locationColumn}>Location</th><th scope="col" className={styles.salaryColumn}>Salary</th><th scope="col">Fit</th><th scope="col" className={styles.statusColumn}>Status</th></tr></thead>
+            <thead><tr>
+              <th scope="col" aria-sort={ariaSort(sort, "starred")}><SortButton active={sort.key === "starred"} direction={sort.direction} onClick={() => sortBy("starred")} label="Sort by shortlist"><Icon name="star" size={11} /></SortButton></th>
+              <th scope="col" aria-sort={ariaSort(sort, "title") ?? ariaSort(sort, "company")}><SortButton active={sort.key === "title"} direction={sort.direction} onClick={() => sortBy("title")}>Role</SortButton> / <SortButton active={sort.key === "company"} direction={sort.direction} onClick={() => sortBy("company")}>Company</SortButton></th>
+              <th scope="col" className={styles.locationColumn} aria-sort={ariaSort(sort, "location")}><SortButton active={sort.key === "location"} direction={sort.direction} onClick={() => sortBy("location")}>Location</SortButton></th>
+              <th scope="col" className={styles.salaryColumn} aria-sort={ariaSort(sort, "salary")}><SortButton active={sort.key === "salary"} direction={sort.direction} onClick={() => sortBy("salary")}>Salary</SortButton></th>
+              <th scope="col" aria-sort={ariaSort(sort, "fit")}><SortButton active={sort.key === "fit"} direction={sort.direction} onClick={() => sortBy("fit")}>Fit</SortButton></th>
+              <th scope="col" className={styles.statusColumn} aria-sort={ariaSort(sort, "status")}><SortButton active={sort.key === "status"} direction={sort.direction} onClick={() => sortBy("status")}>Status</SortButton></th>
+            </tr></thead>
             <tbody data-job-list>{visible.map((job) => <tr key={job.id} data-job-row={job.id} data-selected={selected?.id === job.id}>
               <td><Tooltip content={job.is_starred ? "Remove from shortlist" : "Add to shortlist"}><button className={styles.star} aria-label={`${job.is_starred ? "Remove" : "Add"} ${job.company} ${job.title} ${job.is_starred ? "from" : "to"} shortlist`} aria-pressed={!!job.is_starred} onClick={() => void toggleShortlist(job)} disabled={pending !== null}><Icon name="star" size={17} fill={job.is_starred ? "currentColor" : "none"} /></button></Tooltip></td>
               <td><button data-preview className={styles.roleButton} onClick={() => setSelectedId(job.id)} aria-pressed={selected?.id === job.id} aria-label={`Preview ${job.company} ${job.title}`}><span className={styles.companyLogo} aria-hidden="true">{(job.company || "?").slice(0, 2).toUpperCase()}</span><span><strong>{job.title || "Untitled role"}</strong><small>{job.company || "Company not added"}</small></span></button></td>
@@ -111,6 +148,8 @@ export function SearchHome({ jobs, phase, onJobChange, error, retry, initialFilt
     </>}
   </main>;
 }
+
+const ariaSort = (sort: Sort<SortKey>, key: SortKey) => (sort.key === key ? sort.direction : undefined);
 
 function JobInspector({ job }: { job: JobRow }) {
   const [detail, setDetail] = useState<JobRow | null>(null);

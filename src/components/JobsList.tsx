@@ -30,7 +30,7 @@ import { ImportSheetModal } from "./ImportSheetModal";
 import { OnboardingWizardModal } from "./OnboardingWizardModal";
 import { Tooltip } from "@/components/ui/Tooltip";
 
-type SortKey = "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
+type SortKey = "is_starred" | "company" | "title" | "status" | "salary_max" | "location" | "match_score" | "fitness_score" | "created_at" | "applied_at";
 
 // Bypass the browser cache: /api/jobs allows a short private cache, and lists
 // are refetched right after mutations (restore, confirm, import, status checks).
@@ -278,6 +278,8 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       key: "is_starred",
       header: <><Icon name="star" size={13} /><span className="sr-only">Starred</span></>,
       width: pixel(40),
+      sortable: true,
+      firstDirection: "descending",
       renderCell: (job) => (
         <Tooltip content={job.is_starred ? "Unstar" : "Star"}>
           <button
@@ -335,6 +337,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       header: "Salary",
       width: proportional(1.2),
       sortable: true,
+      firstDirection: "descending",
       renderCell: (job) => <Text>{formatSalary(job)}</Text>,
     },
     {
@@ -350,6 +353,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       header: "Fitness",
       width: pixel(90),
       sortable: true,
+      firstDirection: "descending",
       renderCell: (job) =>
         job.fitness_score != null
           ? <Badge variant={BAND_VARIANTS[bandForScore(job.fitness_score)] ?? "neutral"} label={`${job.fitness_score}/10`} />
@@ -360,6 +364,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       header: "ATS Match",
       width: pixel(90),
       sortable: true,
+      firstDirection: "descending",
       renderCell: (job) =>
         job.match_score != null
           ? (
@@ -376,6 +381,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       header: "Added",
       width: pixel(80),
       sortable: true,
+      firstDirection: "descending",
       renderCell: (job) => <Text>{formatDate(job.created_at)}</Text>,
     },
     {
@@ -383,6 +389,7 @@ export function JobsList({ allJobs, setAllJobs, refreshAllJobs }: JobsListProps)
       header: "Applied",
       width: pixel(80),
       sortable: true,
+      firstDirection: "descending",
       renderCell: (job) => <Text>{formatDate(job.applied_at)}</Text>,
     },
   ];

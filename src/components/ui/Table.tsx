@@ -13,10 +13,45 @@ export interface TableColumn<T> {
   header: ReactNode;
   width?: TableWidth;
   sortable?: boolean;
+  /** The direction of the first click; numbers and dates read best high to low. */
+  firstDirection?: SortDirection;
   renderCell?: (row: T) => ReactNode;
 }
 
-export type TableSortState<K extends string = string> = { sortKey: K; direction: "ascending" | "descending" }[];
+export type SortDirection = "ascending" | "descending";
+export type TableSortState<K extends string = string> = { sortKey: K; direction: SortDirection }[];
+export type Sort<K extends string = string> = { key: K; direction: SortDirection };
+
+/** The direction after clicking column `key`: its first direction if it's new, else flipped. */
+export function nextSort<K extends string>(current: Sort<K> | null, key: K, first: SortDirection = "ascending"): Sort<K> {
+  if (current?.key !== key) return { key, direction: first };
+  return { key, direction: current.direction === "ascending" ? "descending" : "ascending" };
+}
+
+/**
+ * Rows ordered by `value`, as a new array. Text compares case-insensitively and
+ * numbers in order; empty values go last either way, and ties keep their order.
+ */
+export function sortRows<T>(rows: readonly T[], value: (row: T) => string | number | null | undefined, direction: SortDirection): T[] {
+  const sign = direction === "ascending" ? 1 : -1;
+  const empty = (v: unknown) => v == null || v === "";
+  return [...rows].sort((a, b) => {
+    const x = value(a), y = value(b);
+    if (empty(x) || empty(y)) return Number(empty(x)) - Number(empty(y));
+    const order = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), undefined, { sensitivity: "base", numeric: true });
+    return order * sign;
+  });
+}
+
+/** A column header that sorts its column, with an arrow showing the direction when active. */
+export function SortButton({ active, direction, onClick, children, label }: { active: boolean; direction?: SortDirection; onClick: () => void; children: ReactNode; label?: string }) {
+  return (
+    <button type="button" className={styles.sortButton} data-active={active} onClick={onClick} aria-label={label}>
+      {children}
+      <Icon name={active && direction === "descending" ? "chevron-down" : "chevron-up"} size={11} style={{ opacity: active ? 1 : 0.35 }} />
+    </button>
+  );
+}
 
 interface SortablePlugin {
   sort: TableSortState;
@@ -45,10 +80,10 @@ export function Table<T extends Record<string, unknown>>({ data, columns, idKey,
   const fixedPx = columns.reduce((n, c) => n + (c.width && "px" in c.width ? c.width.px : 0), 0);
   const widthOf = (w?: TableWidth) => !w ? undefined : "px" in w ? `${w.px}px` : `calc((100% - ${fixedPx}px) * ${w.fr / totalFr})`;
 
-  const onSort = (key: string) => {
+  const onSort = (c: TableColumn<T>) => {
     if (!sortable) return;
-    const direction = current?.sortKey === key && current.direction === "ascending" ? "descending" : "ascending";
-    sortable.onSortChange([{ sortKey: key, direction }]);
+    const next = nextSort(current ? { key: current.sortKey, direction: current.direction } : null, c.key, c.firstDirection);
+    sortable.onSortChange([{ sortKey: next.key, direction: next.direction }]);
   };
 
   return (
@@ -62,10 +97,7 @@ export function Table<T extends Record<string, unknown>>({ data, columns, idKey,
               return (
                 <th key={c.key} scope="col" aria-sort={active ? current.direction : undefined}>
                   {c.sortable && sortable ? (
-                    <button type="button" className={styles.sortButton} data-active={active} onClick={() => onSort(c.key)}>
-                      {c.header}
-                      <Icon name={active && current.direction === "descending" ? "chevron-down" : "chevron-up"} size={11} style={{ opacity: active ? 1 : 0.35 }} />
-                    </button>
+                    <SortButton active={active} direction={current?.direction} onClick={() => onSort(c)}>{c.header}</SortButton>
                   ) : c.header}
                 </th>
               );
