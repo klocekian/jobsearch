@@ -67,7 +67,7 @@ const shots: Record<string, (page: Page) => Promise<void>> = {
   async drilldown(page) {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await page.goto(BASE + "/jobs?view=tracker", { waitUntil: "networkidle" });
-    await page.getByText("Recruiter", { exact: true }).first().click();
+    await page.getByRole("button", { name: /in play at Recruiter$/ }).click();
     await settle(page, 600);
     const card = await cardOf(page, "Application pipeline");
     const banner = await page.evaluate(() => {
@@ -197,7 +197,7 @@ const shots: Record<string, (page: Page) => Promise<void>> = {
     // Recruiter drilldown, left part of the pipeline card.
     await p.setViewportSize({ width: 1600, height: 1000 });
     await p.goto(BASE + "/jobs?view=tracker", { waitUntil: "networkidle" });
-    await p.getByText("Recruiter", { exact: true }).first().click();
+    await p.getByRole("button", { name: /in play at Recruiter$/ }).click();
     await settle(p, 600);
     const c = await cardOf(p, "Application pipeline");
     const w = Math.round(c.width * 0.56);

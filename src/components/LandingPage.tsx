@@ -136,7 +136,7 @@ function FeatureSection({
 
 const SHOTS = {
   dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Explore workspace listing saved roles with location, salary, fit score, and status, beside a preview of the selected posting.", width: 2400, height: 1178, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 1290 } },
-  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Applications at the recruiter stage, with each role's progress through earlier stages.", width: 2040, height: 935, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 813 } },
+  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Applications at the recruiter stage, with each role's progress through earlier stages.", width: 2040, height: 846, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 719 } },
   clip: { src: "/hero/extension-clip.webp", alt: "Chrome side panel capturing a job's company, title, salary, and description from a careers page.", width: 2400, height: 1182, mobile: { src: "/hero/extension-clip-mobile.webp", width: 656, height: 1170 } },
   fitness: { src: "/hero/fitness-check.webp", alt: "Role-fit review with a 1–10 score and an explanation of how the candidate's experience relates to each requirement.", width: 1229, height: 1438, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 631 } },
   profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile containing experience and accomplishments, alongside gaps and context for future applications.", width: 1552, height: 1868, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
