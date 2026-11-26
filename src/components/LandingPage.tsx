@@ -135,20 +135,20 @@ function FeatureSection({
 }
 
 const SHOTS = {
-  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Job search dashboard showing saved roles, application stages, and fit and resume-match scores.", width: 2400, height: 1178, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 360 } },
-  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Applications at the recruiter stage, with each role's progress through earlier stages.", width: 1896, height: 981, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 934 } },
+  dashboard: { src: "/hero/pipeline-dashboard.webp", alt: "Explore workspace listing saved roles with location, salary, fit score, and status, beside a preview of the selected posting.", width: 2400, height: 1178, mobile: { src: "/hero/pipeline-dashboard-mobile.webp", width: 1200, height: 1290 } },
+  drilldown: { src: "/hero/pipeline-drilldown.webp", alt: "Applications at the recruiter stage, with each role's progress through earlier stages.", width: 2040, height: 935, mobile: { src: "/hero/pipeline-drilldown-mobile.webp", width: 1200, height: 813 } },
   clip: { src: "/hero/extension-clip.webp", alt: "Chrome side panel capturing a job's company, title, salary, and description from a careers page.", width: 2400, height: 1182, mobile: { src: "/hero/extension-clip-mobile.webp", width: 656, height: 1170 } },
-  fitness: { src: "/hero/fitness-check.webp", alt: "Role-fit review with a 1–10 score and an explanation of how the candidate's experience relates to each requirement.", width: 1469, height: 1507, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 630 } },
-  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile containing experience and accomplishments, alongside gaps and context for future applications.", width: 1772, height: 1844, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
-  ats: { src: "/hero/ats-qualification.webp", alt: "Resume-match review showing a score, skill matches, and checks for clear structure and searchable information.", width: 1469, height: 1507, mobile: { src: "/hero/ats-qualification-mobile.webp", width: 1200, height: 758 } },
-  slop: { src: "/hero/ai-authenticity.webp", alt: "Writing review highlighting formulaic phrases, elaborate openings, and repeated sentence patterns in a resume.", width: 1685, height: 1034 },
-  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume with individual changes available to accept or dismiss beside the employer's application form.", width: 2400, height: 1178, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 758 } },
-  coverLetter: { src: "/hero/cover-letter.webp", alt: "Editable cover letter with contact details beside an employer's application form.", width: 2400, height: 1178, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 758 } },
+  fitness: { src: "/hero/fitness-check.webp", alt: "Role-fit review with a 1–10 score and an explanation of how the candidate's experience relates to each requirement.", width: 1229, height: 1438, mobile: { src: "/hero/fitness-check-mobile.webp", width: 1200, height: 631 } },
+  profile: { src: "/hero/candidate-profile.webp", alt: "Candidate profile containing experience and accomplishments, alongside gaps and context for future applications.", width: 1552, height: 1868, mobile: { src: "/hero/candidate-profile-mobile.webp", width: 1200, height: 749 } },
+  ats: { src: "/hero/ats-qualification.webp", alt: "Resume-match review showing a score, skill matches, and checks for clear structure and searchable information.", width: 1229, height: 1438, mobile: { src: "/hero/ats-qualification-mobile.webp", width: 1200, height: 757 } },
+  slop: { src: "/hero/ai-authenticity.webp", alt: "Writing review highlighting formulaic phrases, elaborate openings, and repeated sentence patterns in a resume.", width: 1522, height: 1175 },
+  rewriter: { src: "/hero/tailored-rewriter.webp", alt: "Tailored resume with individual changes available to accept or dismiss beside the employer's application form.", width: 2400, height: 1178, mobile: { src: "/hero/tailored-rewriter-mobile.webp", width: 1200, height: 757 } },
+  coverLetter: { src: "/hero/cover-letter.webp", alt: "Editable cover letter with contact details beside an employer's application form.", width: 2400, height: 1178, mobile: { src: "/hero/cover-letter-mobile.webp", width: 1200, height: 757 } },
   fill: { src: "/hero/extension-fill.webp", alt: "Chrome extension filling saved application details into an employer's application form.", width: 2400, height: 1182, mobile: { src: "/hero/extension-fill-mobile.webp", width: 656, height: 1350 } },
-  providers: { src: "/hero/ai-providers.webp", alt: "AI settings with options to connect Anthropic Claude, Google Gemini, xAI Grok, and Mistral AI.", width: 1800, height: 1566 },
+  providers: { src: "/hero/ai-providers.webp", alt: "AI settings with options to connect Anthropic Claude, Google Gemini, xAI Grok, and Mistral AI.", width: 1552, height: 1310 },
   connector: { src: "/hero/claude-connector.webp", alt: "Job Search connected to Claude, with tools for reading and updating applications, profiles, and resumes.", width: 1840, height: 1436 },
-  importSheet: { src: "/hero/import-sheet.webp", alt: "Job import options for a Google Sheet link or CSV upload.", width: 968, height: 728 },
-  resumes: { src: "/hero/resumes.webp", alt: "Saved resumes with tags showing the companies each version was used for.", width: 1728, height: 1560 },
+  importSheet: { src: "/hero/import-sheet.webp", alt: "Job import options for a Google Sheet link or CSV upload.", width: 1080, height: 770 },
+  resumes: { src: "/hero/resumes.webp", alt: "Saved resumes with tags showing the companies each version was used for.", width: 1496, height: 1536 },
 } satisfies Record<string, Shot>;
 
 const HIGHLIGHTS = [
@@ -170,6 +170,10 @@ const MORE_FEATURES = [
   { title: "See which postings have closed", body: "Recheck your active postings in one step and mark the roles an employer has taken down." },
   { title: "Record how each application ended", body: "Use thirteen statuses to track progress and outcomes, including accepted offers, rejections, withdrawals, declined opportunities, and closed postings." },
   { title: "Get your bearings with a short tour", body: "A six-step walkthrough introduces saving jobs, building your profile, reviewing fit, tailoring applications, and tracking progress. Return to it whenever you need a refresher." },
+  { title: "Spot what keeps coming up", body: "See the skills that recur across the roles you've saved, with links back to the postings that mention them." },
+  { title: "Keep notes on what you're learning", body: "Write down your search direction, the feedback you hear, and what you want to improve next, in one place." },
+  { title: "Work in light or dark", body: "Follow your computer's setting or pick one. Your choice is remembered on this device." },
+  { title: "Move quickly with the keyboard", body: "Step through roles with j and k, switch tabs with the arrow keys, and change a job's status without leaving the page." },
 ];
 
 const PRINCIPLES = [

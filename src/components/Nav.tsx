@@ -64,10 +64,10 @@ const SECTIONS = [
 function PublicNav({ signedIn, isLanding }: { signedIn: boolean; isLanding: boolean }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-5">
         <Link href="/" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-primary">
           <BrandMark size={24} />
-          fieldlines <span className="font-normal text-secondary">Job Search</span>
+          fieldlines <span className="hidden font-normal text-secondary sm:inline">Job Search</span>
         </Link>
         <nav aria-label="Main navigation" className="flex items-center gap-1">
           {isLanding && SECTIONS.map(([href, label]) => (
@@ -75,13 +75,13 @@ function PublicNav({ signedIn, isLanding }: { signedIn: boolean; isLanding: bool
               {label}
             </a>
           ))}
-          <span className="ml-3 flex items-center gap-2">
+          <span className="ml-3 flex shrink-0 items-center gap-2">
             {signedIn ? (
               <Button label="Open Job Search" variant="primary" size="sm" href="/jobs" />
             ) : (
               <>
                 {process.env.NODE_ENV === "development" && (
-                  <Button label="Sign in as demo user" variant="secondary" size="sm" href="/api/auth/dev-login" />
+                  <span className="hidden sm:inline-flex"><Button label="Sign in as demo user" variant="secondary" size="sm" href="/api/auth/dev-login" /></span>
                 )}
                 <Button label="Sign in with Google" variant="primary" size="sm" href="/api/auth/login" />
               </>
